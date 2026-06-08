@@ -15,13 +15,44 @@
 <section class="card">
   <div class="card-head">
     <h2>
-      <span class="tag tag-src-{{ s.source_type }}">{{ s.source_label }}</span> 현재 티어
+      <span class="tag tag-src-{{ s.source_type }}">{{ s.source_label }}</span>
+      {% if s.is_primary %}<span class="badge badge-primary">대표</span>{% endif %}
       {% if s.confidence == 'low' %}<span class="badge badge-low">검수 필요</span>{% endif %}
       {% if s.currency != 'USD' %}<span class="badge badge-low">{{ s.currency }}</span>{% endif %}
     </h2>
     <a class="muted" href="{{ s.source_url }}" target="_blank" rel="noopener">원본 ↗</a>
   </div>
   <p class="muted">최근 수집 {{ s.collected_at }} · 통화 {{ s.currency }} · 신뢰도 {{ s.confidence }}</p>
+
+  {% set fm = s.feature_matrix %}
+  {% if fm.features %}
+  <h3>티어별 기능 비교 (무료 vs 유료)</h3>
+  <div class="matrix-wrap">
+    <table class="matrix">
+      <thead>
+        <tr>
+          <th>기능 \ 티어</th>
+          {% for t in fm.tiers %}
+          <th class="{% if t.is_free %}col-free{% else %}col-paid{% endif %}">
+            {{ t.name }}<br>
+            <span class="muted">{% if t.monthly_price is not none %}${{ '%g'|format(t.monthly_price) }}/mo{% else %}{{ t.price_note or '비공개' }}{% endif %}</span>
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in fm.features %}
+        <tr>
+          <td class="feat">{{ f }}</td>
+          {% for t in fm.tiers %}
+          <td class="cell {% if t.has[f] %}yes{% else %}no{% endif %}">{% if t.has[f] %}✓{% else %}—{% endif %}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
 
   {% for t in s.tiers %}
   <div class="tier-block">
@@ -32,11 +63,6 @@
         · {{ t.billing_unit }}
       </span>
     </h3>
-    {% if t.features %}
-    <ul class="features">
-      {% for f in t.features %}<li>{{ f }}</li>{% endfor %}
-    </ul>
-    {% endif %}
     {% if t.limits %}
     <p class="limits">
       {% for k, v in t.limits.items() %}<span class="chip">{{ k }}: {{ v }}</span>{% endfor %}

@@ -24,11 +24,16 @@
         {% endfor %}
       </select>
     </label>
-    <label>소스 URL <span class="req">*</span>
-      <input type="url" name="url" placeholder="https://www.notion.so/pricing" required>
+    <label>소스 URL
+      <input type="url" name="url" placeholder="https://www.notion.so/pricing">
     </label>
     <button type="submit" class="btn-primary">추가</button>
   </form>
+  <p class="muted">
+    소스 종류는 우선순위 순입니다: <b>공식 홈페이지 &gt; 구글 검색 &gt; App Store &gt; Play Store</b>.
+    현황에는 우선순위가 가장 높은 출처가 <b>대표</b>로 표시됩니다.
+    <b>구글 검색</b>은 URL을 비우면 업체명으로 자동 생성됩니다.
+  </p>
 </section>
 
 {% if not data.companies %}
@@ -82,7 +87,7 @@
       </select>
     </label>
     <label class="grow">&nbsp;
-      <input type="url" name="url" placeholder="https://apps.apple.com/us/app/idXXXXXXXX" required>
+      <input type="url" name="url" placeholder="https://apps.apple.com/us/app/idXXXXXXXX (구글 검색은 비워도 됨)">
     </label>
     <button type="submit" class="btn-secondary">소스 추가</button>
   </form>

@@ -50,17 +50,30 @@
     <li><code>소스 종류</code> — 웹 / App Store / Play Store / 기타</li>
     <li><code>소스 URL</code> (필수) — 해당 소스의 가격 페이지 URL</li>
   </ul>
-  <h3>한 업체에 여러 소스</h3>
+  <h3>한 업체에 여러 소스 + 우선순위</h3>
   <p>
-    가격이 웹에 없고 <b>App Store / Play Store</b> 에만 있는 업체도 있습니다.
-    업체마다 <b>여러 소스 URL</b> 을 등록하면 각 소스를 독립적으로 수집·추적하고,
-    현황·상세 화면에서 <b>출처별로 묶어</b> 보여줍니다.
+    가격이 웹에 없고 <b>스토어</b>에만 있는 업체도 있습니다. 업체마다 <b>여러 소스</b>를
+    등록하면 각 소스를 독립 수집·추적하고, 다음 <b>우선순위</b>로 대표 출처를 정합니다:
+  </p>
+  <p>
+    <span class="tag tag-src-web">공식 홈페이지</span> &gt;
+    <span class="tag tag-src-google_search">구글 검색</span> &gt;
+    <span class="tag tag-src-apple">App Store</span> &gt;
+    <span class="tag tag-src-google_play">Play Store</span>
   </p>
   <ul>
+    <li><b>현황</b>에는 우선순위가 가장 높은(USD·신뢰도 정상) 출처가 <b>대표</b>로 표시되고, 나머지는 "추가 출처"로 명시됩니다.</li>
+    <li><b>구글 검색</b>: URL을 비우면 <code>google.com/search?q=업체명 pricing</code> 을 US·영어로 자동 생성합니다.</li>
     <li><b>App Store</b>: <code>apps.apple.com/us/app/idXXXXXXXX</code> — <code>/us/</code> 가 USD 핵심(빠뜨려도 자동 보정)</li>
-    <li><b>Play Store</b>: <code>play.google.com/store/apps/details?id=...&gl=US&hl=en</code> (자동 추가)</li>
-    <li>스토어는 봇 차단·통화 지역화가 있어, 결과가 비-USD면 <b>신뢰도 낮음</b>으로 표시됩니다.</li>
+    <li><b>Play Store</b>: <code>play.google.com/store/apps/details?id=...&gl=us&hl=en</code> (자동 추가)</li>
+    <li>스토어/검색은 봇 차단·지역화가 있어, 결과가 비-USD면 <b>신뢰도 낮음</b>으로 표시됩니다.</li>
   </ul>
+  <h3>티어별 기능 비교 (무료 vs 유료)</h3>
+  <p>
+    <b>업체 상세</b> 화면에 출처별로 <b>기능 비교표</b>가 나옵니다. 전체 기능을 행으로,
+    각 티어를 열로 두고 보유 여부(✓/—)를 표시해 <b>무료 티어와 유료 티어의 기능 차이</b>를
+    한눈에 비교할 수 있습니다(무료 열은 파랑, 유료 열은 초록).
+  </p>
   <p class="muted">
     삭제해도 과거 수집 이력(스냅샷·변동 로그)은 보존됩니다. 최초 실행 시
     <code>companies.yaml</code> 의 목록이 DB로 1회 시드된 뒤로는 DB가 기준이 됩니다.

@@ -22,6 +22,7 @@ from flask import (
 
 from .. import config
 from ..core import presenters, store
+from ..core.fetch import build_google_search_url
 from ..core.models import SOURCE_TYPE_LABELS, SOURCE_TYPES
 from ..core.pipeline import run_once
 from ..scheduler import start_scheduler
@@ -87,12 +88,19 @@ def _norm_type(value: str) -> str:
     return value if value in SOURCE_TYPES else "other"
 
 
+def _resolve_url(company: str, source_type: str, url: str) -> str:
+    """구글 검색 소스는 URL 을 비우면 업체명으로 자동 생성한다."""
+    if not url and source_type == "google_search":
+        return build_google_search_url(company)
+    return url
+
+
 @app.route("/companies/add", methods=["POST"])
 def companies_add():
     """업체 + 첫 소스를 함께 등록."""
     name = (request.form.get("name") or "").strip()
-    url = (request.form.get("url") or "").strip()
     source_type = _norm_type(request.form.get("source_type"))
+    url = _resolve_url(name, source_type, (request.form.get("url") or "").strip())
 
     if not name:
         return redirect(url_for("companies_page", error="업체명은 필수입니다."))
@@ -115,8 +123,8 @@ def companies_delete():
 def sources_add():
     """기존 업체에 소스 URL 추가."""
     company = (request.form.get("company") or "").strip()
-    url = (request.form.get("url") or "").strip()
     source_type = _norm_type(request.form.get("source_type"))
+    url = _resolve_url(company, source_type, (request.form.get("url") or "").strip())
 
     if not (company and url):
         return redirect(url_for("companies_page", error="업체와 소스 URL이 필요합니다."))

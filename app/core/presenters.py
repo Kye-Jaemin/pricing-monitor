@@ -8,7 +8,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from . import store
-from .models import SOURCE_TYPE_LABELS, PricingSnapshot
+from .models import SOURCE_PRIORITY, SOURCE_TYPE_LABELS, PricingSnapshot
 
 _CONF_RANK = {"low": 0, "medium": 1, "high": 2}
 
@@ -29,9 +29,54 @@ def _src_label(source_type: str) -> str:
     return SOURCE_TYPE_LABELS.get(source_type, source_type)
 
 
+def _pick_primary(rows: list) -> object:
+    """우선순위 기반 대표 출처 선정.
+
+    USD + 신뢰도 low 아님(=usable)을 먼저 고른 뒤, 그중 우선순위가 가장 높은
+    출처를 대표로 한다. usable 한 것이 없으면 우선순위만으로 고른다.
+    """
+    def key(r):
+        snap = PricingSnapshot.from_payload_json(r["payload_json"])
+        usable = snap.currency.upper() == "USD" and r["confidence"] != "low"
+        return (0 if usable else 1, SOURCE_PRIORITY.get(r["source_type"], 9))
+
+    return sorted(rows, key=key)[0]
+
+
+def _feature_matrix(tiers: list) -> dict:
+    """무료/유료 티어별 기능 차이 비교표.
+
+    전체 기능의 합집합을 행으로, 각 티어를 열로 두고 보유 여부를 표시한다.
+    """
+    all_feats: list[str] = []
+    for t in tiers:
+        for f in t.features:
+            if f not in all_feats:
+                all_feats.append(f)
+    return {
+        "features": all_feats,
+        "tiers": [
+            {
+                "name": t.name,
+                "monthly_price": t.monthly_price,
+                "price_note": t.price_note,
+                "is_free": (t.monthly_price == 0)
+                or ("free" in t.name.lower())
+                or ("무료" in t.name),
+                "has": {f: (f in t.features) for f in all_feats},
+            }
+            for t in tiers
+        ],
+    }
+
+
 # ── 1. 현황 (/) ──────────────────────────────────────────────
 def overview() -> dict:
-    """전체 업체 × (소스별) 최신 가격표 + 이번 주 변동 배지 수."""
+    """전체 업체의 대표 출처 가격표 + 이번 주 변동 배지 수.
+
+    대표 출처는 우선순위(공식 홈페이지 > 구글 검색 > App Store > Play Store)로
+    선정하고, 나머지 출처는 보조로 명시한다.
+    """
     rows = store.all_latest_by_source()
     recent = store.changes_since(_week_ago_iso())
 
@@ -39,7 +84,6 @@ def overview() -> dict:
     for c in recent:
         change_count[c["company"]] = change_count.get(c["company"], 0) + 1
 
-    # 업체별로 소스 스냅샷을 모은다
     grouped: dict[str, list] = {}
     for row in rows:
         grouped.setdefault(row["company"], []).append(row)
@@ -47,35 +91,36 @@ def overview() -> dict:
     companies = []
     for company_name in sorted(grouped, key=str.lower):
         srows = grouped[company_name]
-        tiers, confs, currencies = [], [], set()
-        latest_collected = ""
-        for row in srows:
-            snap = PricingSnapshot.from_payload_json(row["payload_json"])
-            confs.append(row["confidence"])
-            currencies.add(snap.currency)
-            latest_collected = max(latest_collected, row["collected_at"])
-            for t in snap.tiers:
-                tiers.append(
+        primary = _pick_primary(srows)
+        snap = PricingSnapshot.from_payload_json(primary["payload_json"])
+
+        others = sorted(
+            (r for r in srows if r["source_url"] != primary["source_url"]),
+            key=lambda r: SOURCE_PRIORITY.get(r["source_type"], 9),
+        )
+
+        companies.append(
+            {
+                "company": company_name,
+                "primary_source_type": primary["source_type"],
+                "primary_source_label": _src_label(primary["source_type"]),
+                "primary_source_url": primary["source_url"],
+                "collected_at": primary["collected_at"],
+                "currency": snap.currency,
+                "confidence": primary["confidence"],
+                "recent_changes": change_count.get(company_name, 0),
+                "source_count": len(srows),
+                "other_sources": [_src_label(r["source_type"]) for r in others],
+                "tiers": [
                     {
                         "name": t.name,
                         "monthly_price": t.monthly_price,
                         "annual_price_per_month": t.annual_price_per_month,
                         "billing_unit": t.billing_unit,
                         "price_note": t.price_note,
-                        "source_type": row["source_type"],
-                        "source_label": _src_label(row["source_type"]),
                     }
-                )
-        companies.append(
-            {
-                "company": company_name,
-                "collected_at": latest_collected,
-                "currency": ", ".join(sorted(currencies)) if currencies else "—",
-                "confidence": _worst_confidence(confs),
-                "recent_changes": change_count.get(company_name, 0),
-                "source_count": len(srows),
-                "multi_source": len(srows) > 1,
-                "tiers": tiers,
+                    for t in snap.tiers
+                ],
             }
         )
     return {"companies": companies, "total_recent_changes": len(recent)}
@@ -88,18 +133,26 @@ def company_detail(name: str) -> dict | None:
     if not latest_rows:
         return None
 
-    # 출처별 현재 티어 블록
+    primary = _pick_primary(latest_rows)
+    primary_url = primary["source_url"]
+
+    # 출처별 현재 티어 블록 (우선순위 순서, 대표 표시)
+    ordered_rows = sorted(
+        latest_rows, key=lambda r: SOURCE_PRIORITY.get(r["source_type"], 9)
+    )
     sources = []
-    for row in latest_rows:
+    for row in ordered_rows:
         snap = PricingSnapshot.from_payload_json(row["payload_json"])
         sources.append(
             {
                 "source_type": row["source_type"],
                 "source_label": _src_label(row["source_type"]),
                 "source_url": row["source_url"],
+                "is_primary": row["source_url"] == primary_url,
                 "currency": snap.currency,
                 "confidence": row["confidence"],
                 "collected_at": row["collected_at"],
+                "feature_matrix": _feature_matrix(snap.tiers),
                 "tiers": [
                     {
                         "name": t.name,

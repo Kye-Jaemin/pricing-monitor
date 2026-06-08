@@ -18,7 +18,7 @@ import yaml
 
 from .. import config
 from . import diff, extract, fetch, store
-from .models import SOURCE_TYPE_LABELS, PricingSnapshot
+from .models import SOURCE_PRIORITY, SOURCE_TYPE_LABELS, PricingSnapshot
 
 
 def _utcnow_iso() -> str:
@@ -94,11 +94,15 @@ def load_companies() -> list[dict]:
     result = []
     for c in companies:
         srcs = store.list_sources(company=c["name"], active_only=True)
+        # 우선순위 순서로 수집(공식 홈페이지 > 구글 검색 > App Store > Play Store)
+        ordered = sorted(
+            srcs, key=lambda s: SOURCE_PRIORITY.get(s["source_type"], 9)
+        )
         result.append(
             {
                 "name": c["name"],
                 "sources": [
-                    {"type": s["source_type"], "url": s["url"]} for s in srcs
+                    {"type": s["source_type"], "url": s["url"]} for s in ordered
                 ],
             }
         )

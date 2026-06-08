@@ -61,6 +61,23 @@ code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; font-size: .9e
 }
 .badge-change { background: var(--change-bg); color: var(--change); }
 .badge-low { background: var(--low-bg); color: var(--low); }
+.badge-primary { background: var(--accent); color: #fff; }
+
+.source-line { margin: 0 0 10px; font-size: .9rem; }
+.source-line .tag { vertical-align: middle; }
+
+/* 기능 비교표 */
+.matrix-wrap { overflow-x: auto; margin: 8px 0 16px; }
+.matrix { border-collapse: collapse; min-width: 100%; }
+.matrix th, .matrix td {
+  border: 1px solid var(--line); padding: 7px 12px; text-align: center; font-size: .88rem;
+}
+.matrix thead th { background: #f3f4f6; vertical-align: bottom; }
+.matrix th.col-free { background: #eef6ff; }
+.matrix th.col-paid { background: #f0fdf4; }
+.matrix td.feat { text-align: left; font-weight: 500; white-space: nowrap; }
+.matrix td.cell.yes { color: var(--change); font-weight: 700; }
+.matrix td.cell.no { color: #cbd5e1; }
 
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }

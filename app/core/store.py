@@ -99,6 +99,12 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute(
             "ALTER TABLE snapshots ADD COLUMN source_type TEXT NOT NULL DEFAULT 'web'"
         )
+    # 구버전 'google'(Play Store) → 'google_play' 로 이름 통일
+    for tbl in ("company_sources", "snapshots"):
+        if "source_type" in _columns(conn, tbl):
+            conn.execute(
+                f"UPDATE {tbl} SET source_type='google_play' WHERE source_type='google'"
+            )
     # 구버전 companies(homepage/pricing_url) → company_sources 로 1회 이전
     ccols = _columns(conn, "companies")
     if "pricing_url" in ccols:

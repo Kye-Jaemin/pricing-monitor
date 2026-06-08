@@ -21,11 +21,19 @@ class FetchError(RuntimeError):
     """페이지 수집 실패."""
 
 
+def build_google_search_url(company: str) -> str:
+    """업체명으로 US/영어 구글 검색 URL 을 만든다(가격 스니펫 수집용)."""
+    from urllib.parse import quote_plus
+
+    q = quote_plus(f"{company} pricing")
+    return f"https://www.google.com/search?q={q}&hl=en&gl=us"
+
+
 def normalize_us_url(source_type: str, url: str) -> str:
-    """스토어 URL 을 US/USD 스토어프론트로 보정 (8장).
+    """소스 URL 을 US/USD 로케일로 보정 (8장).
 
     - apple: apps.apple.com 경로에 국가코드가 없으면 '/us/' 삽입.
-    - google: play.google.com 쿼리에 gl=US, hl=en 강제.
+    - google_play / google_search: 쿼리에 gl=us, hl=en 강제.
     - web/other: 그대로 (Playwright 로케일이 1차 방어선).
     실패 시 원본 URL 을 그대로 돌려준다(안전).
     """
@@ -41,9 +49,9 @@ def normalize_us_url(source_type: str, url: str) -> str:
                 p = p._replace(path="/".join(parts))
             return urlunparse(p)
 
-        if source_type == "google" and "play.google.com" in host:
+        if source_type in ("google_play", "google_search") and "google.com" in host:
             q = dict(parse_qsl(p.query))
-            q.setdefault("gl", "US")
+            q.setdefault("gl", "us")
             q.setdefault("hl", "en")
             p = p._replace(query=urlencode(q))
             return urlunparse(p)

@@ -29,14 +29,20 @@ PAGE TEXT:
 {page_text}
 """
 
-# 소스 타입별 추출 힌트(앱스토어는 레이아웃이 다르므로 보강)
+# 소스 타입별 추출 힌트(레이아웃이 다르므로 보강)
 SOURCE_HINTS = {
+    "google_search": (
+        "- This is a Google search results page. Extract pricing tiers only from "
+        "what is explicitly shown in the snippets/results. Do not guess. "
+        "If pricing is not clearly present, return an empty tiers list and set "
+        "extraction_confidence to low.\n"
+    ),
     "apple": (
         "- This is an Apple App Store listing. Extract the in-app "
         "subscription/purchase tiers shown (use US storefront USD prices). "
         "Map each subscription option to a tier.\n"
     ),
-    "google": (
+    "google_play": (
         "- This is a Google Play Store listing. Extract the in-app "
         "subscription/purchase tiers shown (use US, USD prices). "
         "If only a price range is given, put it in price_note and lower confidence.\n"
