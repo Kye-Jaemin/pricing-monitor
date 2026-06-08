@@ -12,6 +12,15 @@ from typing import Iterator, Optional
 from .. import config
 
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS companies (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    name         TEXT NOT NULL UNIQUE,
+    homepage     TEXT,
+    pricing_url  TEXT,
+    active       INTEGER NOT NULL DEFAULT 1,
+    created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+);
+
 CREATE TABLE IF NOT EXISTS snapshots (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     company        TEXT NOT NULL,
@@ -68,6 +77,43 @@ def init_db() -> None:
     """테이블/인덱스 생성 + WAL 모드 적용."""
     with connect() as conn:
         conn.executescript(SCHEMA)
+
+
+# ── companies (모니터링 대상 목록) ───────────────────────────
+def list_companies(active_only: bool = True) -> list[sqlite3.Row]:
+    with connect() as conn:
+        q = "SELECT * FROM companies"
+        if active_only:
+            q += " WHERE active=1"
+        q += " ORDER BY name COLLATE NOCASE"
+        return conn.execute(q).fetchall()
+
+
+def count_companies() -> int:
+    with connect() as conn:
+        return conn.execute("SELECT COUNT(*) FROM companies").fetchone()[0]
+
+
+def add_company(
+    *, name: str, homepage: Optional[str], pricing_url: Optional[str]
+) -> None:
+    """업체 추가 또는 갱신(같은 이름이면 URL 갱신 + 재활성화)."""
+    with connect() as conn:
+        conn.execute(
+            """INSERT INTO companies (name, homepage, pricing_url, active)
+               VALUES (?, ?, ?, 1)
+               ON CONFLICT(name) DO UPDATE SET
+                   homepage=excluded.homepage,
+                   pricing_url=excluded.pricing_url,
+                   active=1""",
+            (name, homepage, pricing_url),
+        )
+
+
+def delete_company(name: str) -> None:
+    """모니터링 목록에서 제거. 과거 스냅샷/변동 이력은 보존된다."""
+    with connect() as conn:
+        conn.execute("DELETE FROM companies WHERE name=?", (name,))
 
 
 # ── snapshots ────────────────────────────────────────────────

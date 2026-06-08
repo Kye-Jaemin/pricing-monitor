@@ -90,6 +90,31 @@ th { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-s
   cursor: pointer;
 }
 .btn-primary:disabled { opacity: .55; cursor: default; }
+.btn-danger {
+  background: #fff; color: #b91c1c; border: 1px solid #fca5a5;
+  padding: 5px 12px; border-radius: 7px; font-size: .82rem; font-weight: 600;
+  cursor: pointer;
+}
+.btn-danger:hover { background: #fee2e2; }
+
+.add-form {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px;
+}
+.add-form label {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: .85rem; font-weight: 600; flex: 1 1 220px;
+}
+.add-form input {
+  padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+  font-size: .9rem; font-weight: 400;
+}
+.add-form .btn-primary { flex: 0 0 auto; }
+.req { color: #b91c1c; }
+
+.alert {
+  background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5;
+  border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: .9rem;
+}
 
 .filter { margin-bottom: 14px; }
 .filter select { padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; }

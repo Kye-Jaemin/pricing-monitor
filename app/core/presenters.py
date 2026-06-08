@@ -153,6 +153,22 @@ def runs_view() -> dict:
     return {"runs": items}
 
 
+# ── 업체 관리 (/companies) ───────────────────────────────────
+def companies_admin() -> dict:
+    rows = store.list_companies(active_only=True)
+    return {
+        "companies": [
+            {
+                "name": r["name"],
+                "homepage": r["homepage"],
+                "pricing_url": r["pricing_url"],
+                "created_at": r["created_at"],
+            }
+            for r in rows
+        ]
+    }
+
+
 # ── 내부 API 용 ──────────────────────────────────────────────
 def latest_snapshots_api() -> list[dict]:
     rows = store.all_latest_snapshots()

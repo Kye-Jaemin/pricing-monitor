@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}업체 관리 · Pricing Monitor{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>업체 관리</h1>
+  <span class="muted">모니터링 대상 {{ data.companies|length }}곳</span>
+</div>
+
+{% if error %}
+<div class="alert">{{ error }}</div>
+{% endif %}
+
+<section class="card">
+  <h2>업체 추가</h2>
+  <form class="add-form" method="post" action="{{ url_for('companies_add') }}">
+    <label>업체명 <span class="req">*</span>
+      <input type="text" name="name" placeholder="Notion" required>
+    </label>
+    <label>Pricing URL <span class="muted">(권장)</span>
+      <input type="url" name="pricing_url" placeholder="https://www.notion.so/pricing">
+    </label>
+    <label>Homepage <span class="muted">(선택)</span>
+      <input type="url" name="homepage" placeholder="https://www.notion.so">
+    </label>
+    <button type="submit" class="btn-primary">추가</button>
+  </form>
+  <p class="muted">
+    Pricing URL 을 직접 지정하는 게 가장 안정적입니다. 미지정 시
+    <code>{homepage}/pricing</code> 으로 추정합니다. 같은 이름으로 추가하면 URL 이 갱신됩니다.
+  </p>
+</section>
+
+<section class="card">
+  <h2>현재 목록</h2>
+  {% if not data.companies %}
+    <div class="empty"><p>등록된 업체가 없습니다. 위에서 추가하세요.</p></div>
+  {% else %}
+  <table class="log-table">
+    <thead>
+      <tr><th>업체</th><th>Pricing URL</th><th>Homepage</th><th>등록일</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for c in data.companies %}
+      <tr>
+        <td><a href="{{ url_for('company', name=c.name) }}">{{ c.name }}</a></td>
+        <td class="muted">{% if c.pricing_url %}<a href="{{ c.pricing_url }}" target="_blank" rel="noopener">{{ c.pricing_url }}</a>{% else %}—{% endif %}</td>
+        <td class="muted">{{ c.homepage or '—' }}</td>
+        <td class="muted nowrap">{{ c.created_at }}</td>
+        <td>
+          <form method="post" action="{{ url_for('companies_delete') }}"
+                onsubmit="return confirm('{{ c.name }} 을(를) 모니터링 목록에서 제거할까요?\n(과거 수집 이력은 보존됩니다)');">
+            <input type="hidden" name="name" value="{{ c.name }}">
+            <button type="submit" class="btn-danger">삭제</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</section>
+
+<p class="muted">
+  추가/삭제 후 <a href="{{ url_for('runs') }}">수집 상태 → [지금 수집]</a> 을 누르면 즉시 반영됩니다.
+  목록은 DB 에 저장되어 재배포·환경 이전에도 유지됩니다.
+</p>
+{% endblock %}

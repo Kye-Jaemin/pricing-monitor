@@ -71,6 +71,40 @@ def howto():
     return render_template("howto.html")
 
 
+@app.route("/companies")
+def companies_page():
+    return render_template(
+        "companies.html",
+        data=presenters.companies_admin(),
+        error=request.args.get("error"),
+    )
+
+
+@app.route("/companies/add", methods=["POST"])
+def companies_add():
+    name = (request.form.get("name") or "").strip()
+    homepage = (request.form.get("homepage") or "").strip() or None
+    pricing_url = (request.form.get("pricing_url") or "").strip() or None
+
+    if not name:
+        return redirect(url_for("companies_page", error="업체명(name)은 필수입니다."))
+    if not (homepage or pricing_url):
+        return redirect(
+            url_for("companies_page", error="pricing_url 또는 homepage 중 하나는 필요합니다.")
+        )
+
+    store.add_company(name=name, homepage=homepage, pricing_url=pricing_url)
+    return redirect(url_for("companies_page"))
+
+
+@app.route("/companies/delete", methods=["POST"])
+def companies_delete():
+    name = (request.form.get("name") or "").strip()
+    if name:
+        store.delete_company(name)
+    return redirect(url_for("companies_page"))
+
+
 @app.route("/runs")
 def runs():
     return render_template(

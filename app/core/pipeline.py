@@ -45,15 +45,49 @@ class RunResult:
         return sum(1 for r in self.results if r.status == "error")
 
 
-def load_companies() -> list[dict]:
+def _seed_companies_from_yaml() -> None:
+    """DB 의 companies 가 비어 있을 때 companies.yaml 로 1회 시드.
+
+    YAML 은 '초기 목록' 역할만 한다. 이후 추가/삭제는 DB(웹 UI)가 주도한다.
+    YAML 이 없으면 조용히 건너뛴다(웹에서 직접 추가하면 됨).
+    """
     path = Path(config.COMPANIES_FILE).expanduser()
     if not path.exists():
-        raise FileNotFoundError(f"companies 파일 없음: {path}")
+        return
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    companies = data.get("companies", [])
-    if not companies:
-        raise ValueError(f"{path} 에 companies 항목이 비어 있습니다.")
-    return companies
+    for entry in data.get("companies", []):
+        name = (entry.get("name") or "").strip()
+        if not name:
+            continue
+        store.add_company(
+            name=name,
+            homepage=entry.get("homepage"),
+            pricing_url=entry.get("pricing_url"),
+        )
+
+
+def load_companies() -> list[dict]:
+    """모니터링 대상을 DB 에서 읽는다(최초엔 YAML 로 시드).
+
+    웹 UI 의 추가/삭제가 DB 에 반영되므로, 어느 환경에서나 동일하게 동작한다.
+    """
+    store.init_db()
+    if store.count_companies() == 0:
+        _seed_companies_from_yaml()
+    rows = store.list_companies(active_only=True)
+    if not rows:
+        raise ValueError(
+            "모니터링할 업체가 없습니다. 웹의 '업체 관리'에서 추가하거나 "
+            "companies.yaml 을 채우세요."
+        )
+    return [
+        {
+            "name": r["name"],
+            "homepage": r["homepage"],
+            "pricing_url": r["pricing_url"],
+        }
+        for r in rows
+    ]
 
 
 def _resolve_pricing_url(entry: dict) -> str:

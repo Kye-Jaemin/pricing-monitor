@@ -40,23 +40,20 @@
 <section class="card">
   <h2>업체 추가/삭제</h2>
   <p>
-    모니터링 대상은 프로젝트 루트의 <code>companies.yaml</code> 파일로 관리합니다.
-    항목을 추가한 뒤 <a href="{{ url_for('runs') }}">수집 상태 → [지금 수집]</a>을 누르면
-    새 업체가 수집됩니다.
+    <a href="{{ url_for('companies_page') }}"><b>업체 관리</b></a> 화면에서 웹으로 직접
+    추가/삭제합니다. 목록은 <b>DB에 저장</b>되어 재배포·환경 이전에도 유지되며,
+    Render·로컬 어느 환경에서나 동일하게 동작합니다. 추가 후
+    <a href="{{ url_for('runs') }}">수집 상태 → [지금 수집]</a>을 누르면 새 업체가 수집됩니다.
   </p>
-  <pre class="code-block">companies:
-  - name: Notion
-    homepage: https://www.notion.so
-    pricing_url: https://www.notion.so/pricing
-
-  - name: Slack            # ← 이렇게 항목을 추가
-    homepage: https://slack.com
-    pricing_url: https://slack.com/pricing</pre>
   <ul>
-    <li><code>name</code> (필수) — 업체명, 데이터의 키로 사용</li>
-    <li><code>pricing_url</code> (권장) — US Pricing 페이지 URL. 가장 안정적입니다.</li>
-    <li><code>homepage</code> (선택) — 미지정 시 <code>{homepage}/pricing</code> 으로 추정</li>
+    <li><code>업체명</code> (필수) — 데이터의 키로 사용</li>
+    <li><code>Pricing URL</code> (권장) — US Pricing 페이지 URL. 가장 안정적입니다.</li>
+    <li><code>Homepage</code> (선택) — 미지정 시 <code>{homepage}/pricing</code> 으로 추정</li>
   </ul>
+  <p class="muted">
+    삭제해도 과거 수집 이력(스냅샷·변동 로그)은 보존됩니다. 최초 실행 시
+    <code>companies.yaml</code> 의 목록이 DB로 1회 시드된 뒤로는 DB가 기준이 됩니다.
+  </p>
 </section>
 
 <section class="card">
