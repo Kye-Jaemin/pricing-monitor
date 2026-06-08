@@ -1,0 +1,23 @@
+# Web / dashboard
+Flask>=3.0
+Jinja2>=3.1
+
+# Config
+python-dotenv>=1.0
+PyYAML>=6.0
+
+# Page fetching
+playwright>=1.44
+
+# Extraction
+anthropic>=0.39
+
+# Schema validation
+pydantic>=2.7
+
+# Scheduling (internal mode)
+APScheduler>=3.10
+
+# Production WSGI servers
+gunicorn>=22.0 ; sys_platform != "win32"
+waitress>=3.0

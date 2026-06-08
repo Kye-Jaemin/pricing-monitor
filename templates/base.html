@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Pricing Monitor{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="{{ url_for('index') }}">💲 Pricing Monitor</a>
+    <nav>
+      <a href="{{ url_for('index') }}">현황</a>
+      <a href="{{ url_for('changes') }}">변동 로그</a>
+      <a href="{{ url_for('runs') }}">수집 상태</a>
+    </nav>
+  </header>
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="footer">
+    <span>USD 기준 · 공식 US Pricing 페이지 수집 · 주 1회</span>
+  </footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

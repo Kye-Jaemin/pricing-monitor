@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}수집 상태 · Pricing Monitor{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>수집 상태</h1>
+  <form method="post" action="{{ url_for('run_now') }}">
+    <button type="submit" class="btn-primary" {% if running %}disabled{% endif %}>
+      {% if running %}수집 중…{% else %}지금 수집{% endif %}
+    </button>
+  </form>
+</div>
+{% if running %}
+<p class="muted">백그라운드에서 수집이 진행 중입니다. 잠시 후 새로고침하세요.</p>
+{% endif %}
+
+{% if not data.runs %}
+  <div class="empty"><p>실행 기록이 없습니다.</p></div>
+{% else %}
+<table class="log-table">
+  <thead>
+    <tr><th>시작</th><th>종료</th><th>업체</th><th>상태</th><th>메시지</th></tr>
+  </thead>
+  <tbody>
+    {% for r in data.runs %}
+    <tr>
+      <td class="muted nowrap">{{ r.run_started_at }}</td>
+      <td class="muted nowrap">{{ r.run_finished_at or '—' }}</td>
+      <td>{{ r.company or '—' }}</td>
+      <td><span class="tag tag-{{ r.status }}">{{ r.status }}</span></td>
+      <td class="muted">{{ r.error_message or '' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

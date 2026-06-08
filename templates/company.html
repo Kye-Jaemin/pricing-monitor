@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}{{ data.company }} · Pricing Monitor{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ data.company }}</h1>
+  <a class="muted" href="{{ data.source_url }}" target="_blank" rel="noopener">원본 페이지 ↗</a>
+</div>
+<p class="muted">
+  최근 수집 {{ data.collected_at }} · 통화 {{ data.currency }} · 신뢰도 {{ data.confidence }} · 스냅샷 {{ data.snapshot_count }}개
+</p>
+
+<section class="card">
+  <h2>가격 추이 (월 가격, {{ data.currency }})</h2>
+  <canvas id="priceChart" height="110"></canvas>
+</section>
+
+<section class="card">
+  <h2>현재 티어</h2>
+  {% for t in data.tiers %}
+  <div class="tier-block">
+    <h3>
+      {{ t.name }}
+      <span class="muted">
+        {% if t.monthly_price is not none %}${{ '%g'|format(t.monthly_price) }}/mo{% else %}{{ t.price_note or '비공개' }}{% endif %}
+        · {{ t.billing_unit }}
+      </span>
+    </h3>
+    {% if t.features %}
+    <ul class="features">
+      {% for f in t.features %}<li>{{ f }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+    {% if t.limits %}
+    <p class="limits">
+      {% for k, v in t.limits.items() %}<span class="chip">{{ k }}: {{ v }}</span>{% endfor %}
+    </p>
+    {% endif %}
+  </div>
+  {% endfor %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+  const chartData = {{ data.chart | tojson }};
+  new Chart(document.getElementById('priceChart'), {
+    type: 'line',
+    data: {
+      labels: chartData.labels,
+      datasets: chartData.datasets.map(function (d, i) {
+        const hue = (i * 67) % 360;
+        return Object.assign({}, d, {
+          borderColor: 'hsl(' + hue + ',70%,45%)',
+          backgroundColor: 'hsl(' + hue + ',70%,45%)',
+          spanGaps: true,
+          tension: 0.2
+        });
+      })
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      scales: { y: { beginAtZero: true, ticks: { callback: v => '$' + v } } }
+    }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,90 @@
+"""Claude API 구조화 추출 (6장).
+
+페이지 본문 텍스트 → 정해진 JSON 스키마. 검증은 호출자(pipeline)가 Pydantic 으로.
+"""
+from __future__ import annotations
+
+import json
+import re
+
+from .. import config
+from .models import SCHEMA_JSON_EXAMPLE
+
+PROMPT_TEMPLATE = """You are a pricing data extractor. From the given web page text, extract the
+subscription pricing tiers. Return ONLY valid JSON matching this schema:
+{schema}
+
+Rules:
+- Prices are expected in USD. If the page shows a non-USD currency, set
+  currency accordingly and lower extraction_confidence.
+- If a tier has no public price (e.g. "Contact Sales"), set prices to null and
+  put the reason in price_note.
+- Do not invent features or prices. If unsure, lower extraction_confidence.
+- "company" must be exactly: {company}
+- "source_url" must be exactly: {source_url}
+- "collected_at" must be exactly: {collected_at}
+- Output JSON only. No prose, no code fences.
+
+WEB PAGE TEXT:
+{page_text}
+"""
+
+# 페이지 텍스트가 너무 길면 토큰 절약을 위해 잘라낸다(가격은 보통 상단에 있음).
+MAX_PAGE_CHARS = 40000
+
+
+class ExtractError(RuntimeError):
+    """추출 실패."""
+
+
+def _strip_code_fences(text: str) -> str:
+    """모델이 실수로 ```json ... ``` 으로 감쌌을 때 제거."""
+    text = text.strip()
+    fence = re.match(r"^```(?:json)?\s*(.*?)\s*```$", text, re.DOTALL)
+    if fence:
+        return fence.group(1).strip()
+    return text
+
+
+def extract_pricing(
+    *,
+    company: str,
+    source_url: str,
+    collected_at: str,
+    page_text: str,
+) -> dict:
+    """Claude 로 구조화 추출하여 dict 를 돌려준다(스키마 검증은 호출자 책임).
+
+    JSON 파싱 자체가 실패하면 ExtractError.
+    """
+    if not config.ANTHROPIC_API_KEY:
+        raise ExtractError("ANTHROPIC_API_KEY 가 설정되지 않았습니다 (.env 확인).")
+
+    # 함수 안에서 import — core import 만으로 anthropic 을 강제하지 않는다.
+    from anthropic import Anthropic
+
+    client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
+
+    prompt = PROMPT_TEMPLATE.format(
+        schema=SCHEMA_JSON_EXAMPLE,
+        company=company,
+        source_url=source_url,
+        collected_at=collected_at,
+        page_text=page_text[:MAX_PAGE_CHARS],
+    )
+
+    resp = client.messages.create(
+        model=config.ANTHROPIC_MODEL,
+        max_tokens=4096,
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+    raw = "".join(
+        block.text for block in resp.content if getattr(block, "type", None) == "text"
+    )
+    raw = _strip_code_fences(raw)
+
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ExtractError(f"JSON 파싱 실패: {exc}\n원문 앞부분: {raw[:300]}") from exc

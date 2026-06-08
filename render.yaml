@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: pricing-monitor
+    runtime: python
+    region: oregon            # US 리전 → USD
+    plan: starter             # 유료(상시) + 디스크 부착
+    buildCommand: |
+      pip install -r requirements.txt
+      playwright install --with-deps chromium
+    startCommand: gunicorn app.web.flask_app:app --bind 0.0.0.0:$PORT --timeout 120
+    disk:
+      name: data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-sonnet-4-6
+      - key: DB_PATH
+        value: /var/data/pricing.db   # ← Persistent Disk 경로 필수
+      - key: SCHEDULER_MODE
+        value: internal
+      - key: SCHEDULE_DAY_OF_WEEK
+        value: mon
+      - key: SCHEDULE_HOUR
+        value: "9"
+      - key: SCHEDULE_TIMEZONE
+        value: America/New_York

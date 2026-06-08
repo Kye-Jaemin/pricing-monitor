@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}현황 · Pricing Monitor{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>현황</h1>
+  <span class="muted">이번 주 변동 {{ data.total_recent_changes }}건</span>
+</div>
+
+{% if not data.companies %}
+  <div class="empty">
+    <p>아직 수집된 데이터가 없습니다.</p>
+    <p class="muted">
+      <code>python -m app.core.pipeline</code> 를 실행하거나
+      <a href="{{ url_for('runs') }}">수집 상태</a>에서 [지금 수집]을 누르세요.
+    </p>
+  </div>
+{% endif %}
+
+{% for c in data.companies %}
+<section class="card">
+  <div class="card-head">
+    <h2>
+      <a href="{{ url_for('company', name=c.company) }}">{{ c.company }}</a>
+      {% if c.recent_changes %}<span class="badge badge-change">변동 {{ c.recent_changes }}</span>{% endif %}
+      {% if c.confidence == 'low' %}<span class="badge badge-low">검수 필요</span>{% endif %}
+      {% if c.currency != 'USD' %}<span class="badge badge-low">{{ c.currency }}</span>{% endif %}
+    </h2>
+    <span class="muted">{{ c.collected_at }}</span>
+  </div>
+  <table class="price-table">
+    <thead>
+      <tr><th>티어</th><th>월</th><th>연(월환산)</th><th>통화</th><th>과금단위</th></tr>
+    </thead>
+    <tbody>
+      {% for t in c.tiers %}
+      <tr>
+        <td class="tier-name">{{ t.name }}</td>
+        <td>{% if t.monthly_price is not none %}${{ '%g'|format(t.monthly_price) }}{% else %}<span class="muted">{{ t.price_note or '비공개' }}</span>{% endif %}</td>
+        <td>{% if t.annual_price_per_month is not none %}${{ '%g'|format(t.annual_price_per_month) }}{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td>{{ c.currency }}</td>
+        <td class="muted">{{ t.billing_unit }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endfor %}
+{% endblock %}

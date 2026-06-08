@@ -1,0 +1,16 @@
+# 모니터링 대상 업체 목록
+#   name        (필수) 업체명 — DB의 키로 사용
+#   pricing_url (권장) US Pricing 페이지 URL — 가장 안정적
+#   homepage    (선택) 미지정 시 {homepage}/pricing 으로 pricing_url 추정
+companies:
+  - name: Notion
+    homepage: https://www.notion.so
+    pricing_url: https://www.notion.so/pricing
+
+  - name: Figma
+    homepage: https://www.figma.com
+    pricing_url: https://www.figma.com/pricing/
+
+  - name: Linear
+    homepage: https://linear.app
+    pricing_url: https://linear.app/pricing

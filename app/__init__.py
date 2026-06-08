@@ -1,0 +1,1 @@
+"""Pricing Monitor application package."""
