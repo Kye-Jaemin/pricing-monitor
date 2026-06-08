@@ -12,11 +12,11 @@ US 리전 + Persistent Disk + 내부 APScheduler 구성.
 3. **환경변수**에서 `ANTHROPIC_API_KEY` 를 입력(`sync: false` 라 직접 넣어야 함).
 4. **Create** → 빌드 시작.
 
-## 3. 빌드가 하는 일 (`render.yaml`)
-```
-pip install -r requirements.txt
-playwright install --with-deps chromium     # Chromium + OS 의존성
-```
+## 3. 빌드가 하는 일 (Docker)
+`runtime: docker` 로, [`Dockerfile`](../Dockerfile)이 Microsoft 공식 Playwright 이미지
+(`mcr.microsoft.com/playwright/python`)를 베이스로 빌드한다.
+이 이미지는 **Chromium + OS 의존성이 미리 설치**되어 있어, 네이티브 빌드의
+`playwright install --with-deps`(root 권한 필요 → Render 빌드에서 실패) 문제를 회피한다.
 - 메모리 1GB+ 권장(Playwright Chromium). `starter` 이상 플랜 사용.
 
 ## 4. 핵심 설정 확인

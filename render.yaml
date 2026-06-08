@@ -1,15 +1,10 @@
 services:
   - type: web
     name: pricing-monitor
-    runtime: python
-    region: oregon            # US 리전 → USD
-    plan: starter             # 유료(상시) + 디스크 부착
-    buildCommand: |
-      pip install -r requirements.txt
-      playwright install --with-deps chromium
-    # --workers 1: APScheduler(internal)가 worker마다 중복 기동되어 주간 수집이
-    # 중복 발화하는 것을 방지. 저트래픽 대시보드라 1 worker로 충분하다.
-    startCommand: gunicorn app.web.flask_app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120
+    runtime: docker            # Playwright 공식 이미지(Dockerfile)로 빌드 → --with-deps root 문제 회피
+    region: oregon             # US 리전 → USD
+    plan: starter              # 유료(상시) + 디스크 부착
+    dockerfilePath: ./Dockerfile
     disk:
       name: data
       mountPath: /var/data

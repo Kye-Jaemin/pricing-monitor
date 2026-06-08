@@ -7,7 +7,8 @@ python-dotenv>=1.0
 PyYAML>=6.0
 
 # Page fetching
-playwright>=1.44
+# 버전을 Dockerfile 의 Playwright 베이스 이미지 태그(v1.58.0)와 일치시킨다.
+playwright==1.58.0
 
 # Extraction
 anthropic>=0.39
