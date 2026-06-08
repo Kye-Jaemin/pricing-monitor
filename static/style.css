@@ -94,6 +94,17 @@ th { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-s
 .filter { margin-bottom: 14px; }
 .filter select { padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; }
 
+.code-block {
+  background: #1c2128; color: #e6edf3; border-radius: 8px;
+  padding: 14px 16px; overflow-x: auto; font-size: .85rem; line-height: 1.5;
+  margin: 10px 0;
+}
+.howto-table td { vertical-align: top; }
+.howto-table td:first-child { font-weight: 600; width: 120px; }
+.card h3 { margin: 16px 0 6px; font-size: .98rem; }
+.card ul { margin: 8px 0; padding-left: 22px; }
+.card ul li { margin: 3px 0; }
+
 .tag {
   display: inline-block; font-size: .74rem; font-weight: 600;
   padding: 2px 8px; border-radius: 6px; background: #eef0f3; color: #374151;

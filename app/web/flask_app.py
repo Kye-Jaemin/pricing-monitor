@@ -66,6 +66,11 @@ def changes():
     return render_template("changes.html", data=presenters.changes_view(company_filter))
 
 
+@app.route("/howto")
+def howto():
+    return render_template("howto.html")
+
+
 @app.route("/runs")
 def runs():
     return render_template(

@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}사용법 · Pricing Monitor{% endblock %}
+{% block content %}
+<div class="page-head"><h1>사용법 (How-to)</h1></div>
+
+<section class="card">
+  <h2>이 서비스는 무엇인가요?</h2>
+  <p>
+    여러 업체의 <b>구독 Pricing 정보</b>(USD 금액 · Tier별 기능)를
+    <b>공식 US Pricing 페이지 기준</b>으로 자동 수집합니다.
+    <b>주 1회</b> 실행되며, 이전 주 대비 <b>가격·티어·기능 변동</b>을 감지해
+    이 대시보드로 보여줍니다.
+  </p>
+</section>
+
+<section class="card">
+  <h2>화면 안내</h2>
+  <table class="howto-table">
+    <tbody>
+      <tr>
+        <td class="nowrap"><a href="{{ url_for('index') }}">현황</a></td>
+        <td>전체 업체 × 티어의 최신 가격표(월/연 환산/통화/과금단위). 이번 주 변동이 있으면 배지로 표시됩니다.</td>
+      </tr>
+      <tr>
+        <td class="nowrap">업체 상세</td>
+        <td>현황에서 업체 이름을 클릭하면 이동. <b>가격 추이 차트</b>와 현재 티어별 기능·limits, 원본 페이지 링크를 봅니다.</td>
+      </tr>
+      <tr>
+        <td class="nowrap"><a href="{{ url_for('changes') }}">변동 로그</a></td>
+        <td>감지된 모든 변동 이력(<code>old → new</code>, 한 줄 요약). 업체별로 필터할 수 있습니다.</td>
+      </tr>
+      <tr>
+        <td class="nowrap"><a href="{{ url_for('runs') }}">수집 상태</a></td>
+        <td>최근 실행 시각과 업체별 성공/실패/신뢰도. <b>[지금 수집]</b> 버튼으로 즉시 1회 수집을 돌릴 수 있습니다.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>업체 추가/삭제</h2>
+  <p>
+    모니터링 대상은 프로젝트 루트의 <code>companies.yaml</code> 파일로 관리합니다.
+    항목을 추가한 뒤 <a href="{{ url_for('runs') }}">수집 상태 → [지금 수집]</a>을 누르면
+    새 업체가 수집됩니다.
+  </p>
+  <pre class="code-block">companies:
+  - name: Notion
+    homepage: https://www.notion.so
+    pricing_url: https://www.notion.so/pricing
+
+  - name: Slack            # ← 이렇게 항목을 추가
+    homepage: https://slack.com
+    pricing_url: https://slack.com/pricing</pre>
+  <ul>
+    <li><code>name</code> (필수) — 업체명, 데이터의 키로 사용</li>
+    <li><code>pricing_url</code> (권장) — US Pricing 페이지 URL. 가장 안정적입니다.</li>
+    <li><code>homepage</code> (선택) — 미지정 시 <code>{homepage}/pricing</code> 으로 추정</li>
+  </ul>
+</section>
+
+<section class="card">
+  <h2>수집 실행 방법</h2>
+  <ul>
+    <li><b>웹에서</b>: <a href="{{ url_for('runs') }}">수집 상태</a> → <b>[지금 수집]</b> (백그라운드 실행)</li>
+    <li><b>자동(주 1회)</b>: Render는 매주 월 09:00 ET 자동 발화 / 로컬 PC는 OS 작업 스케줄러가 담당</li>
+    <li><b>명령줄</b>: <code>python -m app.core.pipeline</code> (웹 없이도 수집·저장·변동감지 완결)</li>
+  </ul>
+</section>
+
+<section class="card">
+  <h2>표시 항목 읽는 법</h2>
+  <h3>배지</h3>
+  <p>
+    <span class="badge badge-change">변동 N</span> 이번 주 감지된 변동 수 &nbsp;·&nbsp;
+    <span class="badge badge-low">검수 필요</span> 신뢰도 낮음(low) — 사람이 확인 권장 &nbsp;·&nbsp;
+    <span class="badge badge-low">KRW</span> USD가 아닌 통화 감지(임의 환산하지 않음)
+  </p>
+  <h3>변동 유형</h3>
+  <p>
+    <span class="tag tag-price_changed">price_changed</span> 가격 변경 &nbsp;
+    <span class="tag tag-tier_added">tier_added</span> 티어 신설 &nbsp;
+    <span class="tag tag-tier_removed">tier_removed</span> 티어 삭제 &nbsp;
+    <span class="tag tag-feature_changed">feature_changed</span> 기능 변경
+  </p>
+  <h3>가격 표기</h3>
+  <ul>
+    <li><b>월 / 연(월환산)</b> — 모두 1인·1개월 기준 USD 금액입니다.</li>
+    <li><b>비공개</b> — Enterprise처럼 "Contact Sales"인 경우. 에러가 아니며 가격은 비워두고 사유를 메모로 남깁니다.</li>
+  </ul>
+</section>
+
+<section class="card">
+  <h2>US / USD 기준</h2>
+  <p>
+    모든 가격은 <b>USD 기준</b>입니다. 수집 시 en-US 로케일을 강제하지만,
+    로컬 PC(한국 IP)에서는 일부 사이트가 비-USD를 줄 수 있습니다.
+    이때 결과를 자동으로 <b>신뢰도 낮음(low)</b> 으로 표시하고
+    <b>임의 환산은 하지 않습니다.</b> 해당 업체의 <code>pricing_url</code>을
+    US 전용 경로(<code>?currency=usd</code>, <code>/us/pricing</code> 등)로 지정하면 개선됩니다.
+  </p>
+</section>
+
+<section class="card">
+  <h2>참고 (개발/운영)</h2>
+  <ul>
+    <li>내부 API: <code>GET /api/snapshots/latest</code>, <code>GET /api/company/&lt;name&gt;/history</code>, <code>POST /run-now</code></li>
+    <li>상태 점검: <code>GET /healthz</code></li>
+    <li>데이터는 SQLite 파일 1개. 환경 이전은 이 파일 복사로 끝납니다.</li>
+  </ul>
+</section>
+{% endblock %}
