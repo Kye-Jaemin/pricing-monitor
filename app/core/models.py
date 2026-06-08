@@ -13,6 +13,15 @@ from pydantic import BaseModel, Field
 BillingUnit = Literal["per_user", "flat", "usage_based", "unknown"]
 Confidence = Literal["high", "medium", "low"]
 
+# 소스 타입 — 한 업체가 여러 소스(웹/스토어)를 가질 수 있다.
+SOURCE_TYPES = ["web", "apple", "google", "other"]
+SOURCE_TYPE_LABELS = {
+    "web": "웹",
+    "apple": "App Store",
+    "google": "Play Store",
+    "other": "기타",
+}
+
 
 class Tier(BaseModel):
     name: str

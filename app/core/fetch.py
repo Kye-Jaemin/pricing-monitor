@@ -6,6 +6,7 @@ JS 렌더링 후 본문 텍스트를 확보한다. 사이트별 전용 파서는
 from __future__ import annotations
 
 import time
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from .. import config
 
@@ -18,6 +19,37 @@ USER_AGENT = (
 
 class FetchError(RuntimeError):
     """페이지 수집 실패."""
+
+
+def normalize_us_url(source_type: str, url: str) -> str:
+    """스토어 URL 을 US/USD 스토어프론트로 보정 (8장).
+
+    - apple: apps.apple.com 경로에 국가코드가 없으면 '/us/' 삽입.
+    - google: play.google.com 쿼리에 gl=US, hl=en 강제.
+    - web/other: 그대로 (Playwright 로케일이 1차 방어선).
+    실패 시 원본 URL 을 그대로 돌려준다(안전).
+    """
+    try:
+        p = urlparse(url)
+        host = p.netloc.lower()
+
+        if source_type == "apple" and "apple.com" in host:
+            parts = p.path.split("/")
+            # /app/...  또는  /us/app/...  형태. 'app' 앞에 국가코드가 없으면 us 삽입.
+            if len(parts) > 1 and parts[1] == "app":
+                parts.insert(1, "us")
+                p = p._replace(path="/".join(parts))
+            return urlunparse(p)
+
+        if source_type == "google" and "play.google.com" in host:
+            q = dict(parse_qsl(p.query))
+            q.setdefault("gl", "US")
+            q.setdefault("hl", "en")
+            p = p._replace(query=urlencode(q))
+            return urlunparse(p)
+    except Exception:  # noqa: BLE001
+        return url
+    return url
 
 
 def fetch_page_text(url: str) -> str:

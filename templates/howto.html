@@ -47,8 +47,19 @@
   </p>
   <ul>
     <li><code>업체명</code> (필수) — 데이터의 키로 사용</li>
-    <li><code>Pricing URL</code> (권장) — US Pricing 페이지 URL. 가장 안정적입니다.</li>
-    <li><code>Homepage</code> (선택) — 미지정 시 <code>{homepage}/pricing</code> 으로 추정</li>
+    <li><code>소스 종류</code> — 웹 / App Store / Play Store / 기타</li>
+    <li><code>소스 URL</code> (필수) — 해당 소스의 가격 페이지 URL</li>
+  </ul>
+  <h3>한 업체에 여러 소스</h3>
+  <p>
+    가격이 웹에 없고 <b>App Store / Play Store</b> 에만 있는 업체도 있습니다.
+    업체마다 <b>여러 소스 URL</b> 을 등록하면 각 소스를 독립적으로 수집·추적하고,
+    현황·상세 화면에서 <b>출처별로 묶어</b> 보여줍니다.
+  </p>
+  <ul>
+    <li><b>App Store</b>: <code>apps.apple.com/us/app/idXXXXXXXX</code> — <code>/us/</code> 가 USD 핵심(빠뜨려도 자동 보정)</li>
+    <li><b>Play Store</b>: <code>play.google.com/store/apps/details?id=...&gl=US&hl=en</code> (자동 추가)</li>
+    <li>스토어는 봇 차단·통화 지역화가 있어, 결과가 비-USD면 <b>신뢰도 낮음</b>으로 표시됩니다.</li>
   </ul>
   <p class="muted">
     삭제해도 과거 수집 이력(스냅샷·변동 로그)은 보존됩니다. 최초 실행 시

@@ -10,7 +10,7 @@ import re
 from .. import config
 from .models import SCHEMA_JSON_EXAMPLE
 
-PROMPT_TEMPLATE = """You are a pricing data extractor. From the given web page text, extract the
+PROMPT_TEMPLATE = """You are a pricing data extractor. From the given page text, extract the
 subscription pricing tiers. Return ONLY valid JSON matching this schema:
 {schema}
 
@@ -20,14 +20,28 @@ Rules:
 - If a tier has no public price (e.g. "Contact Sales"), set prices to null and
   put the reason in price_note.
 - Do not invent features or prices. If unsure, lower extraction_confidence.
-- "company" must be exactly: {company}
+{source_hint}- "company" must be exactly: {company}
 - "source_url" must be exactly: {source_url}
 - "collected_at" must be exactly: {collected_at}
 - Output JSON only. No prose, no code fences.
 
-WEB PAGE TEXT:
+PAGE TEXT:
 {page_text}
 """
+
+# 소스 타입별 추출 힌트(앱스토어는 레이아웃이 다르므로 보강)
+SOURCE_HINTS = {
+    "apple": (
+        "- This is an Apple App Store listing. Extract the in-app "
+        "subscription/purchase tiers shown (use US storefront USD prices). "
+        "Map each subscription option to a tier.\n"
+    ),
+    "google": (
+        "- This is a Google Play Store listing. Extract the in-app "
+        "subscription/purchase tiers shown (use US, USD prices). "
+        "If only a price range is given, put it in price_note and lower confidence.\n"
+    ),
+}
 
 # 페이지 텍스트가 너무 길면 토큰 절약을 위해 잘라낸다(가격은 보통 상단에 있음).
 MAX_PAGE_CHARS = 40000
@@ -52,6 +66,7 @@ def extract_pricing(
     source_url: str,
     collected_at: str,
     page_text: str,
+    source_type: str = "web",
 ) -> dict:
     """Claude 로 구조화 추출하여 dict 를 돌려준다(스키마 검증은 호출자 책임).
 
@@ -67,6 +82,7 @@ def extract_pricing(
 
     prompt = PROMPT_TEMPLATE.format(
         schema=SCHEMA_JSON_EXAMPLE,
+        source_hint=SOURCE_HINTS.get(source_type, ""),
         company=company,
         source_url=source_url,
         collected_at=collected_at,

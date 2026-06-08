@@ -34,11 +34,19 @@ def _tier_map(snap: PricingSnapshot) -> dict[str, Tier]:
 
 
 def diff_snapshots(
-    company: str, old: Optional[PricingSnapshot], new: PricingSnapshot
+    company: str,
+    old: Optional[PricingSnapshot],
+    new: PricingSnapshot,
+    source_label: str = "",
 ) -> list[Change]:
-    """old(직전) 와 new(이번) 를 비교. old 가 없으면(최초 수집) 빈 리스트."""
+    """old(직전) 와 new(이번) 를 비교. old 가 없으면(최초 수집) 빈 리스트.
+
+    source_label 이 주어지면(업체가 여러 소스를 가질 때) 요약에 `[라벨]` 을 붙인다.
+    """
     if old is None:
         return []
+
+    prefix = f"[{source_label}] " if source_label else ""
 
     changes: list[Change] = []
     old_tiers = _tier_map(old)
@@ -56,7 +64,7 @@ def diff_snapshots(
                 field=None,
                 old_value=None,
                 new_value=name,
-                summary=f"{company} {name} 티어 신설",
+                summary=f"{prefix}{company} {name} 티어 신설",
             )
         )
     for name in sorted(old_names - new_names):
@@ -67,7 +75,7 @@ def diff_snapshots(
                 field=None,
                 old_value=name,
                 new_value=None,
-                summary=f"{company} {name} 티어 삭제",
+                summary=f"{prefix}{company} {name} 티어 삭제",
             )
         )
 
@@ -93,8 +101,8 @@ def diff_snapshots(
                         old_value=_fmt_price(ov),
                         new_value=_fmt_price(nv),
                         summary=(
-                            f"{company} {name}: {_fmt_price(ov)} → {_fmt_price(nv)} "
-                            f"({label}){direction}"
+                            f"{prefix}{company} {name}: "
+                            f"{_fmt_price(ov)} → {_fmt_price(nv)} ({label}){direction}"
                         ),
                     )
                 )
@@ -117,7 +125,7 @@ def diff_snapshots(
                     field="features",
                     old_value="; ".join(sorted(old_feats)) or None,
                     new_value="; ".join(sorted(new_feats)) or None,
-                    summary=f"{company} {name} 기능 변경 — " + " / ".join(parts),
+                    summary=f"{prefix}{company} {name} 기능 변경 — " + " / ".join(parts),
                 )
             )
 

@@ -29,12 +29,17 @@
   </div>
   <table class="price-table">
     <thead>
-      <tr><th>티어</th><th>월</th><th>연(월환산)</th><th>통화</th><th>과금단위</th></tr>
+      <tr>
+        <th>티어</th>
+        {% if c.multi_source %}<th>출처</th>{% endif %}
+        <th>월</th><th>연(월환산)</th><th>통화</th><th>과금단위</th>
+      </tr>
     </thead>
     <tbody>
       {% for t in c.tiers %}
       <tr>
         <td class="tier-name">{{ t.name }}</td>
+        {% if c.multi_source %}<td><span class="tag tag-src-{{ t.source_type }}">{{ t.source_label }}</span></td>{% endif %}
         <td>{% if t.monthly_price is not none %}${{ '%g'|format(t.monthly_price) }}{% else %}<span class="muted">{{ t.price_note or '비공개' }}</span>{% endif %}</td>
         <td>{% if t.annual_price_per_month is not none %}${{ '%g'|format(t.annual_price_per_month) }}{% else %}<span class="muted">—</span>{% endif %}</td>
         <td>{{ c.currency }}</td>

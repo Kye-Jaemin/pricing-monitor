@@ -141,3 +141,22 @@ th { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-s
 .tag-ok, .tag-unchanged { background: var(--change-bg); color: var(--change); }
 .tag-error { background: #fee2e2; color: #b91c1c; }
 .tag-low_confidence, .tag-running { background: var(--low-bg); color: var(--low); }
+
+/* 소스 종류 태그 */
+.tag-src-web { background: #e0e7ff; color: #3730a3; }
+.tag-src-apple { background: #e5e7eb; color: #111827; }
+.tag-src-google { background: #d1fae5; color: #065f46; }
+.tag-src-other { background: #fef3c7; color: #92400e; }
+
+.btn-secondary {
+  background: #fff; color: var(--accent); border: 1px solid var(--accent);
+  padding: 8px 14px; border-radius: 8px; font-size: .88rem; font-weight: 600;
+  cursor: pointer;
+}
+.btn-secondary:hover { background: #eff6ff; }
+.add-form-inline { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); }
+.add-form .grow { flex: 1 1 320px; }
+.add-form select {
+  padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+  font-size: .9rem; font-weight: 400;
+}

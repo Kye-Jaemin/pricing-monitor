@@ -3,20 +3,27 @@
 {% block content %}
 <div class="page-head">
   <h1>{{ data.company }}</h1>
-  <a class="muted" href="{{ data.source_url }}" target="_blank" rel="noopener">원본 페이지 ↗</a>
+  <span class="muted">소스 {{ data.sources|length }}개 · 스냅샷 {{ data.snapshot_count }}개</span>
 </div>
-<p class="muted">
-  최근 수집 {{ data.collected_at }} · 통화 {{ data.currency }} · 신뢰도 {{ data.confidence }} · 스냅샷 {{ data.snapshot_count }}개
-</p>
 
 <section class="card">
-  <h2>가격 추이 (월 가격, {{ data.currency }})</h2>
+  <h2>가격 추이 (월 가격, USD)</h2>
   <canvas id="priceChart" height="110"></canvas>
 </section>
 
+{% for s in data.sources %}
 <section class="card">
-  <h2>현재 티어</h2>
-  {% for t in data.tiers %}
+  <div class="card-head">
+    <h2>
+      <span class="tag tag-src-{{ s.source_type }}">{{ s.source_label }}</span> 현재 티어
+      {% if s.confidence == 'low' %}<span class="badge badge-low">검수 필요</span>{% endif %}
+      {% if s.currency != 'USD' %}<span class="badge badge-low">{{ s.currency }}</span>{% endif %}
+    </h2>
+    <a class="muted" href="{{ s.source_url }}" target="_blank" rel="noopener">원본 ↗</a>
+  </div>
+  <p class="muted">최근 수집 {{ s.collected_at }} · 통화 {{ s.currency }} · 신뢰도 {{ s.confidence }}</p>
+
+  {% for t in s.tiers %}
   <div class="tier-block">
     <h3>
       {{ t.name }}
@@ -38,6 +45,7 @@
   </div>
   {% endfor %}
 </section>
+{% endfor %}
 {% endblock %}
 
 {% block scripts %}

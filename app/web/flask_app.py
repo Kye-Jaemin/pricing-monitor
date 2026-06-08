@@ -22,6 +22,7 @@ from flask import (
 
 from .. import config
 from ..core import presenters, store
+from ..core.models import SOURCE_TYPE_LABELS, SOURCE_TYPES
 from ..core.pipeline import run_once
 from ..scheduler import start_scheduler
 
@@ -76,24 +77,29 @@ def companies_page():
     return render_template(
         "companies.html",
         data=presenters.companies_admin(),
+        source_types=SOURCE_TYPE_LABELS,
         error=request.args.get("error"),
     )
 
 
+def _norm_type(value: str) -> str:
+    value = (value or "web").strip().lower()
+    return value if value in SOURCE_TYPES else "other"
+
+
 @app.route("/companies/add", methods=["POST"])
 def companies_add():
+    """업체 + 첫 소스를 함께 등록."""
     name = (request.form.get("name") or "").strip()
-    homepage = (request.form.get("homepage") or "").strip() or None
-    pricing_url = (request.form.get("pricing_url") or "").strip() or None
+    url = (request.form.get("url") or "").strip()
+    source_type = _norm_type(request.form.get("source_type"))
 
     if not name:
-        return redirect(url_for("companies_page", error="업체명(name)은 필수입니다."))
-    if not (homepage or pricing_url):
-        return redirect(
-            url_for("companies_page", error="pricing_url 또는 homepage 중 하나는 필요합니다.")
-        )
+        return redirect(url_for("companies_page", error="업체명은 필수입니다."))
+    if not url:
+        return redirect(url_for("companies_page", error="소스 URL은 필수입니다."))
 
-    store.add_company(name=name, homepage=homepage, pricing_url=pricing_url)
+    store.add_source(company=name, source_type=source_type, url=url)
     return redirect(url_for("companies_page"))
 
 
@@ -102,6 +108,28 @@ def companies_delete():
     name = (request.form.get("name") or "").strip()
     if name:
         store.delete_company(name)
+    return redirect(url_for("companies_page"))
+
+
+@app.route("/sources/add", methods=["POST"])
+def sources_add():
+    """기존 업체에 소스 URL 추가."""
+    company = (request.form.get("company") or "").strip()
+    url = (request.form.get("url") or "").strip()
+    source_type = _norm_type(request.form.get("source_type"))
+
+    if not (company and url):
+        return redirect(url_for("companies_page", error="업체와 소스 URL이 필요합니다."))
+
+    store.add_source(company=company, source_type=source_type, url=url)
+    return redirect(url_for("companies_page"))
+
+
+@app.route("/sources/delete", methods=["POST"])
+def sources_delete():
+    sid = request.form.get("source_id")
+    if sid and sid.isdigit():
+        store.delete_source(int(sid))
     return redirect(url_for("companies_page"))
 
 

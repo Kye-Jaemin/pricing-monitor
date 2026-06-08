@@ -2,6 +2,10 @@
 
 전체 데이터는 config.DB_PATH 의 SQLite 파일 1개. 환경 이전은 파일 복사로 끝난다.
 웹 읽기 + 스케줄러 쓰기 동시 접근을 위해 WAL 모드를 켠다.
+
+업체는 companies(엔티티) + company_sources(1..N개 소스)로 관리한다.
+한 업체가 웹 / App Store / Play Store 등 여러 소스를 가질 수 있고,
+스냅샷·변동 감지는 소스(source_url)별로 독립 추적한다.
 """
 from __future__ import annotations
 
@@ -15,16 +19,26 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS companies (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     name         TEXT NOT NULL UNIQUE,
-    homepage     TEXT,
-    pricing_url  TEXT,
     active       INTEGER NOT NULL DEFAULT 1,
     created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
 );
+
+CREATE TABLE IF NOT EXISTS company_sources (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    company_name  TEXT NOT NULL,
+    source_type   TEXT NOT NULL DEFAULT 'web',   -- web | apple | google | other
+    url           TEXT NOT NULL,
+    active        INTEGER NOT NULL DEFAULT 1,
+    created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+    UNIQUE(company_name, url)
+);
+CREATE INDEX IF NOT EXISTS idx_sources_company ON company_sources(company_name);
 
 CREATE TABLE IF NOT EXISTS snapshots (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     company        TEXT NOT NULL,
     source_url     TEXT NOT NULL,
+    source_type    TEXT NOT NULL DEFAULT 'web',
     collected_at   TEXT NOT NULL,
     currency       TEXT NOT NULL,
     raw_text_hash  TEXT NOT NULL,
@@ -32,6 +46,7 @@ CREATE TABLE IF NOT EXISTS snapshots (
     confidence     TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_snapshots_company ON snapshots(company, id);
+CREATE INDEX IF NOT EXISTS idx_snapshots_source ON snapshots(company, source_url, id);
 
 CREATE TABLE IF NOT EXISTS changes (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -73,13 +88,46 @@ def connect() -> Iterator[sqlite3.Connection]:
         conn.close()
 
 
+def _columns(conn: sqlite3.Connection, table: str) -> set[str]:
+    return {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """구버전 스키마를 현재 구조로 이전(데이터 보존)."""
+    # snapshots.source_type 컬럼 보강
+    if "source_type" not in _columns(conn, "snapshots"):
+        conn.execute(
+            "ALTER TABLE snapshots ADD COLUMN source_type TEXT NOT NULL DEFAULT 'web'"
+        )
+    # 구버전 companies(homepage/pricing_url) → company_sources 로 1회 이전
+    ccols = _columns(conn, "companies")
+    if "pricing_url" in ccols:
+        n = conn.execute("SELECT COUNT(*) FROM company_sources").fetchone()[0]
+        if n == 0:
+            for row in conn.execute(
+                "SELECT name, homepage, pricing_url FROM companies"
+            ).fetchall():
+                url = row["pricing_url"] or (
+                    (row["homepage"].rstrip("/") + "/pricing")
+                    if row["homepage"]
+                    else None
+                )
+                if url:
+                    conn.execute(
+                        """INSERT OR IGNORE INTO company_sources
+                           (company_name, source_type, url) VALUES (?, 'web', ?)""",
+                        (row["name"], url),
+                    )
+
+
 def init_db() -> None:
-    """테이블/인덱스 생성 + WAL 모드 적용."""
+    """테이블/인덱스 생성 + 마이그레이션 + WAL 모드 적용."""
     with connect() as conn:
         conn.executescript(SCHEMA)
+        _migrate(conn)
 
 
-# ── companies (모니터링 대상 목록) ───────────────────────────
+# ── companies (업체 엔티티) ──────────────────────────────────
 def list_companies(active_only: bool = True) -> list[sqlite3.Row]:
     with connect() as conn:
         q = "SELECT * FROM companies"
@@ -94,34 +142,61 @@ def count_companies() -> int:
         return conn.execute("SELECT COUNT(*) FROM companies").fetchone()[0]
 
 
-def add_company(
-    *, name: str, homepage: Optional[str], pricing_url: Optional[str]
-) -> None:
-    """업체 추가 또는 갱신(같은 이름이면 URL 갱신 + 재활성화)."""
+def add_company(name: str) -> None:
     with connect() as conn:
-        conn.execute(
-            """INSERT INTO companies (name, homepage, pricing_url, active)
-               VALUES (?, ?, ?, 1)
-               ON CONFLICT(name) DO UPDATE SET
-                   homepage=excluded.homepage,
-                   pricing_url=excluded.pricing_url,
-                   active=1""",
-            (name, homepage, pricing_url),
-        )
+        conn.execute("INSERT OR IGNORE INTO companies (name) VALUES (?)", (name,))
 
 
 def delete_company(name: str) -> None:
-    """모니터링 목록에서 제거. 과거 스냅샷/변동 이력은 보존된다."""
+    """업체 + 소스 제거. 과거 스냅샷/변동 이력은 보존된다."""
     with connect() as conn:
+        conn.execute("DELETE FROM company_sources WHERE company_name=?", (name,))
         conn.execute("DELETE FROM companies WHERE name=?", (name,))
 
 
-# ── snapshots ────────────────────────────────────────────────
-def latest_snapshot_row(company: str) -> Optional[sqlite3.Row]:
+# ── company_sources (업체별 소스 URL) ────────────────────────
+def list_sources(
+    company: Optional[str] = None, active_only: bool = True
+) -> list[sqlite3.Row]:
+    with connect() as conn:
+        conds, params = [], []
+        if company:
+            conds.append("company_name=?")
+            params.append(company)
+        if active_only:
+            conds.append("active=1")
+        q = "SELECT * FROM company_sources"
+        if conds:
+            q += " WHERE " + " AND ".join(conds)
+        q += " ORDER BY company_name COLLATE NOCASE, id"
+        return conn.execute(q, params).fetchall()
+
+
+def add_source(*, company: str, source_type: str, url: str) -> None:
+    """업체(없으면 생성)에 소스 추가. 같은 URL 이면 타입 갱신 + 재활성화."""
+    with connect() as conn:
+        conn.execute("INSERT OR IGNORE INTO companies (name) VALUES (?)", (company,))
+        conn.execute(
+            """INSERT INTO company_sources (company_name, source_type, url, active)
+               VALUES (?, ?, ?, 1)
+               ON CONFLICT(company_name, url) DO UPDATE SET
+                   source_type=excluded.source_type, active=1""",
+            (company, source_type, url),
+        )
+
+
+def delete_source(source_id: int) -> None:
+    with connect() as conn:
+        conn.execute("DELETE FROM company_sources WHERE id=?", (source_id,))
+
+
+# ── snapshots (소스별) ───────────────────────────────────────
+def latest_snapshot_row(company: str, source_url: str) -> Optional[sqlite3.Row]:
     with connect() as conn:
         return conn.execute(
-            "SELECT * FROM snapshots WHERE company=? ORDER BY id DESC LIMIT 1",
-            (company,),
+            """SELECT * FROM snapshots
+               WHERE company=? AND source_url=? ORDER BY id DESC LIMIT 1""",
+            (company, source_url),
         ).fetchone()
 
 
@@ -129,6 +204,7 @@ def insert_snapshot(
     *,
     company: str,
     source_url: str,
+    source_type: str,
     collected_at: str,
     currency: str,
     raw_text_hash: str,
@@ -138,31 +214,49 @@ def insert_snapshot(
     with connect() as conn:
         cur = conn.execute(
             """INSERT INTO snapshots
-               (company, source_url, collected_at, currency,
+               (company, source_url, source_type, collected_at, currency,
                 raw_text_hash, payload_json, confidence)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (company, source_url, collected_at, currency,
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (company, source_url, source_type, collected_at, currency,
              raw_text_hash, payload_json, confidence),
         )
         return cur.lastrowid
 
 
-def all_latest_snapshots() -> list[sqlite3.Row]:
-    """각 업체의 최신 스냅샷 1건씩."""
+def latest_snapshots_for_company(company: str) -> list[sqlite3.Row]:
+    """한 업체의 소스별 최신 스냅샷."""
     with connect() as conn:
         return conn.execute(
             """
             SELECT s.* FROM snapshots s
             JOIN (
-                SELECT company, MAX(id) AS max_id
-                FROM snapshots GROUP BY company
-            ) m ON s.company = m.company AND s.id = m.max_id
-            ORDER BY s.company COLLATE NOCASE
+                SELECT source_url, MAX(id) AS max_id
+                FROM snapshots WHERE company=? GROUP BY source_url
+            ) m ON s.source_url = m.source_url AND s.id = m.max_id
+            ORDER BY s.source_type, s.source_url
+            """,
+            (company,),
+        ).fetchall()
+
+
+def all_latest_by_source() -> list[sqlite3.Row]:
+    """전체 (업체 × 소스)별 최신 스냅샷."""
+    with connect() as conn:
+        return conn.execute(
+            """
+            SELECT s.* FROM snapshots s
+            JOIN (
+                SELECT company, source_url, MAX(id) AS max_id
+                FROM snapshots GROUP BY company, source_url
+            ) m ON s.company = m.company AND s.source_url = m.source_url
+               AND s.id = m.max_id
+            ORDER BY s.company COLLATE NOCASE, s.source_type
             """
         ).fetchall()
 
 
 def snapshots_for_company(company: str) -> list[sqlite3.Row]:
+    """한 업체의 모든 스냅샷(소스 무관, 시간순) — 추이 차트용."""
     with connect() as conn:
         return conn.execute(
             "SELECT * FROM snapshots WHERE company=? ORDER BY id ASC",
