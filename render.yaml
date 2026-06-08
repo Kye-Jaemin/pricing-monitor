@@ -7,7 +7,9 @@ services:
     buildCommand: |
       pip install -r requirements.txt
       playwright install --with-deps chromium
-    startCommand: gunicorn app.web.flask_app:app --bind 0.0.0.0:$PORT --timeout 120
+    # --workers 1: APScheduler(internal)가 worker마다 중복 기동되어 주간 수집이
+    # 중복 발화하는 것을 방지. 저트래픽 대시보드라 1 worker로 충분하다.
+    startCommand: gunicorn app.web.flask_app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120
     disk:
       name: data
       mountPath: /var/data
