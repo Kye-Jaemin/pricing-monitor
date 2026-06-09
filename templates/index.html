@@ -52,7 +52,12 @@
 
   {% for es in c.extra_sources %}
   <details class="extra-source">
-    <summary><span class="tag tag-src-{{ es.source_type }}">{{ es.source_label }}</span> {{ t('overview.see_prices') }} ({{ t('overview.tiers_count', n=es.tiers|length) }})</summary>
+    <summary>
+      <span class="tag tag-src-{{ es.source_type }}">{{ es.source_label }}</span>
+      {% if es.tiers %}{{ t('overview.see_prices') }} ({{ t('overview.tiers_count', n=es.tiers|length) }}){% else %}{{ t('overview.no_tiers') }}{% endif %}
+      {% if es.confidence == 'low' %}<span class="badge badge-low">{{ t('badge.review') }}</span>{% endif %}
+    </summary>
+    {% if es.tiers %}
     <table class="price-table">
       <thead><tr><th>{{ t('col.tier') }}</th><th>{{ t('col.monthly') }}</th><th>{{ t('col.annual') }}</th><th>{{ t('col.billing') }}</th></tr></thead>
       <tbody>
@@ -66,6 +71,10 @@
         {% endfor %}
       </tbody>
     </table>
+    {% else %}
+    <p class="muted">{{ t('overview.no_tiers_detail') }}
+      <a href="{{ es.source_url }}" target="_blank" rel="noopener">{{ t('overview.open_source') }}</a></p>
+    {% endif %}
   </details>
   {% endfor %}
 </section>

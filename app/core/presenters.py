@@ -155,22 +155,23 @@ def overview() -> dict:
             key=lambda r: SOURCE_PRIORITY.get(r["source_type"], 9),
         )
 
-        # 비대표 소스라도 티어 데이터가 있으면 현황에 함께 노출(구글 검색 등 누락 방지)
+        # 비대표 소스도 현황에 함께 노출(티어가 비어도 표시 — 구글 검색 등 누락 방지)
         extra_sources = []
         free_trial = snap.free_trial
         for r in others:
             osnap = PricingSnapshot.from_payload_json(r["payload_json"])
             if not free_trial and osnap.free_trial:
                 free_trial = osnap.free_trial
-            if osnap.tiers:
-                extra_sources.append(
-                    {
-                        "source_type": r["source_type"],
-                        "source_label": _src_label(r["source_type"]),
-                        "source_url": r["source_url"],
-                        "tiers": _tier_dicts(osnap),
-                    }
-                )
+            extra_sources.append(
+                {
+                    "source_type": r["source_type"],
+                    "source_label": _src_label(r["source_type"]),
+                    "source_url": r["source_url"],
+                    "confidence": r["confidence"],
+                    "currency": osnap.currency,
+                    "tiers": _tier_dicts(osnap),
+                }
+            )
 
         has_free_tier = any(t["is_free"] for t in primary_tiers) or any(
             t["is_free"] for es in extra_sources for t in es["tiers"]
