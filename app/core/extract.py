@@ -26,6 +26,10 @@ Rules:
   whether a credit card is required). If there is no free trial, set it to null.
   A free trial is different from a free tier — do not confuse them.
 - Do not invent features or prices. If unsure, lower extraction_confidence.
+- A price written as "$X upfront (equivalent to $Y/month)" means a multi-month plan:
+  record the term in the tier name (e.g. "Annual", "6-Month"), put the upfront text in
+  price_note, and use the per-month figure $Y (for an annual plan put $Y in
+  annual_price_per_month; for a monthly plan put it in monthly_price).
 {source_hint}- "company" must be exactly: {company}
 - "source_url" must be exactly: {source_url}
 - "collected_at" must be exactly: {collected_at}
@@ -72,6 +76,22 @@ class ExtractError(RuntimeError):
     """추출 실패."""
 
 
+def _clean_page_text(text: str) -> str:
+    """가격 인식을 방해하는 형식을 정규화.
+
+    구글 AI 오버뷰 등은 가격을 LaTeX 수식으로 감싸 내보낸다:
+        \\(\\$11.99\\) USD / month  →  $11.99 USD / month
+    이런 래핑을 제거해 모델이 평문 가격으로 읽도록 한다.
+    """
+    if not text:
+        return text
+    # LaTeX 인라인/디스플레이 수식 구분자 제거
+    text = re.sub(r"\\[()\[\]]", " ", text)
+    # 이스케이프된 달러/공백
+    text = text.replace("\\$", "$").replace("\\,", "").replace("\\;", " ")
+    return text
+
+
 def _strip_code_fences(text: str) -> str:
     """모델이 실수로 ```json ... ``` 으로 감쌌을 때 제거."""
     text = text.strip()
@@ -107,7 +127,7 @@ def extract_pricing(
         company=company,
         source_url=source_url,
         collected_at=collected_at,
-        page_text=page_text[:MAX_PAGE_CHARS],
+        page_text=_clean_page_text(page_text)[:MAX_PAGE_CHARS],
     )
 
     resp = client.messages.create(
