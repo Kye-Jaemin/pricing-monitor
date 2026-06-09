@@ -22,7 +22,7 @@ from flask import (
 )
 
 from .. import config
-from ..core import presenters, store
+from ..core import discover, presenters, store
 from ..core.fetch import build_google_search_url
 from ..core.models import SOURCE_TYPE_LABELS, SOURCE_TYPES
 from ..core.pipeline import run_once
@@ -107,7 +107,35 @@ def companies_page():
         data=presenters.companies_admin(),
         source_types=SOURCE_TYPE_LABELS,
         error=request.args.get("error"),
+        notice=request.args.get("notice"),
     )
+
+
+@app.route("/companies/discover", methods=["POST"])
+def companies_discover():
+    """업체명으로 App Store / Play Store 링크를 자동 탐색해 소스로 추가."""
+    name = (request.form.get("company") or "").strip()
+    if not name:
+        return redirect(url_for("companies_page"))
+
+    found = []
+    apple = discover.find_apple_app(name)
+    if apple and apple.get("url"):
+        store.add_source(company=name, source_type="apple", url=apple["url"])
+        found.append("App Store")
+        if apple.get("icon"):
+            store.set_company_icon(name, apple["icon"])
+
+    play = discover.find_google_play_app(name)
+    if play and play.get("url"):
+        store.add_source(company=name, source_type="google_play", url=play["url"])
+        found.append("Play Store")
+
+    if found:
+        notice = f"{name}: " + " / ".join(found) + " 자동 추가됨"
+    else:
+        notice = f"{name}: 스토어에서 앱을 찾지 못했습니다."
+    return redirect(url_for("companies_page", notice=notice))
 
 
 def _norm_type(value: str) -> str:

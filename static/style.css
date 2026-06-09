@@ -148,6 +148,16 @@ th { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-s
   background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5;
   border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: .9rem;
 }
+.notice {
+  background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd;
+  border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: .9rem;
+}
+
+.company-icon {
+  width: 20px; height: 20px; border-radius: 5px; object-fit: cover;
+  vertical-align: -4px; margin-right: 7px; background: #fff;
+}
+.company-icon-lg { width: 30px; height: 30px; border-radius: 7px; vertical-align: -6px; }
 
 .filter { margin-bottom: 14px; }
 .filter select { padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; }

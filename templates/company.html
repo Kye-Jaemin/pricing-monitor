@@ -2,7 +2,10 @@
 {% block title %}{{ data.company }} · Pricing Monitor{% endblock %}
 {% block content %}
 <div class="page-head">
-  <h1>{{ data.company }}</h1>
+  <h1>
+    {% if data.icon %}<img class="company-icon company-icon-lg" src="{{ data.icon }}" alt="" onerror="this.style.display='none'">{% endif %}
+    {{ data.company }}
+  </h1>
   <span class="muted">{{ t('company.sources_snapshots', s=data.sources|length, n=data.snapshot_count) }}</span>
 </div>
 

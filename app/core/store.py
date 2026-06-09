@@ -19,6 +19,7 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS companies (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     name         TEXT NOT NULL UNIQUE,
+    icon_url     TEXT,
     active       INTEGER NOT NULL DEFAULT 1,
     created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
 );
@@ -105,6 +106,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
             conn.execute(
                 f"UPDATE {tbl} SET source_type='google_play' WHERE source_type='google'"
             )
+    # companies.icon_url 컬럼 보강
+    if "icon_url" not in _columns(conn, "companies"):
+        conn.execute("ALTER TABLE companies ADD COLUMN icon_url TEXT")
     # 구버전 companies(homepage/pricing_url) → company_sources 로 1회 이전
     ccols = _columns(conn, "companies")
     if "pricing_url" in ccols:
@@ -151,6 +155,13 @@ def count_companies() -> int:
 def add_company(name: str) -> None:
     with connect() as conn:
         conn.execute("INSERT OR IGNORE INTO companies (name) VALUES (?)", (name,))
+
+
+def set_company_icon(name: str, icon_url: str) -> None:
+    with connect() as conn:
+        conn.execute(
+            "UPDATE companies SET icon_url=? WHERE name=?", (icon_url, name)
+        )
 
 
 def delete_company(name: str) -> None:

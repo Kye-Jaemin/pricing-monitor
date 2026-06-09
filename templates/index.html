@@ -17,6 +17,7 @@
 <section class="card">
   <div class="card-head">
     <h2>
+      {% if c.icon %}<img class="company-icon" src="{{ c.icon }}" alt="" onerror="this.style.display='none'">{% endif %}
       <a href="{{ url_for('company', name=c.company) }}">{{ c.company }}</a>
       {% if c.recent_changes %}<span class="badge badge-change">{{ t('badge.changes') }} {{ c.recent_changes }}</span>{% endif %}
       {% if c.has_free_tier %}<span class="badge badge-free">{{ t('badge.free_tier') }}</span>{% endif %}

@@ -6,11 +6,41 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlparse
 
 from . import store
 from .models import SOURCE_PRIORITY, SOURCE_TYPE_LABELS, PricingSnapshot
 
 _CONF_RANK = {"low": 0, "medium": 1, "high": 2}
+_STORE_HOSTS = ("apple.com", "play.google.com", "google.com")
+
+
+def _favicon(url: str) -> str | None:
+    """도메인 파비콘(구글 파비콘 서비스) URL."""
+    try:
+        host = urlparse(url).netloc.lower()
+    except Exception:  # noqa: BLE001
+        return None
+    if not host:
+        return None
+    return f"https://www.google.com/s2/favicons?domain={host}&sz=64"
+
+
+def _company_icon(icon_url: str | None, source_urls: list[str]) -> str | None:
+    """업체 아이콘: 저장된 icon_url(앱 아이콘) 우선, 없으면 브랜드 도메인 파비콘."""
+    if icon_url:
+        return icon_url
+    # 스토어/검색이 아닌 브랜드 도메인을 우선
+    for u in source_urls:
+        host = urlparse(u).netloc.lower() if u else ""
+        if host and not any(s in host for s in _STORE_HOSTS):
+            return _favicon(u)
+    for u in source_urls:
+        if u:
+            fav = _favicon(u)
+            if fav:
+                return fav
+    return None
 
 
 def _week_ago_iso() -> str:
@@ -96,6 +126,8 @@ def overview() -> dict:
     for row in rows:
         grouped.setdefault(row["company"], []).append(row)
 
+    icon_map = {c["name"]: c["icon_url"] for c in store.list_companies(active_only=False)}
+
     def _tier_dicts(snap):
         return [
             {
@@ -147,6 +179,9 @@ def overview() -> dict:
         companies.append(
             {
                 "company": company_name,
+                "icon": _company_icon(
+                    icon_map.get(company_name), [r["source_url"] for r in srows]
+                ),
                 "primary_source_type": primary["source_type"],
                 "primary_source_label": _src_label(primary["source_type"]),
                 "primary_source_url": primary["source_url"],
@@ -229,8 +264,17 @@ def company_detail(name: str) -> dict | None:
         "datasets": [{"label": k, "data": v} for k, v in series.items()],
     }
 
+    comp = next(
+        (c for c in store.list_companies(active_only=False) if c["name"] == name), None
+    )
+    icon = _company_icon(
+        comp["icon_url"] if comp else None,
+        [r["source_url"] for r in latest_rows],
+    )
+
     return {
         "company": name,
+        "icon": icon,
         "sources": sources,
         "chart": chart,
         "snapshot_count": len(all_rows),
@@ -282,6 +326,7 @@ def companies_admin() -> dict:
             {
                 "name": c["name"],
                 "created_at": c["created_at"],
+                "icon": _company_icon(c["icon_url"], [s["url"] for s in srcs]),
                 "sources": [
                     {
                         "id": s["id"],

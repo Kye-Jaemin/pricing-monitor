@@ -9,6 +9,9 @@
 {% if error %}
 <div class="alert">{{ error }}</div>
 {% endif %}
+{% if notice %}
+<div class="notice">{{ notice }}</div>
+{% endif %}
 
 <section class="card">
   <h2>{{ t('companies.add') }}</h2>
@@ -39,14 +42,22 @@
 {% for c in data.companies %}
 <section class="card">
   <div class="card-head">
-    <h2><a href="{{ url_for('company', name=c.name) }}">{{ c.name }}</a>
+    <h2>
+      {% if c.icon %}<img class="company-icon" src="{{ c.icon }}" alt="" onerror="this.style.display='none'">{% endif %}
+      <a href="{{ url_for('company', name=c.name) }}">{{ c.name }}</a>
       <span class="muted">· {{ t('companies.source_count', n=c.sources|length) }}</span>
     </h2>
-    <form method="post" action="{{ url_for('companies_delete') }}"
-          onsubmit="return confirm('{{ t('companies.confirm_delete_company', name=c.name) }}');">
-      <input type="hidden" name="name" value="{{ c.name }}">
-      <button type="submit" class="btn-danger">{{ t('companies.delete_company') }}</button>
-    </form>
+    <div class="actions">
+      <form method="post" action="{{ url_for('companies_discover') }}">
+        <input type="hidden" name="company" value="{{ c.name }}">
+        <button type="submit" class="btn-secondary">🔎 {{ t('companies.discover_stores') }}</button>
+      </form>
+      <form method="post" action="{{ url_for('companies_delete') }}"
+            onsubmit="return confirm('{{ t('companies.confirm_delete_company', name=c.name) }}');">
+        <input type="hidden" name="name" value="{{ c.name }}">
+        <button type="submit" class="btn-danger">{{ t('companies.delete_company') }}</button>
+      </form>
+    </div>
   </div>
 
   {% if c.sources %}
