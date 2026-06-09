@@ -14,6 +14,7 @@ from pathlib import Path
 from flask import (
     Flask,
     jsonify,
+    make_response,
     redirect,
     render_template,
     request,
@@ -26,6 +27,7 @@ from ..core.fetch import build_google_search_url
 from ..core.models import SOURCE_TYPE_LABELS, SOURCE_TYPES
 from ..core.pipeline import run_once
 from ..scheduler import start_scheduler
+from .i18n import DEFAULT_LANG, LANGUAGES, translate
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("pricing.web")
@@ -46,6 +48,31 @@ start_scheduler()
 # [지금 수집] 중복 실행 방지용 락
 _run_lock = threading.Lock()
 _run_in_progress = {"value": False}
+
+
+# ── 다국어(한/영) ────────────────────────────────────────────
+def _current_lang() -> str:
+    lang = request.cookies.get("lang", DEFAULT_LANG)
+    return lang if lang in LANGUAGES else DEFAULT_LANG
+
+
+@app.context_processor
+def inject_i18n():
+    lang = _current_lang()
+
+    def t(key: str, **kwargs) -> str:
+        return translate(key, lang, **kwargs)
+
+    return {"t": t, "lang": lang, "languages": LANGUAGES}
+
+
+@app.route("/lang/<code>")
+def set_lang(code: str):
+    target = request.referrer or url_for("index")
+    resp = make_response(redirect(target))
+    if code in LANGUAGES:
+        resp.set_cookie("lang", code, max_age=60 * 60 * 24 * 365, samesite="Lax")
+    return resp
 
 
 # ── 화면 ─────────────────────────────────────────────────────

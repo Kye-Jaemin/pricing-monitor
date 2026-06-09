@@ -3,11 +3,11 @@
 {% block content %}
 <div class="page-head">
   <h1>{{ data.company }}</h1>
-  <span class="muted">소스 {{ data.sources|length }}개 · 스냅샷 {{ data.snapshot_count }}개</span>
+  <span class="muted">{{ t('company.sources_snapshots', s=data.sources|length, n=data.snapshot_count) }}</span>
 </div>
 
 <section class="card">
-  <h2>가격 추이 (월 가격, USD)</h2>
+  <h2>{{ t('company.chart_title') }}</h2>
   <canvas id="priceChart" height="110"></canvas>
 </section>
 
@@ -16,27 +16,27 @@
   <div class="card-head">
     <h2>
       <span class="tag tag-src-{{ s.source_type }}">{{ s.source_label }}</span>
-      {% if s.is_primary %}<span class="badge badge-primary">대표</span>{% endif %}
-      {% if s.confidence == 'low' %}<span class="badge badge-low">검수 필요</span>{% endif %}
+      {% if s.is_primary %}<span class="badge badge-primary">{{ t('company.primary') }}</span>{% endif %}
+      {% if s.confidence == 'low' %}<span class="badge badge-low">{{ t('badge.review') }}</span>{% endif %}
       {% if s.currency != 'USD' %}<span class="badge badge-low">{{ s.currency }}</span>{% endif %}
     </h2>
-    <a class="muted" href="{{ s.source_url }}" target="_blank" rel="noopener">원본 ↗</a>
+    <a class="muted" href="{{ s.source_url }}" target="_blank" rel="noopener">{{ t('company.source_link') }}</a>
   </div>
-  <p class="muted">최근 수집 {{ s.collected_at }} · 통화 {{ s.currency }} · 신뢰도 {{ s.confidence }}</p>
-  {% if s.free_trial %}<p class="trial-line">🎁 무료 체험: {{ s.free_trial }}</p>{% endif %}
+  <p class="muted">{{ t('company.collected_meta', at=s.collected_at, cur=s.currency, conf=s.confidence) }}</p>
+  {% if s.free_trial %}<p class="trial-line">🎁 {{ t('company.free_trial') }}: {{ s.free_trial }}</p>{% endif %}
 
   {% set fm = s.feature_matrix %}
   {% if fm.features %}
-  <h3>티어별 기능 비교 (무료 vs 유료)</h3>
+  <h3>{{ t('company.feature_title') }}</h3>
   <div class="matrix-wrap">
     <table class="matrix">
       <thead>
         <tr>
-          <th>기능 \ 티어</th>
-          {% for t in fm.tiers %}
-          <th class="{% if t.is_free %}col-free{% else %}col-paid{% endif %}">
-            {{ t.name }}<br>
-            <span class="muted">{% if t.monthly_price is not none %}${{ '%g'|format(t.monthly_price) }}/mo{% else %}{{ t.price_note or '비공개' }}{% endif %}</span>
+          <th>{{ t('company.feature_col') }}</th>
+          {% for tr in fm.tiers %}
+          <th class="{% if tr.is_free %}col-free{% else %}col-paid{% endif %}">
+            {{ tr.name }}<br>
+            <span class="muted">{% if tr.monthly_price is not none %}${{ '%g'|format(tr.monthly_price) }}/mo{% else %}{{ tr.price_note or t('word.private') }}{% endif %}</span>
           </th>
           {% endfor %}
         </tr>
@@ -45,8 +45,8 @@
         {% for f in fm.features %}
         <tr>
           <td class="feat">{{ f }}</td>
-          {% for t in fm.tiers %}
-          <td class="cell {% if t.has[f] %}yes{% else %}no{% endif %}">{% if t.has[f] %}✓{% else %}—{% endif %}</td>
+          {% for tr in fm.tiers %}
+          <td class="cell {% if tr.has[f] %}yes{% else %}no{% endif %}">{% if tr.has[f] %}✓{% else %}—{% endif %}</td>
           {% endfor %}
         </tr>
         {% endfor %}
@@ -55,18 +55,18 @@
   </div>
   {% endif %}
 
-  {% for t in s.tiers %}
+  {% for tr in s.tiers %}
   <div class="tier-block">
     <h3>
-      {{ t.name }}
+      {{ tr.name }}
       <span class="muted">
-        {% if t.monthly_price is not none %}${{ '%g'|format(t.monthly_price) }}/mo{% else %}{{ t.price_note or '비공개' }}{% endif %}
-        · {{ t.billing_unit }}
+        {% if tr.monthly_price is not none %}${{ '%g'|format(tr.monthly_price) }}/mo{% else %}{{ tr.price_note or t('word.private') }}{% endif %}
+        · {{ tr.billing_unit }}
       </span>
     </h3>
-    {% if t.limits %}
+    {% if tr.limits %}
     <p class="limits">
-      {% for k, v in t.limits.items() %}<span class="chip">{{ k }}: {{ v }}</span>{% endfor %}
+      {% for k, v in tr.limits.items() %}<span class="chip">{{ k }}: {{ v }}</span>{% endfor %}
     </p>
     {% endif %}
   </div>

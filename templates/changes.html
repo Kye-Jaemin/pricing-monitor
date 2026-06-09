@@ -1,26 +1,26 @@
 {% extends "base.html" %}
-{% block title %}변동 로그 · Pricing Monitor{% endblock %}
+{% block title %}{{ t('changes.title') }} · Pricing Monitor{% endblock %}
 {% block content %}
-<div class="page-head"><h1>변동 로그</h1></div>
+<div class="page-head"><h1>{{ t('changes.title') }}</h1></div>
 
 <form class="filter" method="get">
-  <label>업체
+  <label>{{ t('changes.filter') }}
     <select name="company" onchange="this.form.submit()">
-      <option value="">전체</option>
+      <option value="">{{ t('changes.all') }}</option>
       {% for c in data.companies %}
       <option value="{{ c }}" {% if c == data.selected %}selected{% endif %}>{{ c }}</option>
       {% endfor %}
     </select>
   </label>
-  <noscript><button type="submit">필터</button></noscript>
+  <noscript><button type="submit">{{ t('changes.filter') }}</button></noscript>
 </form>
 
 {% if not data.changes %}
-  <div class="empty"><p>기록된 변동이 없습니다.</p></div>
+  <div class="empty"><p>{{ t('changes.empty') }}</p></div>
 {% else %}
 <table class="log-table">
   <thead>
-    <tr><th>감지 시각</th><th>업체</th><th>유형</th><th>티어</th><th>변동</th></tr>
+    <tr><th>{{ t('col.detected') }}</th><th>{{ t('col.company') }}</th><th>{{ t('col.type') }}</th><th>{{ t('col.tier') }}</th><th>{{ t('col.change') }}</th></tr>
   </thead>
   <tbody>
     {% for c in data.changes %}

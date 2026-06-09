@@ -1,34 +1,34 @@
 {% extends "base.html" %}
-{% block title %}수집 상태 · Pricing Monitor{% endblock %}
+{% block title %}{{ t('runs.title') }} · Pricing Monitor{% endblock %}
 {% block content %}
 <div class="page-head">
-  <h1>수집 상태</h1>
+  <h1>{{ t('runs.title') }}</h1>
   <div class="actions">
     <form method="post" action="{{ url_for('run_now') }}">
       <button type="submit" class="btn-primary" {% if running %}disabled{% endif %}>
-        {% if running %}수집 중…{% else %}지금 수집{% endif %}
+        {% if running %}{{ t('runs.running') }}{% else %}{{ t('runs.run_now') }}{% endif %}
       </button>
     </form>
     <form method="post" action="{{ url_for('runs_clear') }}"
-          onsubmit="return confirm('수집 실행 기록을 모두 지울까요?\n(가격 스냅샷·변동 이력은 유지됩니다)');">
-      <button type="submit" class="btn-secondary">기록 지우기</button>
+          onsubmit="return confirm('{{ t('runs.confirm_clear_logs') }}');">
+      <button type="submit" class="btn-secondary">{{ t('runs.clear_logs') }}</button>
     </form>
     <form method="post" action="{{ url_for('data_clear') }}"
-          onsubmit="return confirm('수집 결과를 전부 초기화할까요?\n스냅샷·변동·실행기록이 모두 삭제됩니다.\n(업체/소스 목록은 유지)');">
-      <button type="submit" class="btn-danger">전체 초기화</button>
+          onsubmit="return confirm('{{ t('runs.confirm_clear_all') }}');">
+      <button type="submit" class="btn-danger">{{ t('runs.clear_all') }}</button>
     </form>
   </div>
 </div>
 {% if running %}
-<p class="muted">백그라운드에서 수집이 진행 중입니다. 잠시 후 새로고침하세요.</p>
+<p class="muted">{{ t('runs.running_note') }}</p>
 {% endif %}
 
 {% if not data.runs %}
-  <div class="empty"><p>실행 기록이 없습니다.</p></div>
+  <div class="empty"><p>{{ t('runs.empty') }}</p></div>
 {% else %}
 <table class="log-table">
   <thead>
-    <tr><th>시작</th><th>종료</th><th>업체</th><th>상태</th><th>메시지</th></tr>
+    <tr><th>{{ t('col.start') }}</th><th>{{ t('col.end') }}</th><th>{{ t('col.company') }}</th><th>{{ t('col.status') }}</th><th>{{ t('col.message') }}</th></tr>
   </thead>
   <tbody>
     {% for r in data.runs %}

@@ -1,8 +1,91 @@
 {% extends "base.html" %}
-{% block title %}사용법 · Pricing Monitor{% endblock %}
+{% block title %}{{ t('howto.title') }} · Pricing Monitor{% endblock %}
 {% block content %}
-<div class="page-head"><h1>사용법 (How-to)</h1></div>
+<div class="page-head"><h1>{{ t('howto.title') }}</h1></div>
 
+{% if lang == 'en' %}
+<section class="card">
+  <h2>What is this?</h2>
+  <p>
+    It automatically collects <b>subscription pricing</b> (USD amounts and per-tier
+    features) for multiple companies from their <b>official US pricing pages</b>.
+    It runs <b>weekly</b>, detects <b>price/tier/feature changes</b> vs. the previous
+    week, and shows everything on this dashboard.
+  </p>
+</section>
+
+<section class="card">
+  <h2>Screens</h2>
+  <table class="howto-table"><tbody>
+    <tr><td class="nowrap"><a href="{{ url_for('index') }}">Overview</a></td>
+      <td>Latest price table per company × tier (monthly/annual/currency/billing). A badge shows changes this week.</td></tr>
+    <tr><td class="nowrap">Company detail</td>
+      <td>Click a company name. Shows a <b>price history chart</b>, per-tier features/limits, and source links.</td></tr>
+    <tr><td class="nowrap"><a href="{{ url_for('changes') }}">Changes</a></td>
+      <td>All detected changes (<code>old → new</code>, one-line summary), filterable by company.</td></tr>
+    <tr><td class="nowrap"><a href="{{ url_for('runs') }}">Runs</a></td>
+      <td>Recent run times and per-company success/failure/confidence. <b>[Run now]</b> triggers an immediate collection. You can also clear logs / reset all data here.</td></tr>
+  </tbody></table>
+</section>
+
+<section class="card">
+  <h2>Adding / removing companies</h2>
+  <p>
+    Manage companies on the <a href="{{ url_for('companies_page') }}"><b>Companies</b></a> screen.
+    The list is <b>stored in the DB</b> and survives redeploys/migrations, working the
+    same on Render and locally. After adding, click <a href="{{ url_for('runs') }}">Runs → [Run now]</a>.
+  </p>
+  <h3>Multiple sources per company + priority</h3>
+  <p>Some companies list pricing only in app stores. Add <b>multiple sources</b> per company;
+    each is tracked independently and the primary source is chosen by this <b>priority</b>:</p>
+  <p>
+    <span class="tag tag-src-web">Official site</span> &gt;
+    <span class="tag tag-src-google_search">Google search</span> &gt;
+    <span class="tag tag-src-apple">App Store</span> &gt;
+    <span class="tag tag-src-google_play">Play Store</span>
+  </p>
+  <ul>
+    <li>The <b>Overview</b> shows the highest-priority source with data as <b>primary</b>; others appear under "see prices".</li>
+    <li><b>Google search</b>: leave the URL blank to auto-build <code>google.com/search?q=Company pricing plans free trial</code> (US/English).</li>
+    <li><b>App Store</b>: the URL needs <code>/us/</code> for USD (auto-corrected if omitted).</li>
+    <li><b>Play Store</b>: <code>&gl=us&hl=en</code> is added automatically.</li>
+    <li>Stores/search may be bot-blocked or localized; non-USD results are flagged as low confidence.</li>
+  </ul>
+  <h3>Feature comparison (free vs paid)</h3>
+  <p>The <b>Company detail</b> screen shows a per-source <b>feature matrix</b> — features as rows,
+    tiers as columns, with ✓/— so free-vs-paid differences are clear (free columns blue, paid green).</p>
+</section>
+
+<section class="card">
+  <h2>How to collect</h2>
+  <ul>
+    <li><b>Web</b>: <a href="{{ url_for('runs') }}">Runs</a> → <b>[Run now]</b> (runs in background)</li>
+    <li><b>Automatic (weekly)</b>: Render fires every Mon 09:00 ET; locally the OS scheduler handles it</li>
+    <li><b>CLI</b>: <code>python -m app.core.pipeline</code> (collect/store/diff without the web)</li>
+  </ul>
+</section>
+
+<section class="card">
+  <h2>Reading the badges</h2>
+  <p>
+    <span class="badge badge-free">Free tier</span> a $0 tier exists &nbsp;·&nbsp;
+    <span class="badge badge-trial">Free trial</span> a trial is offered &nbsp;·&nbsp;
+    <span class="badge badge-low">Needs review</span> low confidence &nbsp;·&nbsp;
+    <span class="badge badge-low">KRW</span> non-USD currency (never auto-converted)
+  </p>
+  <p>Prices (monthly / annual-per-month) are per-seat, per-month USD. "Private" means
+    Contact-Sales (not an error — price left blank with a note).</p>
+</section>
+
+<section class="card">
+  <h2>Notes (dev/ops)</h2>
+  <ul>
+    <li>Internal API: <code>GET /api/snapshots/latest</code>, <code>GET /api/company/&lt;name&gt;/history</code>, <code>POST /run-now</code></li>
+    <li>Health: <code>GET /healthz</code></li>
+    <li>All data is one SQLite file — migrating environments is just a file copy.</li>
+  </ul>
+</section>
+{% else %}
 <section class="card">
   <h2>이 서비스는 무엇인가요?</h2>
   <p>
@@ -130,4 +213,5 @@
     <li>데이터는 SQLite 파일 1개. 환경 이전은 이 파일 복사로 끝납니다.</li>
   </ul>
 </section>
+{% endif %}
 {% endblock %}

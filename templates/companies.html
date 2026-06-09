@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}업체 관리 · Pricing Monitor{% endblock %}
+{% block title %}{{ t('companies.title') }} · Pricing Monitor{% endblock %}
 {% block content %}
 <div class="page-head">
-  <h1>업체 관리</h1>
-  <span class="muted">모니터링 대상 {{ data.companies|length }}곳</span>
+  <h1>{{ t('companies.title') }}</h1>
+  <span class="muted">{{ t('companies.count', n=data.companies|length) }}</span>
 </div>
 
 {% if error %}
@@ -11,51 +11,47 @@
 {% endif %}
 
 <section class="card">
-  <h2>업체 추가</h2>
-  <p class="muted">업체명과 첫 소스 URL을 입력합니다. 한 업체에 웹·App Store·Play Store 등 여러 소스를 더할 수 있습니다.</p>
+  <h2>{{ t('companies.add') }}</h2>
+  <p class="muted">{{ t('companies.add_hint') }}</p>
   <form class="add-form" method="post" action="{{ url_for('companies_add') }}">
-    <label>업체명 <span class="req">*</span>
+    <label>{{ t('companies.field_name') }} <span class="req">*</span>
       <input type="text" name="name" placeholder="Notion" required>
     </label>
-    <label>소스 종류
+    <label>{{ t('companies.field_type') }}
       <select name="source_type">
         {% for key, label in source_types.items() %}
         <option value="{{ key }}">{{ label }}</option>
         {% endfor %}
       </select>
     </label>
-    <label>소스 URL
+    <label>{{ t('companies.field_url') }}
       <input type="url" name="url" placeholder="https://www.notion.so/pricing">
     </label>
-    <button type="submit" class="btn-primary">추가</button>
+    <button type="submit" class="btn-primary">{{ t('btn.add') }}</button>
   </form>
-  <p class="muted">
-    소스 종류는 우선순위 순입니다: <b>공식 홈페이지 &gt; 구글 검색 &gt; App Store &gt; Play Store</b>.
-    현황에는 우선순위가 가장 높은 출처가 <b>대표</b>로 표시됩니다.
-    <b>구글 검색</b>은 URL을 비우면 업체명으로 자동 생성됩니다.
-  </p>
+  <p class="muted">{{ t('companies.priority_note') }}</p>
 </section>
 
 {% if not data.companies %}
-  <div class="empty"><p>등록된 업체가 없습니다. 위에서 추가하세요.</p></div>
+  <div class="empty"><p>{{ t('companies.empty') }}</p></div>
 {% endif %}
 
 {% for c in data.companies %}
 <section class="card">
   <div class="card-head">
     <h2><a href="{{ url_for('company', name=c.name) }}">{{ c.name }}</a>
-      <span class="muted">· 소스 {{ c.sources|length }}개</span>
+      <span class="muted">· {{ t('companies.source_count', n=c.sources|length) }}</span>
     </h2>
     <form method="post" action="{{ url_for('companies_delete') }}"
-          onsubmit="return confirm('{{ c.name }} 업체와 모든 소스를 삭제할까요?\n(과거 수집 이력은 보존됩니다)');">
+          onsubmit="return confirm('{{ t('companies.confirm_delete_company', name=c.name) }}');">
       <input type="hidden" name="name" value="{{ c.name }}">
-      <button type="submit" class="btn-danger">업체 삭제</button>
+      <button type="submit" class="btn-danger">{{ t('companies.delete_company') }}</button>
     </form>
   </div>
 
   {% if c.sources %}
   <table class="log-table">
-    <thead><tr><th>종류</th><th>URL</th><th>등록일</th><th></th></tr></thead>
+    <thead><tr><th>{{ t('col.kind') }}</th><th>{{ t('col.url') }}</th><th>{{ t('col.created') }}</th><th></th></tr></thead>
     <tbody>
       {% for s in c.sources %}
       <tr>
@@ -64,9 +60,9 @@
         <td class="muted nowrap">{{ s.created_at }}</td>
         <td>
           <form method="post" action="{{ url_for('sources_delete') }}"
-                onsubmit="return confirm('이 소스를 삭제할까요?');">
+                onsubmit="return confirm('{{ t('companies.confirm_delete_source') }}');">
             <input type="hidden" name="source_id" value="{{ s.id }}">
-            <button type="submit" class="btn-danger">삭제</button>
+            <button type="submit" class="btn-danger">{{ t('btn.delete') }}</button>
           </form>
         </td>
       </tr>
@@ -74,12 +70,12 @@
     </tbody>
   </table>
   {% else %}
-  <p class="muted">소스 URL이 없습니다. 아래에서 추가하세요(없으면 수집되지 않습니다).</p>
+  <p class="muted">{{ t('companies.no_sources') }}</p>
   {% endif %}
 
   <form class="add-form add-form-inline" method="post" action="{{ url_for('sources_add') }}">
     <input type="hidden" name="company" value="{{ c.name }}">
-    <label>소스 추가
+    <label>{{ t('companies.add_source') }}
       <select name="source_type">
         {% for key, label in source_types.items() %}
         <option value="{{ key }}">{{ label }}</option>
@@ -87,23 +83,20 @@
       </select>
     </label>
     <label class="grow">&nbsp;
-      <input type="url" name="url" placeholder="https://apps.apple.com/us/app/idXXXXXXXX (구글 검색은 비워도 됨)">
+      <input type="url" name="url" placeholder="{{ t('companies.url_placeholder') }}">
     </label>
-    <button type="submit" class="btn-secondary">소스 추가</button>
+    <button type="submit" class="btn-secondary">{{ t('companies.add_source') }}</button>
   </form>
 </section>
 {% endfor %}
 
 <section class="card">
-  <h2>US 스토어프론트 팁 (USD 받기)</h2>
+  <h2>{{ t('companies.tip_title') }}</h2>
   <ul>
-    <li><b>App Store</b>: <code>apps.apple.com/us/app/...</code> 처럼 <code>/us/</code> 가 들어가야 USD. 빠뜨려도 자동 보정합니다.</li>
-    <li><b>Play Store</b>: <code>play.google.com/store/apps/details?id=...&gl=US&hl=en</code> — <code>gl=US&hl=en</code> 자동 추가됩니다.</li>
-    <li>비-USD가 잡히면 자동으로 <b>신뢰도 낮음</b>으로 표시되며 임의 환산하지 않습니다.</li>
+    <li>{{ t('companies.tip_apple') }}</li>
+    <li>{{ t('companies.tip_google') }}</li>
+    <li>{{ t('companies.tip_currency') }}</li>
   </ul>
-  <p class="muted">
-    추가/삭제 후 <a href="{{ url_for('runs') }}">수집 상태 → [지금 수집]</a> 을 누르면 즉시 반영됩니다.
-    목록은 DB에 저장되어 재배포·환경 이전에도 유지됩니다.
-  </p>
+  <p class="muted">{{ t('companies.footer_note') }}</p>
 </section>
 {% endblock %}

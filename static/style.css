@@ -32,6 +32,10 @@ code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; font-size: .9e
 .brand { font-weight: 700; font-size: 1.1rem; }
 .topbar nav { display: flex; gap: 18px; }
 .topbar nav a { color: var(--ink); font-weight: 500; }
+.lang-toggle { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: .85rem; }
+.lang-toggle a { color: var(--muted); font-weight: 600; }
+.lang-toggle a.on { color: var(--accent); text-decoration: underline; }
+.lang-toggle span { color: var(--line); }
 
 .container { max-width: 1000px; margin: 0 auto; padding: 24px; }
 .footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 24px; }
