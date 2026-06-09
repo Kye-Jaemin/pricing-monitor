@@ -123,10 +123,16 @@ def _process_source(
     page_text = fetch.fetch_page_text(source_url)
 
     # c. raw_text_hash — 직전과 동일하면 추출 스킵 (소스별)
+    #    단, 직전 결과가 비었거나 신뢰도 low 면 본문이 같아도 재추출한다
+    #    (추출 지침 개선분이 반영되도록).
     raw_hash = hashlib.sha256(page_text.encode("utf-8")).hexdigest()
     prev_row = store.latest_snapshot_row(company, source_url)
     if prev_row and prev_row["raw_text_hash"] == raw_hash:
-        return SourceResult(company, source_type, "unchanged", "본문 동일 — 추출 생략")
+        prev_snap_same = PricingSnapshot.from_payload_json(prev_row["payload_json"])
+        if prev_row["confidence"] != "low" and prev_snap_same.tiers:
+            return SourceResult(
+                company, source_type, "unchanged", "본문 동일 — 추출 생략"
+            )
 
     # d. Claude 추출 → e. Pydantic 검증 (실패 시 1회 재시도)
     snapshot: PricingSnapshot | None = None

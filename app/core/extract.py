@@ -38,12 +38,17 @@ PAGE TEXT:
 # 소스 타입별 추출 힌트(레이아웃이 다르므로 보강)
 SOURCE_HINTS = {
     "google_search": (
-        "- This is a Google search results page for the company's pricing, plans, "
-        "and free trial. Extract pricing tiers, the paid plans offered, and any "
-        "free-trial / free-tier details from what is explicitly shown in the "
-        "snippets/results. Do not invent numbers. If a price appears in a snippet, "
-        "use it and set extraction_confidence to medium; if pricing is not clearly "
-        "present at all, return an empty tiers list and set confidence to low.\n"
+        "- This is a Google search results page. Prices usually appear INSIDE the "
+        "result snippets / AI overview (e.g. '$11.99/month', '$71.99/year', "
+        "'Premium $9.99', 'Pro plan starts at $15'). You MUST extract these.\n"
+        "  For every price you see, create a tier: use the plan name if the snippet "
+        "shows one (e.g. 'Premium', 'Pro'); otherwise name it by billing period "
+        "('Monthly', 'Annual') or 'Subscription'. Put the exact snippet wording in "
+        "price_note. Put monthly amounts in monthly_price; for a yearly amount, set "
+        "annual_price_per_month to (yearly / 12). Also capture any free tier or free "
+        "trial mentioned. Set extraction_confidence to medium when you found prices. "
+        "Return an empty tiers list (confidence low) ONLY if no price appears "
+        "anywhere in the results.\n"
     ),
     "apple": (
         "- This is an Apple App Store listing. Extract the in-app "
