@@ -23,6 +23,7 @@
     <a class="muted" href="{{ s.source_url }}" target="_blank" rel="noopener">원본 ↗</a>
   </div>
   <p class="muted">최근 수집 {{ s.collected_at }} · 통화 {{ s.currency }} · 신뢰도 {{ s.confidence }}</p>
+  {% if s.free_trial %}<p class="trial-line">🎁 무료 체험: {{ s.free_trial }}</p>{% endif %}
 
   {% set fm = s.feature_matrix %}
   {% if fm.features %}

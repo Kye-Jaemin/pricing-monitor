@@ -151,6 +151,20 @@ def runs():
 
 
 # ── 액션 ─────────────────────────────────────────────────────
+@app.route("/runs/clear", methods=["POST"])
+def runs_clear():
+    """수집 실행 기록만 삭제(스냅샷·변동 이력 유지)."""
+    store.clear_run_logs()
+    return redirect(url_for("runs"))
+
+
+@app.route("/data/clear", methods=["POST"])
+def data_clear():
+    """수집 결과 전체 초기화(스냅샷·변동·실행기록 삭제, 업체/소스 유지)."""
+    store.clear_collected_data()
+    return redirect(url_for("runs"))
+
+
 @app.route("/run-now", methods=["POST"])
 def run_now():
     """백그라운드로 run_once() 실행."""

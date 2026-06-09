@@ -346,3 +346,21 @@ def recent_runs(limit: int = 100) -> list[sqlite3.Row]:
         return conn.execute(
             "SELECT * FROM run_logs ORDER BY id DESC LIMIT ?", (limit,)
         ).fetchall()
+
+
+# ── 데이터 삭제 (수집 상태 화면의 옵션) ──────────────────────
+def clear_run_logs() -> None:
+    """수집 실행 기록만 비운다(스냅샷·변동 이력은 유지)."""
+    with connect() as conn:
+        conn.execute("DELETE FROM run_logs")
+
+
+def clear_collected_data() -> None:
+    """수집 결과 전체 초기화: 스냅샷·변동·실행기록 삭제.
+
+    업체/소스 목록(companies, company_sources)은 유지한다.
+    """
+    with connect() as conn:
+        conn.execute("DELETE FROM snapshots")
+        conn.execute("DELETE FROM changes")
+        conn.execute("DELETE FROM run_logs")

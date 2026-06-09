@@ -50,6 +50,9 @@ class PricingSnapshot(BaseModel):
     collected_at: str  # ISO8601 UTC, e.g. "2026-06-08T09:00:00Z"
     currency: str = "USD"
     tiers: list[Tier] = Field(default_factory=list)
+    # 무료 체험(Free Trial) 제공 여부·조건. 없으면 null.
+    # 예: "14-day free trial on Pro/Business, no credit card required"
+    free_trial: Optional[str] = None
     extraction_confidence: Confidence = "medium"
 
     def to_payload_json(self) -> str:
@@ -93,6 +96,7 @@ SCHEMA_JSON_EXAMPLE = json.dumps(
                 "limits": {},
             },
         ],
+        "free_trial": "14-day free trial on Plus/Business, no credit card required",
         "extraction_confidence": "high",
     },
     ensure_ascii=False,

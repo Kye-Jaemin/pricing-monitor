@@ -22,10 +22,13 @@ class FetchError(RuntimeError):
 
 
 def build_google_search_url(company: str) -> str:
-    """업체명으로 US/영어 구글 검색 URL 을 만든다(가격 스니펫 수집용)."""
+    """업체명으로 US/영어 구글 검색 URL 을 만든다.
+
+    가격뿐 아니라 유료 플랜·무료 체험 정보까지 스니펫에 잡히도록 검색어를 넓힌다.
+    """
     from urllib.parse import quote_plus
 
-    q = quote_plus(f"{company} pricing")
+    q = quote_plus(f"{company} pricing plans free trial")
     return f"https://www.google.com/search?q={q}&hl=en&gl=us"
 
 

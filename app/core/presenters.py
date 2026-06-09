@@ -96,15 +96,52 @@ def overview() -> dict:
     for row in rows:
         grouped.setdefault(row["company"], []).append(row)
 
+    def _tier_dicts(snap):
+        return [
+            {
+                "name": t.name,
+                "monthly_price": t.monthly_price,
+                "annual_price_per_month": t.annual_price_per_month,
+                "billing_unit": t.billing_unit,
+                "price_note": t.price_note,
+                "is_free": (t.monthly_price == 0)
+                or ("free" in t.name.lower())
+                or ("무료" in t.name),
+            }
+            for t in snap.tiers
+        ]
+
     companies = []
     for company_name in sorted(grouped, key=str.lower):
         srows = grouped[company_name]
         primary = _pick_primary(srows)
         snap = PricingSnapshot.from_payload_json(primary["payload_json"])
+        primary_tiers = _tier_dicts(snap)
 
         others = sorted(
             (r for r in srows if r["source_url"] != primary["source_url"]),
             key=lambda r: SOURCE_PRIORITY.get(r["source_type"], 9),
+        )
+
+        # 비대표 소스라도 티어 데이터가 있으면 현황에 함께 노출(구글 검색 등 누락 방지)
+        extra_sources = []
+        free_trial = snap.free_trial
+        for r in others:
+            osnap = PricingSnapshot.from_payload_json(r["payload_json"])
+            if not free_trial and osnap.free_trial:
+                free_trial = osnap.free_trial
+            if osnap.tiers:
+                extra_sources.append(
+                    {
+                        "source_type": r["source_type"],
+                        "source_label": _src_label(r["source_type"]),
+                        "source_url": r["source_url"],
+                        "tiers": _tier_dicts(osnap),
+                    }
+                )
+
+        has_free_tier = any(t["is_free"] for t in primary_tiers) or any(
+            t["is_free"] for es in extra_sources for t in es["tiers"]
         )
 
         companies.append(
@@ -119,16 +156,10 @@ def overview() -> dict:
                 "recent_changes": change_count.get(company_name, 0),
                 "source_count": len(srows),
                 "other_sources": [_src_label(r["source_type"]) for r in others],
-                "tiers": [
-                    {
-                        "name": t.name,
-                        "monthly_price": t.monthly_price,
-                        "annual_price_per_month": t.annual_price_per_month,
-                        "billing_unit": t.billing_unit,
-                        "price_note": t.price_note,
-                    }
-                    for t in snap.tiers
-                ],
+                "free_trial": free_trial,
+                "has_free_tier": has_free_tier,
+                "tiers": primary_tiers,
+                "extra_sources": extra_sources,
             }
         )
     return {"companies": companies, "total_recent_changes": len(recent)}
@@ -160,6 +191,7 @@ def company_detail(name: str) -> dict | None:
                 "currency": snap.currency,
                 "confidence": row["confidence"],
                 "collected_at": row["collected_at"],
+                "free_trial": snap.free_trial,
                 "feature_matrix": _feature_matrix(snap.tiers),
                 "tiers": [
                     {

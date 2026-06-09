@@ -17,8 +17,14 @@ subscription pricing tiers. Return ONLY valid JSON matching this schema:
 Rules:
 - Prices are expected in USD. If the page shows a non-USD currency, set
   currency accordingly and lower extraction_confidence.
+- Capture EVERY plan/tier you can find: the free tier (if any) AND all paid
+  plans (Pro, Team, Business, Enterprise, etc.). The free tier is a tier with
+  monthly_price 0; list its included features so free-vs-paid differences are clear.
 - If a tier has no public price (e.g. "Contact Sales"), set prices to null and
   put the reason in price_note.
+- "free_trial": describe any free trial offer (length, which plans it applies to,
+  whether a credit card is required). If there is no free trial, set it to null.
+  A free trial is different from a free tier — do not confuse them.
 - Do not invent features or prices. If unsure, lower extraction_confidence.
 {source_hint}- "company" must be exactly: {company}
 - "source_url" must be exactly: {source_url}
@@ -32,10 +38,12 @@ PAGE TEXT:
 # 소스 타입별 추출 힌트(레이아웃이 다르므로 보강)
 SOURCE_HINTS = {
     "google_search": (
-        "- This is a Google search results page. Extract pricing tiers only from "
-        "what is explicitly shown in the snippets/results. Do not guess. "
-        "If pricing is not clearly present, return an empty tiers list and set "
-        "extraction_confidence to low.\n"
+        "- This is a Google search results page for the company's pricing, plans, "
+        "and free trial. Extract pricing tiers, the paid plans offered, and any "
+        "free-trial / free-tier details from what is explicitly shown in the "
+        "snippets/results. Do not invent numbers. If a price appears in a snippet, "
+        "use it and set extraction_confidence to medium; if pricing is not clearly "
+        "present at all, return an empty tiers list and set confidence to low.\n"
     ),
     "apple": (
         "- This is an Apple App Store listing. Extract the in-app "

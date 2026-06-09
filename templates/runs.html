@@ -3,11 +3,21 @@
 {% block content %}
 <div class="page-head">
   <h1>수집 상태</h1>
-  <form method="post" action="{{ url_for('run_now') }}">
-    <button type="submit" class="btn-primary" {% if running %}disabled{% endif %}>
-      {% if running %}수집 중…{% else %}지금 수집{% endif %}
-    </button>
-  </form>
+  <div class="actions">
+    <form method="post" action="{{ url_for('run_now') }}">
+      <button type="submit" class="btn-primary" {% if running %}disabled{% endif %}>
+        {% if running %}수집 중…{% else %}지금 수집{% endif %}
+      </button>
+    </form>
+    <form method="post" action="{{ url_for('runs_clear') }}"
+          onsubmit="return confirm('수집 실행 기록을 모두 지울까요?\n(가격 스냅샷·변동 이력은 유지됩니다)');">
+      <button type="submit" class="btn-secondary">기록 지우기</button>
+    </form>
+    <form method="post" action="{{ url_for('data_clear') }}"
+          onsubmit="return confirm('수집 결과를 전부 초기화할까요?\n스냅샷·변동·실행기록이 모두 삭제됩니다.\n(업체/소스 목록은 유지)');">
+      <button type="submit" class="btn-danger">전체 초기화</button>
+    </form>
+  </div>
 </div>
 {% if running %}
 <p class="muted">백그라운드에서 수집이 진행 중입니다. 잠시 후 새로고침하세요.</p>

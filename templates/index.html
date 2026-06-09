@@ -22,6 +22,8 @@
     <h2>
       <a href="{{ url_for('company', name=c.company) }}">{{ c.company }}</a>
       {% if c.recent_changes %}<span class="badge badge-change">변동 {{ c.recent_changes }}</span>{% endif %}
+      {% if c.has_free_tier %}<span class="badge badge-free">무료 티어</span>{% endif %}
+      {% if c.free_trial %}<span class="badge badge-trial">무료 체험</span>{% endif %}
       {% if c.confidence == 'low' %}<span class="badge badge-low">검수 필요</span>{% endif %}
       {% if c.currency != 'USD' %}<span class="badge badge-low">{{ c.currency }}</span>{% endif %}
     </h2>
@@ -32,6 +34,7 @@
     <span class="muted">(우선순위 대표)</span>
     {% if c.other_sources %}<span class="muted">· 추가 출처: {{ c.other_sources|join(', ') }}</span>{% endif %}
   </p>
+  {% if c.free_trial %}<p class="trial-line">🎁 무료 체험: {{ c.free_trial }}</p>{% endif %}
   <table class="price-table">
     <thead>
       <tr><th>티어</th><th>월</th><th>연(월환산)</th><th>통화</th><th>과금단위</th></tr>
@@ -39,7 +42,7 @@
     <tbody>
       {% for t in c.tiers %}
       <tr>
-        <td class="tier-name">{{ t.name }}</td>
+        <td class="tier-name">{{ t.name }}{% if t.is_free %} <span class="tag tag-free-mini">무료</span>{% endif %}</td>
         <td>{% if t.monthly_price is not none %}${{ '%g'|format(t.monthly_price) }}{% else %}<span class="muted">{{ t.price_note or '비공개' }}</span>{% endif %}</td>
         <td>{% if t.annual_price_per_month is not none %}${{ '%g'|format(t.annual_price_per_month) }}{% else %}<span class="muted">—</span>{% endif %}</td>
         <td>{{ c.currency }}</td>
@@ -48,6 +51,25 @@
       {% endfor %}
     </tbody>
   </table>
+
+  {% for es in c.extra_sources %}
+  <details class="extra-source">
+    <summary><span class="tag tag-src-{{ es.source_type }}">{{ es.source_label }}</span> 가격도 보기 ({{ es.tiers|length }}개 티어)</summary>
+    <table class="price-table">
+      <thead><tr><th>티어</th><th>월</th><th>연(월환산)</th><th>과금단위</th></tr></thead>
+      <tbody>
+        {% for t in es.tiers %}
+        <tr>
+          <td class="tier-name">{{ t.name }}{% if t.is_free %} <span class="tag tag-free-mini">무료</span>{% endif %}</td>
+          <td>{% if t.monthly_price is not none %}${{ '%g'|format(t.monthly_price) }}{% else %}<span class="muted">{{ t.price_note or '비공개' }}</span>{% endif %}</td>
+          <td>{% if t.annual_price_per_month is not none %}${{ '%g'|format(t.annual_price_per_month) }}{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td class="muted">{{ t.billing_unit }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </details>
+  {% endfor %}
 </section>
 {% endfor %}
 {% endblock %}
