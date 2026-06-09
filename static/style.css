@@ -72,7 +72,12 @@ code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; font-size: .9e
 .trial-line { margin: 2px 0 10px; font-size: .9rem; color: #6b21a8; }
 .tag-free-mini { background: #dcfce7; color: #166534; font-size: .68rem; padding: 1px 6px; }
 
-.actions { display: flex; gap: 8px; align-items: center; }
+.actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.run-form { display: flex; gap: 8px; align-items: center; }
+.access-input {
+  padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+  font-size: .9rem; width: 130px;
+}
 .extra-source { margin: 10px 0 0; }
 .extra-source > summary {
   cursor: pointer; font-size: .88rem; color: var(--accent); padding: 6px 0;

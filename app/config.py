@@ -57,6 +57,11 @@ ACCEPT_LANGUAGE: str = _get("ACCEPT_LANGUAGE", "en-US,en;q=0.9")
 # ── 웹 서버 ──────────────────────────────────────────────────
 PORT: int = _get_int("PORT", 8000)
 
+# ── 액세스 코드 (AI API 비용 발생 작업 보호) ─────────────────
+# 웹에서 수집 실행(Claude 추출) 시 이 코드를 요구한다. 빈 값이면 비활성.
+ACCESS_CODE: str = _get("ACCESS_CODE", "3537")
+ACCESS_CONTACT: str = _get("ACCESS_CONTACT", "jaemin.kye@samsung.com")
+
 # ── Fetch 동작 ───────────────────────────────────────────────
 FETCH_TIMEOUT_MS: int = _get_int("FETCH_TIMEOUT_MS", 25000)
 FETCH_MAX_RETRIES: int = _get_int("FETCH_MAX_RETRIES", 2)

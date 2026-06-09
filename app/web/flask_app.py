@@ -202,6 +202,9 @@ def runs():
         "runs.html",
         data=presenters.runs_view(),
         running=_run_in_progress["value"],
+        access_required=bool(config.ACCESS_CODE),
+        contact=config.ACCESS_CONTACT,
+        error=request.args.get("error"),
     )
 
 
@@ -231,7 +234,12 @@ def data_clear():
 
 @app.route("/run-now", methods=["POST"])
 def run_now():
-    """백그라운드로 run_once() 실행."""
+    """백그라운드로 run_once() 실행. AI API 비용 발생 → 액세스 코드 필요."""
+    if config.ACCESS_CODE:
+        code = (request.form.get("access_code") or "").strip()
+        if code != config.ACCESS_CODE:
+            return redirect(url_for("runs", error="bad_code"))
+
     if not _run_in_progress["value"]:
         with _run_lock:
             if not _run_in_progress["value"]:

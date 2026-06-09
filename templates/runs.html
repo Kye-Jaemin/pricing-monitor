@@ -4,7 +4,10 @@
 <div class="page-head">
   <h1>{{ t('runs.title') }}</h1>
   <div class="actions">
-    <form method="post" action="{{ url_for('run_now') }}">
+    <form method="post" action="{{ url_for('run_now') }}" class="run-form">
+      {% if access_required %}
+      <input type="password" name="access_code" class="access-input" placeholder="{{ t('runs.access_label') }}" autocomplete="off" required>
+      {% endif %}
       <button type="submit" class="btn-primary" {% if running %}disabled{% endif %}>
         {% if running %}{{ t('runs.running') }}{% else %}{{ t('runs.run_now') }}{% endif %}
       </button>
@@ -19,6 +22,12 @@
     </form>
   </div>
 </div>
+{% if error == 'bad_code' %}
+<div class="alert">{{ t('runs.bad_code', contact=contact) }}</div>
+{% endif %}
+{% if access_required %}
+<div class="notice">🔒 {{ t('runs.access_note', contact=contact) }}</div>
+{% endif %}
 {% if running %}
 <p class="muted">{{ t('runs.running_note') }}</p>
 {% endif %}
