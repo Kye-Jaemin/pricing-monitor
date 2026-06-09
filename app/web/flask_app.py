@@ -178,6 +178,15 @@ def runs():
 
 
 # ── 액션 ─────────────────────────────────────────────────────
+@app.route("/runs/delete", methods=["POST"])
+def runs_delete():
+    """수집 실행 기록 1건 삭제."""
+    rid = request.form.get("run_id")
+    if rid and rid.isdigit():
+        store.delete_run_log(int(rid))
+    return redirect(url_for("runs"))
+
+
 @app.route("/runs/clear", methods=["POST"])
 def runs_clear():
     """수집 실행 기록만 삭제(스냅샷·변동 이력 유지)."""

@@ -28,7 +28,7 @@
 {% else %}
 <table class="log-table">
   <thead>
-    <tr><th>{{ t('col.start') }}</th><th>{{ t('col.end') }}</th><th>{{ t('col.company') }}</th><th>{{ t('col.status') }}</th><th>{{ t('col.message') }}</th></tr>
+    <tr><th>{{ t('col.start') }}</th><th>{{ t('col.end') }}</th><th>{{ t('col.company') }}</th><th>{{ t('col.status') }}</th><th>{{ t('col.message') }}</th><th></th></tr>
   </thead>
   <tbody>
     {% for r in data.runs %}
@@ -38,6 +38,13 @@
       <td>{{ r.company or '—' }}</td>
       <td><span class="tag tag-{{ r.status }}">{{ r.status }}</span></td>
       <td class="muted">{{ r.error_message or '' }}</td>
+      <td>
+        <form method="post" action="{{ url_for('runs_delete') }}"
+              onsubmit="return confirm('{{ t('runs.confirm_delete_item') }}');">
+          <input type="hidden" name="run_id" value="{{ r.id }}">
+          <button type="submit" class="btn-danger">{{ t('btn.delete') }}</button>
+        </form>
+      </td>
     </tr>
     {% endfor %}
   </tbody>

@@ -62,6 +62,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "runs.clear_all": "전체 초기화",
         "runs.running_note": "백그라운드에서 수집이 진행 중입니다. 잠시 후 새로고침하세요.",
         "runs.empty": "실행 기록이 없습니다.",
+        "runs.confirm_delete_item": "이 실행 기록을 삭제할까요?",
         "runs.confirm_clear_logs": "수집 실행 기록을 모두 지울까요?\\n(가격 스냅샷·변동 이력은 유지됩니다)",
         "runs.confirm_clear_all": "수집 결과를 전부 초기화할까요?\\n스냅샷·변동·실행기록이 모두 삭제됩니다.\\n(업체/소스 목록은 유지)",
         # companies
@@ -159,6 +160,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "runs.clear_all": "Reset all",
         "runs.running_note": "Collection is running in the background. Refresh in a moment.",
         "runs.empty": "No run history.",
+        "runs.confirm_delete_item": "Delete this run record?",
         "runs.confirm_clear_logs": "Clear all run logs?\\n(Price snapshots and change history are kept.)",
         "runs.confirm_clear_all": "Reset all collected data?\\nSnapshots, changes, and run logs will be deleted.\\n(Company/source list is kept.)",
         # companies

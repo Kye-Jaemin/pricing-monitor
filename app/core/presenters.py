@@ -261,6 +261,7 @@ def runs_view() -> dict:
     rows = store.recent_runs(limit=100)
     items = [
         {
+            "id": r["id"],
             "company": r["company"],
             "run_started_at": r["run_started_at"],
             "run_finished_at": r["run_finished_at"],

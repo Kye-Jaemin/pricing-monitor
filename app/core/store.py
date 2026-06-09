@@ -349,6 +349,12 @@ def recent_runs(limit: int = 100) -> list[sqlite3.Row]:
 
 
 # ── 데이터 삭제 (수집 상태 화면의 옵션) ──────────────────────
+def delete_run_log(run_id: int) -> None:
+    """수집 실행 기록 1건 삭제."""
+    with connect() as conn:
+        conn.execute("DELETE FROM run_logs WHERE id=?", (run_id,))
+
+
 def clear_run_logs() -> None:
     """수집 실행 기록만 비운다(스냅샷·변동 이력은 유지)."""
     with connect() as conn:
