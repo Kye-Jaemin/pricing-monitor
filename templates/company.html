@@ -23,7 +23,10 @@
       {% if s.confidence == 'low' %}<span class="badge badge-low">{{ t('badge.review') }}</span>{% endif %}
       {% if s.currency != 'USD' %}<span class="badge badge-low">{{ s.currency }}</span>{% endif %}
     </h2>
-    <a class="muted" href="{{ s.source_url }}" target="_blank" rel="noopener">{{ t('company.source_link') }}</a>
+    <span class="src-links">
+      <a class="muted" href="{{ s.source_url }}" target="_blank" rel="noopener">{{ t('company.source_link') }}</a>
+      <a class="muted" href="{{ url_for('debug_source', company=data.company, type=s.source_type) }}" target="_blank">{{ t('company.view_text') }}</a>
+    </span>
   </div>
   <p class="muted">{{ t('company.collected_meta', at=s.collected_at, cur=s.currency, conf=s.confidence) }}</p>
   {% if s.free_trial %}<p class="trial-line">🎁 {{ t('company.free_trial') }}: {{ s.free_trial }}</p>{% endif %}

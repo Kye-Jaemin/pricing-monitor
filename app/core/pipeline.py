@@ -180,6 +180,7 @@ def _process_source(
         collected_at=collected_at,
         currency=snapshot.currency,
         raw_text_hash=raw_hash,
+        raw_text=page_text[:50000],  # 디버그용 원문(상한)
         payload_json=snapshot.to_payload_json(),
         confidence=snapshot.extraction_confidence,
     )

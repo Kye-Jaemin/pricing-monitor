@@ -13,6 +13,7 @@ from pathlib import Path
 
 from flask import (
     Flask,
+    Response,
     jsonify,
     make_response,
     redirect,
@@ -272,6 +273,46 @@ def api_history(name: str):
     if data is None:
         return jsonify({"error": "not found"}), 404
     return jsonify(data)
+
+
+@app.route("/debug/source")
+def debug_source():
+    """소스가 실제로 수집한 원문 텍스트를 보여준다(진단용).
+
+    /debug/source?company=<업체>&type=<web|google_search|apple|google_play>
+    저장된 마지막 수집 원문이 있으면 그걸, 없으면 즉석으로 가져와 보여준다.
+    """
+    from ..core import fetch
+    from ..core.extract import _clean_page_text
+
+    company = (request.args.get("company") or "").strip()
+    stype = (request.args.get("type") or "google_search").strip()
+    srcs = store.list_sources(company=company, active_only=False)
+    src = next((s for s in srcs if s["source_type"] == stype), None)
+    if not src:
+        return Response(
+            f"source not found: company={company!r} type={stype!r}",
+            mimetype="text/plain; charset=utf-8",
+            status=404,
+        )
+
+    url = fetch.normalize_us_url(stype, src["url"])
+    row = store.latest_snapshot_row(company, url)
+    stored = (
+        row["raw_text"] if row and "raw_text" in row.keys() and row["raw_text"] else None
+    )
+    if stored:
+        body = (
+            f"[저장된 마지막 수집 원문]\nURL: {url}\n"
+            f"신뢰도: {row['confidence']}\n\n{_clean_page_text(stored)}"
+        )
+    else:
+        try:
+            text = fetch.fetch_page_text(url)
+            body = f"[즉석 수집]\nURL: {url}\n\n{_clean_page_text(text)}"
+        except Exception as exc:  # noqa: BLE001
+            body = f"[즉석 수집 실패]\nURL: {url}\n\n{exc}"
+    return Response(body[:40000], mimetype="text/plain; charset=utf-8")
 
 
 @app.route("/healthz")

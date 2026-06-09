@@ -70,6 +70,7 @@ code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; font-size: .9e
 .badge-trial { background: #fae8ff; color: #86198f; }
 
 .trial-line { margin: 2px 0 10px; font-size: .9rem; color: #6b21a8; }
+.src-links { display: inline-flex; gap: 12px; }
 .tag-free-mini { background: #dcfce7; color: #166534; font-size: .68rem; padding: 1px 6px; }
 
 .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }

@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS snapshots (
     collected_at   TEXT NOT NULL,
     currency       TEXT NOT NULL,
     raw_text_hash  TEXT NOT NULL,
+    raw_text       TEXT,
     payload_json   TEXT NOT NULL,
     confidence     TEXT NOT NULL
 );
@@ -109,6 +110,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
     # companies.icon_url 컬럼 보강
     if "icon_url" not in _columns(conn, "companies"):
         conn.execute("ALTER TABLE companies ADD COLUMN icon_url TEXT")
+    # snapshots.raw_text 컬럼 보강(디버그용 원문)
+    if "raw_text" not in _columns(conn, "snapshots"):
+        conn.execute("ALTER TABLE snapshots ADD COLUMN raw_text TEXT")
     # 구버전 companies(homepage/pricing_url) → company_sources 로 1회 이전
     ccols = _columns(conn, "companies")
     if "pricing_url" in ccols:
@@ -227,15 +231,16 @@ def insert_snapshot(
     raw_text_hash: str,
     payload_json: str,
     confidence: str,
+    raw_text: Optional[str] = None,
 ) -> int:
     with connect() as conn:
         cur = conn.execute(
             """INSERT INTO snapshots
                (company, source_url, source_type, collected_at, currency,
-                raw_text_hash, payload_json, confidence)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                raw_text_hash, raw_text, payload_json, confidence)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (company, source_url, source_type, collected_at, currency,
-             raw_text_hash, payload_json, confidence),
+             raw_text_hash, raw_text, payload_json, confidence),
         )
         return cur.lastrowid
 
