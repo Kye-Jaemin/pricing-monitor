@@ -45,8 +45,10 @@ SOURCE_HINTS = {
         "shows one (e.g. 'Premium', 'Pro'); otherwise name it by billing period "
         "('Monthly', 'Annual') or 'Subscription'. Put the exact snippet wording in "
         "price_note. Put monthly amounts in monthly_price; for a yearly amount, set "
-        "annual_price_per_month to (yearly / 12). Also capture any free tier or free "
-        "trial mentioned. Set extraction_confidence to medium when you found prices. "
+        "annual_price_per_month to (yearly / 12). For each paid tier, also list the "
+        "key features included (from the snippets/AI overview) in the features array, "
+        "not just the price. Capture any free tier or free trial mentioned. "
+        "Set extraction_confidence to medium when you found prices. "
         "Return an empty tiers list (confidence low) ONLY if no price appears "
         "anywhere in the results.\n"
     ),

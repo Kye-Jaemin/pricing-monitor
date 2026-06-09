@@ -128,6 +128,11 @@ def overview() -> dict:
 
     icon_map = {c["name"]: c["icon_url"] for c in store.list_companies(active_only=False)}
 
+    # 설정된 소스 전체(스냅샷이 없어도) — 미수집 소스를 현황에 표시하기 위함
+    sources_by_company: dict[str, list] = {}
+    for s in store.list_sources(active_only=True):
+        sources_by_company.setdefault(s["company_name"], []).append(s)
+
     def _tier_dicts(snap):
         return [
             {
@@ -158,10 +163,12 @@ def overview() -> dict:
         # 비대표 소스도 현황에 함께 노출(티어가 비어도 표시 — 구글 검색 등 누락 방지)
         extra_sources = []
         free_trial = snap.free_trial
+        snap_types = {r["source_type"] for r in srows}
         for r in others:
             osnap = PricingSnapshot.from_payload_json(r["payload_json"])
             if not free_trial and osnap.free_trial:
                 free_trial = osnap.free_trial
+            tiers = _tier_dicts(osnap)
             extra_sources.append(
                 {
                     "source_type": r["source_type"],
@@ -169,9 +176,27 @@ def overview() -> dict:
                     "source_url": r["source_url"],
                     "confidence": r["confidence"],
                     "currency": osnap.currency,
-                    "tiers": _tier_dicts(osnap),
+                    "status": "ok" if tiers else "empty",
+                    "tiers": tiers,
                 }
             )
+
+        # 설정돼 있으나 아직 스냅샷이 없는 소스 → '미수집'으로 표시
+        for cfg in sources_by_company.get(company_name, []):
+            if cfg["source_type"] not in snap_types:
+                extra_sources.append(
+                    {
+                        "source_type": cfg["source_type"],
+                        "source_label": _src_label(cfg["source_type"]),
+                        "source_url": cfg["url"],
+                        "confidence": None,
+                        "currency": None,
+                        "status": "uncollected",
+                        "tiers": [],
+                    }
+                )
+
+        extra_sources.sort(key=lambda e: SOURCE_PRIORITY.get(e["source_type"], 9))
 
         has_free_tier = any(t["is_free"] for t in primary_tiers) or any(
             t["is_free"] for es in extra_sources for t in es["tiers"]
