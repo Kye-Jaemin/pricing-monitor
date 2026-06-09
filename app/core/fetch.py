@@ -87,13 +87,21 @@ def fetch_page_text(url: str) -> str:
                 )
                 page = context.new_page()
                 try:
+                    # domcontentloaded 로 기본 로드를 끝낸다.
+                    # (networkidle 은 분석/폴링 스크립트가 계속 도는 사이트·구글 검색에서
+                    #  영영 끝나지 않아 매번 풀타임아웃을 소모하므로 사용하지 않는다.)
                     page.goto(
                         url,
-                        wait_until="networkidle",
+                        wait_until="domcontentloaded",
                         timeout=config.FETCH_TIMEOUT_MS,
                     )
-                    # 동적 가격 위젯이 채워질 여유
-                    page.wait_for_timeout(1500)
+                    # 동적 가격 위젯이 채워질 시간을 best-effort 로만 기다린다
+                    # (networkidle 에 도달 못 해도 예외 없이 넘어간다).
+                    try:
+                        page.wait_for_load_state("networkidle", timeout=5000)
+                    except PWTimeout:
+                        pass
+                    page.wait_for_timeout(2000)
                     text = page.evaluate("() => document.body.innerText")
                 finally:
                     context.close()

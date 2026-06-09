@@ -58,8 +58,8 @@ ACCEPT_LANGUAGE: str = _get("ACCEPT_LANGUAGE", "en-US,en;q=0.9")
 PORT: int = _get_int("PORT", 8000)
 
 # ── Fetch 동작 ───────────────────────────────────────────────
-FETCH_TIMEOUT_MS: int = _get_int("FETCH_TIMEOUT_MS", 45000)
-FETCH_MAX_RETRIES: int = _get_int("FETCH_MAX_RETRIES", 3)
+FETCH_TIMEOUT_MS: int = _get_int("FETCH_TIMEOUT_MS", 25000)
+FETCH_MAX_RETRIES: int = _get_int("FETCH_MAX_RETRIES", 2)
 
 
 def ensure_db_dir() -> str:

@@ -32,13 +32,21 @@ def _src_label(source_type: str) -> str:
 def _pick_primary(rows: list) -> object:
     """우선순위 기반 대표 출처 선정.
 
-    USD + 신뢰도 low 아님(=usable)을 먼저 고른 뒤, 그중 우선순위가 가장 높은
-    출처를 대표로 한다. usable 한 것이 없으면 우선순위만으로 고른다.
+    선정 순서(작을수록 우선):
+      1) 실제 티어 데이터가 있는 소스 (빈 결과보다 우선)
+      2) USD + 신뢰도 low 아님(=usable)
+      3) 소스 우선순위 (공식 홈페이지 > 구글 검색 > App Store > Play Store)
+    → 공식 홈페이지가 비었거나 실패하면, 데이터가 있는 구글 검색 결과가 대표가 된다.
     """
     def key(r):
         snap = PricingSnapshot.from_payload_json(r["payload_json"])
+        has_tiers = len(snap.tiers) > 0
         usable = snap.currency.upper() == "USD" and r["confidence"] != "low"
-        return (0 if usable else 1, SOURCE_PRIORITY.get(r["source_type"], 9))
+        return (
+            0 if has_tiers else 1,
+            0 if usable else 1,
+            SOURCE_PRIORITY.get(r["source_type"], 9),
+        )
 
     return sorted(rows, key=key)[0]
 
