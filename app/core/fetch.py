@@ -6,7 +6,7 @@ JS 렌더링 후 본문 텍스트를 확보한다. 사이트별 전용 파서는
 from __future__ import annotations
 
 import time
-from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+from urllib.parse import parse_qs, parse_qsl, urlencode, urlparse, urlunparse
 
 from .. import config
 
@@ -33,6 +33,54 @@ def build_google_search_url(company: str) -> str:
         f"in each paid tier, plus free trial"
     )
     return f"https://www.google.com/search?q={q}&hl=en&gl=us"
+
+
+def fetch_google_via_serpapi(url: str) -> str:
+    """구글 검색을 SerpAPI로 가져온다(헤드리스 봇 차단 회피).
+
+    URL 의 q 파라미터로 검색하고, answer_box / ai_overview / 상위 오가닉 스니펫을
+    합쳐 텍스트로 돌려준다. config.SERPAPI_KEY 필요.
+    """
+    import json
+    import urllib.request
+
+    if not config.SERPAPI_KEY:
+        raise FetchError("SERPAPI_KEY 미설정")
+
+    q = parse_qs(urlparse(url).query).get("q", [""])[0]
+    if not q:
+        raise FetchError(f"검색어(q) 없음: {url}")
+
+    params = urlencode(
+        {"engine": "google", "q": q, "hl": "en", "gl": "us",
+         "api_key": config.SERPAPI_KEY}
+    )
+    api = f"https://serpapi.com/search.json?{params}"
+    try:
+        req = urllib.request.Request(api, headers={"User-Agent": USER_AGENT})
+        with urllib.request.urlopen(req, timeout=25) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except Exception as exc:  # noqa: BLE001
+        raise FetchError(f"SerpAPI 요청 실패: {exc}") from exc
+
+    if data.get("error"):
+        raise FetchError(f"SerpAPI 오류: {data['error']}")
+
+    parts: list[str] = []
+    if data.get("answer_box"):
+        parts.append("ANSWER BOX:\n" + json.dumps(data["answer_box"], ensure_ascii=False))
+    if data.get("ai_overview"):
+        parts.append("AI OVERVIEW:\n" + json.dumps(data["ai_overview"], ensure_ascii=False))
+    for o in (data.get("organic_results") or [])[:10]:
+        title = o.get("title", "")
+        snippet = o.get("snippet", "")
+        if title or snippet:
+            parts.append(f"{title}\n{snippet}")
+
+    text = "\n\n".join(parts).strip()
+    if not text:
+        raise FetchError("SerpAPI 결과가 비어 있음")
+    return text
 
 
 def normalize_us_url(source_type: str, url: str) -> str:

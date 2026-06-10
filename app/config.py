@@ -62,6 +62,10 @@ PORT: int = _get_int("PORT", 8000)
 ACCESS_CODE: str = _get("ACCESS_CODE", "3537")
 ACCESS_CONTACT: str = _get("ACCESS_CONTACT", "jaemin.kye@samsung.com")
 
+# ── SerpAPI (구글 검색 봇차단 우회) ──────────────────────────
+# 설정 시 google_search 소스를 SerpAPI로 가져온다(헤드리스 차단 회피). 빈 값이면 비활성.
+SERPAPI_KEY: str = _get("SERPAPI_KEY", "")
+
 # ── Fetch 동작 ───────────────────────────────────────────────
 FETCH_TIMEOUT_MS: int = _get_int("FETCH_TIMEOUT_MS", 25000)
 FETCH_MAX_RETRIES: int = _get_int("FETCH_MAX_RETRIES", 2)

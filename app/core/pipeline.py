@@ -120,7 +120,11 @@ def _process_source(
     label = SOURCE_TYPE_LABELS.get(source_type, source_type)
 
     # b. 페이지 렌더링 → 본문 텍스트
-    page_text = fetch.fetch_page_text(source_url)
+    #    구글 검색은 헤드리스 봇 차단이 심해, SerpAPI 키가 있으면 그걸로 가져온다.
+    if source_type == "google_search" and config.SERPAPI_KEY:
+        page_text = fetch.fetch_google_via_serpapi(source_url)
+    else:
+        page_text = fetch.fetch_page_text(source_url)
 
     # c. raw_text_hash — 직전과 동일하면 추출 스킵 (소스별)
     #    단, 직전 결과가 비었거나 신뢰도 low 면 본문이 같아도 재추출한다
