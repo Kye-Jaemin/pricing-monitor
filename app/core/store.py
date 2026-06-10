@@ -213,6 +213,19 @@ def delete_source(source_id: int) -> None:
         conn.execute("DELETE FROM company_sources WHERE id=?", (source_id,))
 
 
+def delete_source_data(company: str, source_type: str) -> None:
+    """업체의 특정 출처 삭제: 해당 출처의 스냅샷 + 소스 설정 제거."""
+    with connect() as conn:
+        conn.execute(
+            "DELETE FROM snapshots WHERE company=? AND source_type=?",
+            (company, source_type),
+        )
+        conn.execute(
+            "DELETE FROM company_sources WHERE company_name=? AND source_type=?",
+            (company, source_type),
+        )
+
+
 # ── snapshots (소스별) ───────────────────────────────────────
 def latest_snapshot_row(company: str, source_url: str) -> Optional[sqlite3.Row]:
     with connect() as conn:

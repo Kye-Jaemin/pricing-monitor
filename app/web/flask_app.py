@@ -205,6 +205,16 @@ def sources_delete():
     return redirect(url_for("companies_page"))
 
 
+@app.route("/source/delete", methods=["POST"])
+def source_delete():
+    """현황 등에서 업체의 특정 출처(소스 타입)와 데이터를 삭제."""
+    company = (request.form.get("company") or "").strip()
+    stype = (request.form.get("source_type") or "").strip()
+    if company and stype:
+        store.delete_source_data(company, stype)
+    return redirect(request.referrer or url_for("index"))
+
+
 @app.route("/runs")
 def runs():
     return render_template(

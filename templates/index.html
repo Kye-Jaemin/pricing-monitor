@@ -37,6 +37,12 @@
   <p class="source-line">
     {{ t('overview.source') }} <a href="{{ c.primary_source_url }}" target="_blank" rel="noopener"><span class="tag tag-src-{{ c.primary_source_type }}">{{ c.primary_source_label }}</span></a>
     <span class="muted">{{ t('overview.primary_tag') }}</span>
+    <form class="inline-del" method="post" action="{{ url_for('source_delete') }}"
+          onsubmit="return confirm('{{ t('overview.confirm_delete_source', company=c.company, source=c.primary_source_label) }}');">
+      <input type="hidden" name="company" value="{{ c.company }}">
+      <input type="hidden" name="source_type" value="{{ c.primary_source_type }}">
+      <button type="submit" class="btn-x" title="{{ t('overview.delete_source') }}">✕</button>
+    </form>
     {% if c.other_sources %}<span class="muted">· {{ t('overview.other_sources') }}: {{ c.other_sources|join(', ') }}</span>{% endif %}
   </p>
   {% if c.free_trial %}<p class="trial-line">🎁 {{ t('overview.free_trial') }}: {{ c.free_trial }}</p>{% endif %}
@@ -87,6 +93,12 @@
     <p class="muted">{{ t('overview.no_tiers_detail') }}
       <a href="{{ es.source_url }}" target="_blank" rel="noopener">{{ t('overview.open_source') }}</a></p>
     {% endif %}
+    <form class="src-del" method="post" action="{{ url_for('source_delete') }}"
+          onsubmit="return confirm('{{ t('overview.confirm_delete_source', company=c.company, source=es.source_label) }}');">
+      <input type="hidden" name="company" value="{{ c.company }}">
+      <input type="hidden" name="source_type" value="{{ es.source_type }}">
+      <button type="submit" class="btn-danger btn-sm">{{ t('overview.delete_source') }}</button>
+    </form>
   </details>
   {% endfor %}
 </section>

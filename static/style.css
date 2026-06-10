@@ -87,6 +87,13 @@ code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; font-size: .9e
 
 .source-line { margin: 0 0 10px; font-size: .9rem; }
 .source-line .tag { vertical-align: middle; }
+.inline-del { display: inline; }
+.btn-x {
+  border: none; background: transparent; color: #b91c1c; cursor: pointer;
+  font-size: .85rem; padding: 0 4px; line-height: 1;
+}
+.btn-x:hover { color: #7f1d1d; }
+.src-del { margin-top: 8px; }
 
 /* 기능 비교표 */
 .matrix-wrap { overflow-x: auto; margin: 8px 0 16px; }
