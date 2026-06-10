@@ -97,6 +97,20 @@ code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; font-size: .9e
 .btn-x:hover { color: #7f1d1d; }
 .src-del { margin-top: 8px; }
 
+/* 접이식 카드 공통 */
+details.card > summary { cursor: pointer; list-style: revert; }
+details.card > summary h2 { display: inline; }
+details.card > summary:hover { color: var(--accent); }
+
+/* 현황 업체 접이식 카드 */
+.company-summary {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 1.1rem; font-weight: 700;
+}
+.company-summary .cc-name { font-weight: 700; }
+.company-summary .cc-when { margin-left: auto; font-weight: 400; }
+.cc-actions { display: flex; gap: 8px; align-items: center; margin: 10px 0; }
+
 .priority-config > summary { cursor: pointer; font-weight: 600; }
 .priority-list { margin: 10px 0 0; padding-left: 22px; }
 .priority-list li { display: flex; align-items: center; gap: 8px; margin: 6px 0; }

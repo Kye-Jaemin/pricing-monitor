@@ -43,8 +43,8 @@
   <canvas id="scatter" height="120"></canvas>
 </section>
 
-<section class="card">
-  <h2>{{ t('compare.per_company_title') }}</h2>
+<details class="card">
+  <summary><h2>{{ t('compare.per_company_title') }}</h2></summary>
   <div class="cmp-grid">
     {% for pc in data.per_company %}
     <div class="cmp-col">
@@ -66,10 +66,10 @@
     </div>
     {% endfor %}
   </div>
-</section>
+</details>
 
-<section class="card">
-  <h2>{{ t('compare.value_title') }}</h2>
+<details class="card">
+  <summary><h2>{{ t('compare.value_title') }}</h2></summary>
   <p class="muted">{{ t('compare.value_help') }}</p>
   {% set maxscore = data.ranking[0].score if data.ranking and data.ranking[0].score > 0 else 1 %}
   {% for r in data.ranking %}
@@ -79,10 +79,10 @@
     <span class="value-score">{{ r.score }}</span>
   </div>
   {% endfor %}
-</section>
+</details>
 
-<section class="card">
-  <h2>{{ t('compare.matrix_title') }}</h2>
+<details class="card">
+  <summary><h2>{{ t('compare.matrix_title') }}</h2></summary>
   <div class="matrix-wrap">
     <table class="matrix">
       <thead>
@@ -100,13 +100,13 @@
       </tbody>
     </table>
   </div>
-</section>
+</details>
 
 <datalist id="catlist">
   {% for row in data.matrix %}<option value="{{ row.category }}">{% endfor %}
 </datalist>
-<section class="card">
-  <h2>{{ t('compare.edit_title') }}</h2>
+<details class="card">
+  <summary><h2>{{ t('compare.edit_title') }}</h2></summary>
   <table class="log-table">
     <thead><tr><th>{{ t('compare.feature') }}</th><th>{{ t('compare.category') }}</th><th></th></tr></thead>
     <tbody>
@@ -125,7 +125,7 @@
       {% endfor %}
     </tbody>
   </table>
-</section>
+</details>
 {% endif %}
 {% endblock %}
 

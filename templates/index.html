@@ -6,28 +6,6 @@
   <span class="muted">{{ t('overview.week_changes', n=data.total_recent_changes) }}</span>
 </div>
 
-<details class="card priority-config">
-  <summary>⚙️ {{ t('overview.priority_title') }}</summary>
-  <p class="muted">{{ t('overview.priority_help') }}</p>
-  <ol class="priority-list">
-    {% for p in data.priority %}
-    <li>
-      <span class="tag tag-src-{{ p.type }}">{{ p.label }}</span>
-      <form class="inline-del" method="post" action="{{ url_for('priority_move') }}">
-        <input type="hidden" name="type" value="{{ p.type }}">
-        <input type="hidden" name="dir" value="up">
-        <button type="submit" class="btn-x" {% if loop.first %}disabled{% endif %}>▲</button>
-      </form>
-      <form class="inline-del" method="post" action="{{ url_for('priority_move') }}">
-        <input type="hidden" name="type" value="{{ p.type }}">
-        <input type="hidden" name="dir" value="down">
-        <button type="submit" class="btn-x" {% if loop.last %}disabled{% endif %}>▼</button>
-      </form>
-    </li>
-    {% endfor %}
-  </ol>
-</details>
-
 {% if not data.companies %}
   <div class="empty">
     <p>{{ t('overview.empty.title') }}</p>
@@ -36,27 +14,27 @@
 {% endif %}
 
 {% for c in data.companies %}
-<section class="card">
-  <div class="card-head">
-    <h2>
-      {% if c.icon %}<img class="company-icon" src="{{ c.icon }}" alt="" onerror="this.style.display='none'">{% endif %}
-      {{ c.company }}
-      {% if c.recent_changes %}<span class="badge badge-change">{{ t('badge.changes') }} {{ c.recent_changes }}</span>{% endif %}
-      {% if c.has_free_tier %}<span class="badge badge-free">{{ t('badge.free_tier') }}</span>{% endif %}
-      {% if c.free_trial %}<span class="badge badge-trial">{{ t('badge.free_trial') }}</span>{% endif %}
-      {% if c.confidence == 'low' %}<span class="badge badge-low">{{ t('badge.review') }}</span>{% endif %}
-      {% if c.currency != 'USD' %}<span class="badge badge-low">{{ c.currency }}</span>{% endif %}
-    </h2>
-    <div class="card-head-right">
-      <span class="muted">{{ c.collected_at }}</span>
-      <a href="{{ url_for('company', name=c.company) }}" class="btn-primary btn-sm">{{ t('overview.detail') }}</a>
-      <form method="post" action="{{ url_for('companies_delete') }}"
-            onsubmit="return confirm('{{ t('companies.confirm_delete_company', name=c.company) }}');">
-        <input type="hidden" name="name" value="{{ c.company }}">
-        <button type="submit" class="btn-danger btn-sm">{{ t('btn.delete') }}</button>
-      </form>
-    </div>
+<details class="card company-card">
+  <summary class="company-summary">
+    {% if c.icon %}<img class="company-icon" src="{{ c.icon }}" alt="" onerror="this.style.display='none'">{% endif %}
+    <span class="cc-name">{{ c.company }}</span>
+    {% if c.recent_changes %}<span class="badge badge-change">{{ t('badge.changes') }} {{ c.recent_changes }}</span>{% endif %}
+    {% if c.has_free_tier %}<span class="badge badge-free">{{ t('badge.free_tier') }}</span>{% endif %}
+    {% if c.free_trial %}<span class="badge badge-trial">{{ t('badge.free_trial') }}</span>{% endif %}
+    {% if c.confidence == 'low' %}<span class="badge badge-low">{{ t('badge.review') }}</span>{% endif %}
+    {% if c.currency != 'USD' %}<span class="badge badge-low">{{ c.currency }}</span>{% endif %}
+    <span class="muted cc-when">{{ c.collected_at }}</span>
+  </summary>
+
+  <div class="cc-actions">
+    <a href="{{ url_for('company', name=c.company) }}" class="btn-primary btn-sm">{{ t('overview.detail') }}</a>
+    <form method="post" action="{{ url_for('companies_delete') }}"
+          onsubmit="return confirm('{{ t('companies.confirm_delete_company', name=c.company) }}');">
+      <input type="hidden" name="name" value="{{ c.company }}">
+      <button type="submit" class="btn-danger btn-sm">{{ t('btn.delete') }}</button>
+    </form>
   </div>
+
   <p class="source-line">
     {{ t('overview.source') }} <a href="{{ c.primary_source_url }}" target="_blank" rel="noopener"><span class="tag tag-src-{{ c.primary_source_type }}">{{ c.primary_source_label }}</span></a>
     <span class="muted">{{ t('overview.primary_tag') }}</span>
@@ -136,6 +114,6 @@
     </form>
   </details>
   {% endfor %}
-</section>
+</details>
 {% endfor %}
 {% endblock %}
