@@ -430,66 +430,97 @@ def companies_admin() -> dict:
     return {"companies": companies}
 
 
-# ── 업체간 비교 (/compare) ───────────────────────────────────
-def compare(names: list[str]) -> dict:
-    """선택 업체들의 가격 산점도 + 유료 기능 카테고리 매트릭스 + 값어치 점수."""
+def _effective_category(feature: str, cat_map: dict[str, str]) -> str:
+    """기능의 카테고리: 저장된 매핑(AI/사용자) 우선, 없으면 키워드 휴리스틱."""
     from . import compare as cmp
 
-    chosen = []
-    scatter = []  # Chart.js scatter datasets
-    matrix: dict[str, dict[str, int]] = {c: {} for c in cmp.CATEGORIES}
-    features_map: dict[str, dict[str, list[str]]] = {}  # company -> cat -> [features]
-    scores: dict[str, int] = {}
+    if feature in cat_map:
+        return cat_map[feature]
+    return cmp.categorize_feature(feature)[0]
 
-    icon_map = {c["name"]: c["icon_url"] for c in store.list_companies(active_only=False)}
 
-    for name in names:
-        rows = store.latest_snapshots_for_company(name)
-        if not rows:
-            continue
-
-        # 모든 소스의 가격/기능을 합쳐 비교(가장 풍부한 그림)
-        pts = []
-        feats: list[str] = []
-        seen_pts = set()
-        for row in rows:
-            snap = PricingSnapshot.from_payload_json(row["payload_json"])
-            for t in snap.tiers:
-                m, a = t.monthly_price, t.annual_price_per_month
-                if m is None and a is None:
-                    continue  # 가격 없는 티어(Enterprise 등)는 산점도 제외
-                # x=월 결제 가격, y=연 결제 시 월가격. 한쪽만 있으면 그 값으로.
+def _company_paid_data(name: str):
+    """업체의 (산점도 점들, 유료 기능 목록, 최저 유료 월가격)."""
+    rows = store.latest_snapshots_for_company(name)
+    pts, feats, seen = [], [], set()
+    cheapest = None
+    for row in rows:
+        snap = PricingSnapshot.from_payload_json(row["payload_json"])
+        for t in snap.tiers:
+            m, a = t.monthly_price, t.annual_price_per_month
+            if m is not None or a is not None:
                 x = m if m is not None else a
                 y = a if a is not None else m
                 key = (x, y, t.name)
-                if key not in seen_pts:
-                    seen_pts.add(key)
+                if key not in seen:
+                    seen.add(key)
                     pts.append({"x": x, "y": y, "tier": t.name})
-                is_free = (t.monthly_price == 0) or ("free" in t.name.lower()) or ("무료" in t.name)
-                if not is_free:
-                    for f in t.features:
-                        if f not in feats:
-                            feats.append(f)
+            is_free = (m == 0) or ("free" in t.name.lower()) or ("무료" in t.name)
+            if not is_free:
+                eff = a if a is not None else m
+                if eff is not None and eff > 0:
+                    cheapest = eff if cheapest is None else min(cheapest, eff)
+                for f in t.features:
+                    if f not in feats:
+                        feats.append(f)
+    return pts, feats, cheapest
+
+
+# ── 업체간 비교 (/compare) ───────────────────────────────────
+def compare(names: list[str]) -> dict:
+    """선택 업체 비교: 가격 산점도 + 업체별(카테고리·기능·월가격) + 카테고리 매트릭스.
+
+    카테고리는 저장된 동적 매핑(AI/사용자)을 우선 사용하고, 없으면 키워드 추정.
+    """
+    from . import compare as cmp
+
+    cat_map = store.get_feature_categories()
+    icon_map = {c["name"]: c["icon_url"] for c in store.list_companies(active_only=False)}
+
+    chosen = []
+    scatter = []
+    per_company = []          # 업체별 카테고리·기능·월가격
+    matrix: dict[str, dict[str, int]] = {}
+    scores: dict[str, int] = {}
+    all_features: set[str] = set()
+
+    for name in names:
+        if not store.latest_snapshots_for_company(name):
+            continue
+        pts, feats, cheapest = _company_paid_data(name)
         scatter.append({"label": name, "data": pts})
 
         cat_feats: dict[str, list[str]] = {}
-        score = 0
         for f in feats:
-            for c in cmp.categorize_feature(f):
-                cat_feats.setdefault(c, []).append(f)
-                score += cmp.WEIGHTS.get(c, cmp.DEFAULT_WEIGHT)
-        for c, fs in cat_feats.items():
-            matrix[c][name] = len(fs)
-        features_map[name] = cat_feats
-        scores[name] = score
+            c = _effective_category(f, cat_map)
+            cat_feats.setdefault(c, []).append(f)
+            matrix.setdefault(c, {})[name] = matrix.get(c, {}).get(name, 0) + 1
+            all_features.add(f)
+
+        per_company.append(
+            {
+                "company": name,
+                "icon": _company_icon(icon_map.get(name), []),
+                "monthly_price": cheapest,
+                "categories": [
+                    {"category": c, "features": fs}
+                    for c, fs in sorted(cat_feats.items())
+                ],
+            }
+        )
+        scores[name] = sum(
+            cmp.WEIGHTS.get(c, cmp.DEFAULT_WEIGHT) * len(fs)
+            for c, fs in cat_feats.items()
+        )
         chosen.append(name)
 
-    # 사용된 카테고리만(빈 행 제거), 가중치 높은 순
-    used_cats = [c for c in cmp.CATEGORIES if any(matrix[c].get(n) for n in chosen)]
+    used_cats = sorted(
+        matrix.keys(),
+        key=lambda c: (-cmp.WEIGHTS.get(c, cmp.DEFAULT_WEIGHT), c),
+    )
     matrix_rows = [
         {
             "category": c,
-            "weight": cmp.WEIGHTS.get(c, cmp.DEFAULT_WEIGHT),
             "counts": {n: matrix[c].get(n, 0) for n in chosen},
         }
         for c in used_cats
@@ -500,14 +531,32 @@ def compare(names: list[str]) -> dict:
         key=lambda x: x["score"],
         reverse=True,
     )
+    editable = [
+        {"feature": f, "category": _effective_category(f, cat_map),
+         "assigned": f in cat_map}
+        for f in sorted(all_features)
+    ]
 
     return {
         "companies": chosen,
         "scatter": {"datasets": scatter},
+        "per_company": per_company,
         "matrix": matrix_rows,
         "ranking": ranking,
+        "editable": editable,
         "all_companies": sorted(c["name"] for c in store.list_companies(active_only=True)),
     }
+
+
+def distinct_paid_features(names: list[str]) -> list[str]:
+    """선택 업체들의 유료 기능 합집합(AI 카테고리 분류용)."""
+    out: list[str] = []
+    for name in names:
+        _, feats, _ = _company_paid_data(name)
+        for f in feats:
+            if f not in out:
+                out.append(f)
+    return out
 
 
 # ── 내부 API 용 ──────────────────────────────────────────────

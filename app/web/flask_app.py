@@ -109,10 +109,62 @@ def howto():
     return render_template("howto.html")
 
 
+def _compare_url(names, **extra):
+    from urllib.parse import urlencode
+
+    q = [("company", n) for n in names]
+    q += [(k, v) for k, v in extra.items()]
+    return url_for("compare_page") + (("?" + urlencode(q)) if q else "")
+
+
 @app.route("/compare")
 def compare_page():
     names = [n for n in request.args.getlist("company") if n]
-    return render_template("compare.html", data=presenters.compare(names))
+    return render_template(
+        "compare.html",
+        data=presenters.compare(names),
+        access_required=bool(config.ACCESS_CODE),
+        contact=config.ACCESS_CONTACT,
+        error=request.args.get("error"),
+    )
+
+
+@app.route("/compare/categorize", methods=["POST"])
+def compare_categorize():
+    """선택 업체 유료 기능을 AI로 동적 카테고리 분류(사용자 지정은 보존). AI 작업→코드 필요."""
+    names = [n for n in request.form.getlist("company") if n]
+    if config.ACCESS_CODE and (request.form.get("access_code") or "").strip() != config.ACCESS_CODE:
+        return redirect(_compare_url(names, error="bad_code"))
+
+    feats = presenters.distinct_paid_features(names)
+    if not feats:
+        return redirect(_compare_url(names, error="no_features"))
+    try:
+        from ..core import extract
+
+        mapping = extract.categorize_features_ai(feats)
+    except Exception:  # noqa: BLE001
+        log.exception("[compare] AI 카테고리 분류 실패")
+        return redirect(_compare_url(names, error="ai_failed"))
+
+    existing = store.get_feature_category_rows()
+    for feature, category in mapping.items():
+        # 사용자가 직접 지정한 항목은 덮어쓰지 않음
+        if existing.get(feature, (None, "ai"))[1] == "user":
+            continue
+        store.set_feature_category(feature, category, source="ai")
+    return redirect(_compare_url(names))
+
+
+@app.route("/compare/set-category", methods=["POST"])
+def compare_set_category():
+    """기능의 카테고리를 사용자가 직접 지정/추가."""
+    names = [n for n in request.form.getlist("company") if n]
+    feature = (request.form.get("feature") or "").strip()
+    category = (request.form.get("category") or "").strip()
+    if feature and category:
+        store.set_feature_category(feature, category, source="user")
+    return redirect(_compare_url(names))
 
 
 @app.route("/companies")

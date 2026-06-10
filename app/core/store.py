@@ -68,6 +68,12 @@ CREATE TABLE IF NOT EXISTS settings (
     value  TEXT
 );
 
+CREATE TABLE IF NOT EXISTS feature_categories (
+    feature   TEXT PRIMARY KEY,
+    category  TEXT NOT NULL,
+    source    TEXT NOT NULL DEFAULT 'ai'   -- ai | user
+);
+
 CREATE TABLE IF NOT EXISTS run_logs (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     run_started_at   TEXT NOT NULL,
@@ -407,6 +413,37 @@ def set_setting(key: str, value: str) -> None:
             """INSERT INTO settings (key, value) VALUES (?, ?)
                ON CONFLICT(key) DO UPDATE SET value=excluded.value""",
             (key, value),
+        )
+
+
+# ── feature_categories (기능→카테고리 매핑) ──────────────────
+def get_feature_categories() -> dict[str, str]:
+    with connect() as conn:
+        return {
+            r["feature"]: r["category"]
+            for r in conn.execute("SELECT feature, category FROM feature_categories")
+        }
+
+
+def get_feature_category_rows() -> dict[str, tuple]:
+    """feature -> (category, source)."""
+    with connect() as conn:
+        return {
+            r["feature"]: (r["category"], r["source"])
+            for r in conn.execute(
+                "SELECT feature, category, source FROM feature_categories"
+            )
+        }
+
+
+def set_feature_category(feature: str, category: str, source: str = "user") -> None:
+    with connect() as conn:
+        conn.execute(
+            """INSERT INTO feature_categories (feature, category, source)
+               VALUES (?, ?, ?)
+               ON CONFLICT(feature) DO UPDATE SET
+                   category=excluded.category, source=excluded.source""",
+            (feature, category, source),
         )
 
 

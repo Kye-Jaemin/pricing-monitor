@@ -104,6 +104,46 @@ def _strip_code_fences(text: str) -> str:
     return text
 
 
+def categorize_features_ai(features: list[str]) -> dict:
+    """기능 목록을 보고 해당 서비스에 맞는 카테고리를 동적으로 생성·할당한다.
+
+    반환: {기능 문자열: 카테고리명}. JSON 파싱 실패 시 ExtractError.
+    """
+    if not config.ANTHROPIC_API_KEY:
+        raise ExtractError("ANTHROPIC_API_KEY 가 설정되지 않았습니다 (.env 확인).")
+    if not features:
+        return {}
+
+    from anthropic import Anthropic
+
+    client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
+    feat_list = "\n".join(f"- {f}" for f in features)
+    prompt = (
+        "You are organizing subscription product features into categories. "
+        "Look at the actual features below and invent a small set (about 4-10) of "
+        "clear, descriptive category names that fit THESE services (not a generic "
+        "fixed list). Use the same language as the features (Korean or English). "
+        "Assign every feature to exactly one category.\n"
+        "Return ONLY a JSON object mapping each feature (verbatim) to its category "
+        "name. No prose, no code fences.\n\n"
+        f"FEATURES:\n{feat_list}\n"
+    )
+    resp = client.messages.create(
+        model=config.ANTHROPIC_MODEL,
+        max_tokens=4096,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    raw = "".join(
+        b.text for b in resp.content if getattr(b, "type", None) == "text"
+    )
+    raw = _strip_code_fences(raw)
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ExtractError(f"카테고리 JSON 파싱 실패: {exc}") from exc
+    return {str(k): str(v) for k, v in data.items() if v}
+
+
 def extract_pricing(
     *,
     company: str,
