@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}{{ t('compare.title') }} · Pricing Monitor{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{{ t('compare.title') }}</h1></div>
+
+<section class="card">
+  <h2>{{ t('compare.select') }}</h2>
+  <form method="get" action="{{ url_for('compare_page') }}">
+    <div class="select-list">
+      {% for name in data.all_companies %}
+      <label class="src-check">
+        <input type="checkbox" name="company" value="{{ name }}" {% if name in data.companies %}checked{% endif %}>
+        {{ name }}
+      </label>
+      {% endfor %}
+    </div>
+    <button type="submit" class="btn-primary">{{ t('compare.run') }}</button>
+  </form>
+</section>
+
+{% if not data.companies %}
+  <div class="empty"><p>{{ t('compare.empty') }}</p></div>
+{% else %}
+
+<section class="card">
+  <h2>{{ t('compare.scatter_title') }}</h2>
+  <canvas id="scatter" height="120"></canvas>
+</section>
+
+<section class="card">
+  <h2>{{ t('compare.value_title') }}</h2>
+  <p class="muted">{{ t('compare.value_help') }}</p>
+  {% set maxscore = data.ranking[0].score if data.ranking and data.ranking[0].score > 0 else 1 %}
+  {% for r in data.ranking %}
+  <div class="value-row">
+    <span class="value-name">
+      {% if r.icon %}<img class="company-icon" src="{{ r.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ r.company }}
+    </span>
+    <span class="value-bar"><span class="value-fill" style="width: {{ (r.score / maxscore * 100)|round }}%"></span></span>
+    <span class="value-score">{{ r.score }}</span>
+  </div>
+  {% endfor %}
+</section>
+
+<section class="card">
+  <h2>{{ t('compare.matrix_title') }}</h2>
+  <div class="matrix-wrap">
+    <table class="matrix">
+      <thead>
+        <tr>
+          <th>{{ t('compare.category') }}</th>
+          <th>{{ t('compare.weight') }}</th>
+          {% for n in data.companies %}<th>{{ n }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in data.matrix %}
+        <tr>
+          <td class="feat">{{ row.category }}</td>
+          <td class="cell">×{{ row.weight }}</td>
+          {% for n in data.companies %}
+          <td class="cell {% if row.counts[n] %}yes{% else %}no{% endif %}">{{ row.counts[n] or '—' }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if data.companies %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+  var sc = {{ data.scatter | tojson }};
+  new Chart(document.getElementById('scatter'), {
+    type: 'scatter',
+    data: {
+      datasets: sc.datasets.map(function (d, i) {
+        var hue = (i * 67) % 360;
+        return {
+          label: d.label,
+          data: d.data,
+          backgroundColor: 'hsl(' + hue + ',70%,50%)',
+          pointRadius: 6, pointHoverRadius: 8
+        };
+      })
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        tooltip: { callbacks: { label: function (ctx) {
+          var p = ctx.raw;
+          return ctx.dataset.label + ' · ' + (p.tier || '') + ' (월 $' + p.x + ' / 연환산 $' + p.y + ')';
+        } } }
+      },
+      scales: {
+        x: { title: { display: true, text: '월 / Monthly ($)' }, beginAtZero: true },
+        y: { title: { display: true, text: '연 환산 월가격 / Annual-per-mo ($)' }, beginAtZero: true }
+      }
+    }
+  });
+</script>
+{% endif %}
+{% endblock %}

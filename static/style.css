@@ -142,6 +142,14 @@ th { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-s
   cursor: pointer;
 }
 .btn-primary:disabled { opacity: .55; cursor: default; }
+a.btn-primary, a.btn-secondary { text-decoration: none; display: inline-block; }
+a.btn-primary:hover { text-decoration: none; }
+
+.value-row { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+.value-name { min-width: 160px; font-weight: 600; }
+.value-bar { flex: 1; height: 14px; background: #eef0f3; border-radius: 999px; overflow: hidden; }
+.value-fill { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.value-score { min-width: 36px; text-align: right; font-weight: 700; color: var(--accent); }
 .btn-danger {
   background: #fff; color: #b91c1c; border: 1px solid #fca5a5;
   padding: 5px 12px; border-radius: 7px; font-size: .82rem; font-weight: 600;

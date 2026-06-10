@@ -9,6 +9,32 @@
   <span class="muted">{{ t('company.sources_snapshots', s=data.sources|length, n=data.snapshot_count) }}</span>
 </div>
 
+<details class="card priority-config">
+  <summary>⚙️ {{ t('company.priority_title') }}
+    <span class="muted">{% if data.has_custom_priority %}{{ t('company.priority_custom') }}{% else %}{{ t('company.priority_global') }}{% endif %}</span>
+  </summary>
+  <p class="muted">{{ t('overview.priority_help') }}</p>
+  <ol class="priority-list">
+    {% for p in data.priority %}
+    <li>
+      <span class="tag tag-src-{{ p.type }}">{{ p.label }}</span>
+      <form class="inline-del" method="post" action="{{ url_for('priority_move') }}">
+        <input type="hidden" name="company" value="{{ data.company }}">
+        <input type="hidden" name="type" value="{{ p.type }}">
+        <input type="hidden" name="dir" value="up">
+        <button type="submit" class="btn-x" {% if loop.first %}disabled{% endif %}>▲</button>
+      </form>
+      <form class="inline-del" method="post" action="{{ url_for('priority_move') }}">
+        <input type="hidden" name="company" value="{{ data.company }}">
+        <input type="hidden" name="type" value="{{ p.type }}">
+        <input type="hidden" name="dir" value="down">
+        <button type="submit" class="btn-x" {% if loop.last %}disabled{% endif %}>▼</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ol>
+</details>
+
 <section class="card">
   <h2>{{ t('company.chart_title') }}</h2>
   <canvas id="priceChart" height="110"></canvas>

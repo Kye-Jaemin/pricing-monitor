@@ -109,6 +109,12 @@ def howto():
     return render_template("howto.html")
 
 
+@app.route("/compare")
+def compare_page():
+    names = [n for n in request.args.getlist("company") if n]
+    return render_template("compare.html", data=presenters.compare(names))
+
+
 @app.route("/companies")
 def companies_page():
     return render_template(
@@ -362,16 +368,19 @@ def debug_source():
 
 @app.route("/priority/move", methods=["POST"])
 def priority_move():
-    """대표 출처 우선순위 순서 변경(위/아래 이동)."""
+    """대표 출처 우선순위 순서 변경(위/아래). company 지정 시 업체별 설정."""
     stype = (request.form.get("type") or "").strip()
     direction = (request.form.get("dir") or "").strip()
-    order = presenters.get_priority_order()
+    company = (request.form.get("company") or "").strip() or None
+    order = presenters.get_priority_order(company)
     if stype in order and direction in ("up", "down"):
         i = order.index(stype)
         j = i - 1 if direction == "up" else i + 1
         if 0 <= j < len(order):
             order[i], order[j] = order[j], order[i]
-            presenters.set_priority_order(order)
+            presenters.set_priority_order(order, company)
+    if company:
+        return redirect(url_for("company", name=company))
     return redirect(url_for("index"))
 
 

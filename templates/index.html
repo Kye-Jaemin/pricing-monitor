@@ -40,7 +40,7 @@
   <div class="card-head">
     <h2>
       {% if c.icon %}<img class="company-icon" src="{{ c.icon }}" alt="" onerror="this.style.display='none'">{% endif %}
-      <a href="{{ url_for('company', name=c.company) }}">{{ c.company }}</a>
+      {{ c.company }}
       {% if c.recent_changes %}<span class="badge badge-change">{{ t('badge.changes') }} {{ c.recent_changes }}</span>{% endif %}
       {% if c.has_free_tier %}<span class="badge badge-free">{{ t('badge.free_tier') }}</span>{% endif %}
       {% if c.free_trial %}<span class="badge badge-trial">{{ t('badge.free_trial') }}</span>{% endif %}
@@ -49,6 +49,7 @@
     </h2>
     <div class="card-head-right">
       <span class="muted">{{ c.collected_at }}</span>
+      <a href="{{ url_for('company', name=c.company) }}" class="btn-primary btn-sm">{{ t('overview.detail') }}</a>
       <form method="post" action="{{ url_for('companies_delete') }}"
             onsubmit="return confirm('{{ t('companies.confirm_delete_company', name=c.company) }}');">
         <input type="hidden" name="name" value="{{ c.company }}">

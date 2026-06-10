@@ -17,29 +17,38 @@ _STORE_HOSTS = ("apple.com", "play.google.com", "google.com")
 PRIORITY_SETTING_KEY = "source_priority"
 
 
-def get_priority_order() -> list[str]:
-    """사용자가 설정한 출처 우선순위 순서(없으면 기본값)."""
-    raw = store.get_setting(PRIORITY_SETTING_KEY)
+def _priority_key(company: str | None) -> str:
+    return f"priority:{company}" if company else PRIORITY_SETTING_KEY
+
+
+def get_priority_order(company: str | None = None) -> list[str]:
+    """출처 우선순위 순서. 업체 지정 시 해당 업체 설정 → 없으면 전역 → 기본값."""
+    raw = store.get_setting(_priority_key(company))
+    if not raw and company:
+        raw = store.get_setting(PRIORITY_SETTING_KEY)  # 전역으로 폴백
     order: list[str] = []
     if raw:
         try:
             order = [t for t in json.loads(raw) if t in SOURCE_TYPES]
         except (ValueError, TypeError):
             order = []
-    # 누락된 타입은 기본 순서대로 뒤에 보충
     for t in SOURCE_TYPES:
         if t not in order:
             order.append(t)
     return order
 
 
-def set_priority_order(order: list[str]) -> None:
+def set_priority_order(order: list[str], company: str | None = None) -> None:
     cleaned = [t for t in order if t in SOURCE_TYPES]
-    store.set_setting(PRIORITY_SETTING_KEY, json.dumps(cleaned))
+    store.set_setting(_priority_key(company), json.dumps(cleaned))
 
 
-def _priority_map() -> dict[str, int]:
-    return {t: i for i, t in enumerate(get_priority_order())}
+def has_company_priority(company: str) -> bool:
+    return store.get_setting(_priority_key(company)) is not None
+
+
+def _priority_map(company: str | None = None) -> dict[str, int]:
+    return {t: i for i, t in enumerate(get_priority_order(company))}
 
 
 def _favicon(url: str) -> str | None:
@@ -177,10 +186,10 @@ def overview() -> dict:
             for t in snap.tiers
         ]
 
-    pmap = _priority_map()
     companies = []
     for company_name in sorted(grouped, key=str.lower):
         srows = grouped[company_name]
+        pmap = _priority_map(company_name)
         primary = _pick_primary(srows, pmap)
         snap = PricingSnapshot.from_payload_json(primary["payload_json"])
         primary_tiers = _tier_dicts(snap)
@@ -268,7 +277,7 @@ def company_detail(name: str) -> dict | None:
     if not latest_rows:
         return None
 
-    pmap = _priority_map()
+    pmap = _priority_map(name)
     primary = _pick_primary(latest_rows, pmap)
     primary_url = primary["source_url"]
 
@@ -340,6 +349,10 @@ def company_detail(name: str) -> dict | None:
         "sources": sources,
         "chart": chart,
         "snapshot_count": len(all_rows),
+        "priority": [
+            {"type": t, "label": _src_label(t)} for t in get_priority_order(name)
+        ],
+        "has_custom_priority": has_company_priority(name),
     }
 
 
@@ -402,6 +415,83 @@ def companies_admin() -> dict:
             }
         )
     return {"companies": companies}
+
+
+# ── 업체간 비교 (/compare) ───────────────────────────────────
+def compare(names: list[str]) -> dict:
+    """선택 업체들의 가격 산점도 + 유료 기능 카테고리 매트릭스 + 값어치 점수."""
+    from . import compare as cmp
+
+    chosen = []
+    scatter = []  # Chart.js scatter datasets
+    matrix: dict[str, dict[str, int]] = {c: {} for c in cmp.CATEGORIES}
+    features_map: dict[str, dict[str, list[str]]] = {}  # company -> cat -> [features]
+    scores: dict[str, int] = {}
+
+    icon_map = {c["name"]: c["icon_url"] for c in store.list_companies(active_only=False)}
+
+    for name in names:
+        rows = store.latest_snapshots_for_company(name)
+        if not rows:
+            continue
+
+        # 모든 소스의 가격/기능을 합쳐 비교(가장 풍부한 그림)
+        pts = []
+        feats: list[str] = []
+        seen_pts = set()
+        for row in rows:
+            snap = PricingSnapshot.from_payload_json(row["payload_json"])
+            for t in snap.tiers:
+                if t.monthly_price is not None:
+                    y = (t.annual_price_per_month
+                         if t.annual_price_per_month is not None else t.monthly_price)
+                    key = (t.monthly_price, y)
+                    if key not in seen_pts:
+                        seen_pts.add(key)
+                        pts.append({"x": t.monthly_price, "y": y, "tier": t.name})
+                is_free = (t.monthly_price == 0) or ("free" in t.name.lower()) or ("무료" in t.name)
+                if not is_free:
+                    for f in t.features:
+                        if f not in feats:
+                            feats.append(f)
+        scatter.append({"label": name, "data": pts})
+
+        cat_feats: dict[str, list[str]] = {}
+        score = 0
+        for f in feats:
+            for c in cmp.categorize_feature(f):
+                cat_feats.setdefault(c, []).append(f)
+                score += cmp.WEIGHTS.get(c, cmp.DEFAULT_WEIGHT)
+        for c, fs in cat_feats.items():
+            matrix[c][name] = len(fs)
+        features_map[name] = cat_feats
+        scores[name] = score
+        chosen.append(name)
+
+    # 사용된 카테고리만(빈 행 제거), 가중치 높은 순
+    used_cats = [c for c in cmp.CATEGORIES if any(matrix[c].get(n) for n in chosen)]
+    matrix_rows = [
+        {
+            "category": c,
+            "weight": cmp.WEIGHTS.get(c, cmp.DEFAULT_WEIGHT),
+            "counts": {n: matrix[c].get(n, 0) for n in chosen},
+        }
+        for c in used_cats
+    ]
+    ranking = sorted(
+        ({"company": n, "score": scores[n], "icon": _company_icon(icon_map.get(n), [])}
+         for n in chosen),
+        key=lambda x: x["score"],
+        reverse=True,
+    )
+
+    return {
+        "companies": chosen,
+        "scatter": {"datasets": scatter},
+        "matrix": matrix_rows,
+        "ranking": ranking,
+        "all_companies": sorted(c["name"] for c in store.list_companies(active_only=True)),
+    }
 
 
 # ── 내부 API 용 ──────────────────────────────────────────────
