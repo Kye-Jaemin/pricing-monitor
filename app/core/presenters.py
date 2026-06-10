@@ -455,13 +455,16 @@ def compare(names: list[str]) -> dict:
         for row in rows:
             snap = PricingSnapshot.from_payload_json(row["payload_json"])
             for t in snap.tiers:
-                if t.monthly_price is not None:
-                    y = (t.annual_price_per_month
-                         if t.annual_price_per_month is not None else t.monthly_price)
-                    key = (t.monthly_price, y)
-                    if key not in seen_pts:
-                        seen_pts.add(key)
-                        pts.append({"x": t.monthly_price, "y": y, "tier": t.name})
+                m, a = t.monthly_price, t.annual_price_per_month
+                if m is None and a is None:
+                    continue  # 가격 없는 티어(Enterprise 등)는 산점도 제외
+                # x=월 결제 가격, y=연 결제 시 월가격. 한쪽만 있으면 그 값으로.
+                x = m if m is not None else a
+                y = a if a is not None else m
+                key = (x, y, t.name)
+                if key not in seen_pts:
+                    seen_pts.add(key)
+                    pts.append({"x": x, "y": y, "tier": t.name})
                 is_free = (t.monthly_price == 0) or ("free" in t.name.lower()) or ("무료" in t.name)
                 if not is_free:
                     for f in t.features:

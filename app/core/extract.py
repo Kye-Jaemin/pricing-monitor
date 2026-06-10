@@ -26,10 +26,13 @@ Rules:
   whether a credit card is required). If there is no free trial, set it to null.
   A free trial is different from a free tier — do not confuse them.
 - Do not invent features or prices. If unsure, lower extraction_confidence.
-- A price written as "$X upfront (equivalent to $Y/month)" means a multi-month plan:
-  record the term in the tier name (e.g. "Annual", "6-Month"), put the upfront text in
-  price_note, and use the per-month figure $Y (for an annual plan put $Y in
-  annual_price_per_month; for a monthly plan put it in monthly_price).
+- annual_price_per_month is ALWAYS the per-MONTH cost when billed annually
+  (= annual total / 12), never the annual lump sum. E.g. "$71.99/year" -> 5.99.
+- If the SAME plan is sold with multiple billing periods (e.g. "Monthly $11.99,
+  Annual $71.99/yr ($5.99/mo)"), represent it as ONE tier: monthly_price = the
+  monthly-billing price (11.99), annual_price_per_month = annual total / 12 (5.99),
+  and note other terms (e.g. 6-month) in price_note. Do NOT create separate
+  "Monthly"/"Annual" tiers for one plan.
 {source_hint}- "company" must be exactly: {company}
 - "source_url" must be exactly: {source_url}
 - "collected_at" must be exactly: {collected_at}
