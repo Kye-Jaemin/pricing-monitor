@@ -95,6 +95,12 @@ code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; font-size: .9e
 .btn-x:hover { color: #7f1d1d; }
 .src-del { margin-top: 8px; }
 
+.priority-config > summary { cursor: pointer; font-weight: 600; }
+.priority-list { margin: 10px 0 0; padding-left: 22px; }
+.priority-list li { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+.priority-list .btn-x { font-size: 1rem; color: var(--accent); }
+.priority-list .btn-x:disabled { color: var(--line); cursor: default; }
+
 /* 기능 비교표 */
 .matrix-wrap { overflow-x: auto; margin: 8px 0 16px; }
 .matrix { border-collapse: collapse; min-width: 100%; }

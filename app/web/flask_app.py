@@ -360,6 +360,21 @@ def debug_source():
     return Response(body[:40000], mimetype="text/plain; charset=utf-8")
 
 
+@app.route("/priority/move", methods=["POST"])
+def priority_move():
+    """대표 출처 우선순위 순서 변경(위/아래 이동)."""
+    stype = (request.form.get("type") or "").strip()
+    direction = (request.form.get("dir") or "").strip()
+    order = presenters.get_priority_order()
+    if stype in order and direction in ("up", "down"):
+        i = order.index(stype)
+        j = i - 1 if direction == "up" else i + 1
+        if 0 <= j < len(order):
+            order[i], order[j] = order[j], order[i]
+            presenters.set_priority_order(order)
+    return redirect(url_for("index"))
+
+
 @app.route("/healthz")
 def healthz():
     return jsonify({"status": "ok", "scheduler_mode": config.SCHEDULER_MODE})

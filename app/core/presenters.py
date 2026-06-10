@@ -5,14 +5,41 @@
 """
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
 from . import store
-from .models import SOURCE_PRIORITY, SOURCE_TYPE_LABELS, PricingSnapshot
+from .models import SOURCE_TYPE_LABELS, SOURCE_TYPES, PricingSnapshot
 
 _CONF_RANK = {"low": 0, "medium": 1, "high": 2}
 _STORE_HOSTS = ("apple.com", "play.google.com", "google.com")
+PRIORITY_SETTING_KEY = "source_priority"
+
+
+def get_priority_order() -> list[str]:
+    """사용자가 설정한 출처 우선순위 순서(없으면 기본값)."""
+    raw = store.get_setting(PRIORITY_SETTING_KEY)
+    order: list[str] = []
+    if raw:
+        try:
+            order = [t for t in json.loads(raw) if t in SOURCE_TYPES]
+        except (ValueError, TypeError):
+            order = []
+    # 누락된 타입은 기본 순서대로 뒤에 보충
+    for t in SOURCE_TYPES:
+        if t not in order:
+            order.append(t)
+    return order
+
+
+def set_priority_order(order: list[str]) -> None:
+    cleaned = [t for t in order if t in SOURCE_TYPES]
+    store.set_setting(PRIORITY_SETTING_KEY, json.dumps(cleaned))
+
+
+def _priority_map() -> dict[str, int]:
+    return {t: i for i, t in enumerate(get_priority_order())}
 
 
 def _favicon(url: str) -> str | None:
@@ -59,15 +86,17 @@ def _src_label(source_type: str) -> str:
     return SOURCE_TYPE_LABELS.get(source_type, source_type)
 
 
-def _pick_primary(rows: list) -> object:
+def _pick_primary(rows: list, pmap: dict | None = None) -> object:
     """우선순위 기반 대표 출처 선정.
 
     선정 순서(작을수록 우선):
       1) 실제 티어 데이터가 있는 소스 (빈 결과보다 우선)
       2) USD + 신뢰도 low 아님(=usable)
-      3) 소스 우선순위 (공식 홈페이지 > 구글 검색 > App Store > Play Store)
-    → 공식 홈페이지가 비었거나 실패하면, 데이터가 있는 구글 검색 결과가 대표가 된다.
+      3) 사용자가 설정한 출처 우선순위
     """
+    if pmap is None:
+        pmap = _priority_map()
+
     def key(r):
         snap = PricingSnapshot.from_payload_json(r["payload_json"])
         has_tiers = len(snap.tiers) > 0
@@ -75,7 +104,7 @@ def _pick_primary(rows: list) -> object:
         return (
             0 if has_tiers else 1,
             0 if usable else 1,
-            SOURCE_PRIORITY.get(r["source_type"], 9),
+            pmap.get(r["source_type"], 99),
         )
 
     return sorted(rows, key=key)[0]
@@ -148,16 +177,17 @@ def overview() -> dict:
             for t in snap.tiers
         ]
 
+    pmap = _priority_map()
     companies = []
     for company_name in sorted(grouped, key=str.lower):
         srows = grouped[company_name]
-        primary = _pick_primary(srows)
+        primary = _pick_primary(srows, pmap)
         snap = PricingSnapshot.from_payload_json(primary["payload_json"])
         primary_tiers = _tier_dicts(snap)
 
         others = sorted(
             (r for r in srows if r["source_url"] != primary["source_url"]),
-            key=lambda r: SOURCE_PRIORITY.get(r["source_type"], 9),
+            key=lambda r: pmap.get(r["source_type"], 99),
         )
 
         # 비대표 소스도 현황에 함께 노출(티어가 비어도 표시 — 구글 검색 등 누락 방지)
@@ -196,7 +226,7 @@ def overview() -> dict:
                     }
                 )
 
-        extra_sources.sort(key=lambda e: SOURCE_PRIORITY.get(e["source_type"], 9))
+        extra_sources.sort(key=lambda e: pmap.get(e["source_type"], 99))
 
         has_free_tier = any(t["is_free"] for t in primary_tiers) or any(
             t["is_free"] for es in extra_sources for t in es["tiers"]
@@ -223,7 +253,12 @@ def overview() -> dict:
                 "extra_sources": extra_sources,
             }
         )
-    return {"companies": companies, "total_recent_changes": len(recent)}
+    priority = [{"type": t, "label": _src_label(t)} for t in get_priority_order()]
+    return {
+        "companies": companies,
+        "total_recent_changes": len(recent),
+        "priority": priority,
+    }
 
 
 # ── 2. 업체 상세 (/company/<name>) ───────────────────────────
@@ -233,12 +268,13 @@ def company_detail(name: str) -> dict | None:
     if not latest_rows:
         return None
 
-    primary = _pick_primary(latest_rows)
+    pmap = _priority_map()
+    primary = _pick_primary(latest_rows, pmap)
     primary_url = primary["source_url"]
 
     # 출처별 현재 티어 블록 (우선순위 순서, 대표 표시)
     ordered_rows = sorted(
-        latest_rows, key=lambda r: SOURCE_PRIORITY.get(r["source_type"], 9)
+        latest_rows, key=lambda r: pmap.get(r["source_type"], 99)
     )
     sources = []
     for row in ordered_rows:
