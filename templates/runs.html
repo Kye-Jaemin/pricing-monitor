@@ -29,7 +29,26 @@
 <div class="notice">🔒 {{ t('runs.access_note', contact=contact) }}</div>
 {% endif %}
 {% if running %}
-<p class="muted">{{ t('runs.running_note') }}</p>
+<div class="progress-wrap">
+  <div class="progress-bar"><div id="progBar" class="progress-fill" style="width:0%"></div></div>
+  <p class="muted" id="progText">{{ t('runs.running_note') }}</p>
+</div>
+<script>
+(function () {
+  var url = "{{ url_for('run_progress') }}";
+  function poll() {
+    fetch(url, {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (p) {
+      if (!p.running) { location.reload(); return; }
+      var pct = p.total > 0 ? Math.round(p.done / p.total * 100) : 0;
+      document.getElementById('progBar').style.width = pct + '%';
+      document.getElementById('progText').textContent =
+        p.done + ' / ' + p.total + (p.current ? (' · ' + p.current) : '') + ' (' + pct + '%)';
+      setTimeout(poll, 1500);
+    }).catch(function () { setTimeout(poll, 2500); });
+  }
+  poll();
+})();
+</script>
 {% endif %}
 
 {% if not data.runs %}

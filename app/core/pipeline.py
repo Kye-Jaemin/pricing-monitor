@@ -188,6 +188,7 @@ def _process_source(
         payload_json=snapshot.to_payload_json(),
         confidence=snapshot.extraction_confidence,
     )
+    store.prune_snapshots(company, source_url, config.SNAPSHOT_RETENTION)
     for ch in detected:
         store.insert_change(
             company=company,
@@ -205,12 +206,28 @@ def _process_source(
     return SourceResult(company, source_type, status, msg, changes=len(detected))
 
 
-def run_once() -> RunResult:
-    """전체 업체 × 소스를 1회 수집. 단일 진입점."""
+def run_once(progress_cb=None) -> RunResult:
+    """전체 업체 × 소스를 1회 수집. 단일 진입점.
+
+    progress_cb(done:int, total:int, current:str) 가 주어지면 진행 상황을 보고한다.
+    """
     store.init_db()
     run = RunResult(started_at=_utcnow_iso())
 
-    for entry in load_companies():
+    companies = load_companies()
+    total = sum(max(len(c["sources"]), 1) for c in companies)
+    done = 0
+
+    def report(current: str) -> None:
+        if progress_cb:
+            try:
+                progress_cb(done, total, current)
+            except Exception:  # noqa: BLE001
+                pass
+
+    report("")
+
+    for entry in companies:
         company = entry["name"]
         sources = entry["sources"]
         multi = len(sources) > 1
@@ -219,10 +236,13 @@ def run_once() -> RunResult:
             run.results.append(
                 SourceResult(company, "web", "error", "등록된 소스 URL 이 없습니다.")
             )
+            done += 1
+            report(company)
             continue
 
         for source in sources:
             source_type = source["type"]
+            report(f"{company} · {SOURCE_TYPE_LABELS.get(source_type, source_type)}")
             run_id = store.start_run(_utcnow_iso(), company=company)
             try:
                 result = _process_source(company, source, multi_source=multi)
@@ -244,8 +264,11 @@ def run_once() -> RunResult:
                     error_message=str(exc),
                 )
             run.results.append(result)
+            done += 1
+            report("")
 
     run.finished_at = _utcnow_iso()
+    report("")
     return run
 
 

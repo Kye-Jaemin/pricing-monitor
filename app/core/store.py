@@ -169,9 +169,11 @@ def set_company_icon(name: str, icon_url: str) -> None:
 
 
 def delete_company(name: str) -> None:
-    """업체 + 소스 제거. 과거 스냅샷/변동 이력은 보존된다."""
+    """업체 전체 삭제: 소스 + 스냅샷 + 변동 이력 + 업체 엔티티 모두 제거."""
     with connect() as conn:
         conn.execute("DELETE FROM company_sources WHERE company_name=?", (name,))
+        conn.execute("DELETE FROM snapshots WHERE company=?", (name,))
+        conn.execute("DELETE FROM changes WHERE company=?", (name,))
         conn.execute("DELETE FROM companies WHERE name=?", (name,))
 
 
@@ -275,6 +277,21 @@ def all_latest_by_source() -> list[sqlite3.Row]:
             ORDER BY s.company COLLATE NOCASE, s.source_type
             """
         ).fetchall()
+
+
+def prune_snapshots(company: str, source_url: str, keep: int) -> None:
+    """(업체, 소스)별 최근 keep개만 남기고 오래된 스냅샷 삭제(무한 누적 방지)."""
+    if keep <= 0:
+        return
+    with connect() as conn:
+        conn.execute(
+            """DELETE FROM snapshots
+               WHERE company=? AND source_url=? AND id NOT IN (
+                   SELECT id FROM snapshots
+                   WHERE company=? AND source_url=? ORDER BY id DESC LIMIT ?
+               )""",
+            (company, source_url, company, source_url, keep),
+        )
 
 
 def snapshots_for_company(company: str) -> list[sqlite3.Row]:

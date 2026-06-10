@@ -40,6 +40,9 @@ DB_PATH: str = _get("DB_PATH", "./data/pricing.db")
 # ── 입력 ─────────────────────────────────────────────────────
 COMPANIES_FILE: str = _get("COMPANIES_FILE", "./companies.yaml")
 
+# ── 스냅샷 보존 (소스별 최근 N개만 유지, 무한 누적 방지) ──────
+SNAPSHOT_RETENTION: int = _get_int("SNAPSHOT_RETENTION", 60)
+
 # ── 스케줄 ───────────────────────────────────────────────────
 #   internal = 웹 프로세스 내 APScheduler (Render 상시)
 #   external = OS 스케줄러 → CLI (로컬 PC)

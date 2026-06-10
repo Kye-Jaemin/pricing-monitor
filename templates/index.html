@@ -25,7 +25,14 @@
       {% if c.confidence == 'low' %}<span class="badge badge-low">{{ t('badge.review') }}</span>{% endif %}
       {% if c.currency != 'USD' %}<span class="badge badge-low">{{ c.currency }}</span>{% endif %}
     </h2>
-    <span class="muted">{{ c.collected_at }}</span>
+    <div class="card-head-right">
+      <span class="muted">{{ c.collected_at }}</span>
+      <form method="post" action="{{ url_for('companies_delete') }}"
+            onsubmit="return confirm('{{ t('companies.confirm_delete_company', name=c.company) }}');">
+        <input type="hidden" name="name" value="{{ c.company }}">
+        <button type="submit" class="btn-danger btn-sm">{{ t('btn.delete') }}</button>
+      </form>
+    </div>
   </div>
   <p class="source-line">
     {{ t('overview.source') }} <a href="{{ c.primary_source_url }}" target="_blank" rel="noopener"><span class="tag tag-src-{{ c.primary_source_type }}">{{ c.primary_source_label }}</span></a>

@@ -46,9 +46,17 @@ app = Flask(
 store.init_db()
 start_scheduler()
 
-# [지금 수집] 중복 실행 방지용 락
+# [지금 수집] 중복 실행 방지용 락 + 진행 상황
 _run_lock = threading.Lock()
 _run_in_progress = {"value": False}
+_progress = {
+    "running": False,
+    "total": 0,
+    "done": 0,
+    "current": "",
+    "ok": 0,
+    "error": 0,
+}
 
 
 # ── 다국어(한/영) ────────────────────────────────────────────
@@ -245,20 +253,35 @@ def run_now():
         with _run_lock:
             if not _run_in_progress["value"]:
                 _run_in_progress["value"] = True
+                _progress.update(
+                    {"running": True, "total": 0, "done": 0,
+                     "current": "시작 중…", "ok": 0, "error": 0}
+                )
                 threading.Thread(target=_background_run, daemon=True).start()
     return redirect(url_for("runs"))
+
+
+def _progress_cb(done: int, total: int, current: str) -> None:
+    _progress.update({"done": done, "total": total, "current": current})
 
 
 def _background_run() -> None:
     try:
         log.info("[run-now] 수집 시작")
-        result = run_once()
+        result = run_once(progress_cb=_progress_cb)
+        _progress.update({"ok": result.ok_count, "error": result.error_count})
         log.info("[run-now] 완료: 성공 %d / 에러 %d",
                  result.ok_count, result.error_count)
     except Exception:  # noqa: BLE001
         log.exception("[run-now] 실패")
     finally:
+        _progress.update({"running": False, "current": ""})
         _run_in_progress["value"] = False
+
+
+@app.route("/run-progress")
+def run_progress():
+    return jsonify(_progress)
 
 
 # ── 내부 API ─────────────────────────────────────────────────
