@@ -384,6 +384,20 @@ def priority_move():
     return redirect(url_for("index"))
 
 
+@app.route("/priority/set-primary", methods=["POST"])
+def priority_set_primary():
+    """업체별 대표 출처를 직접 지정(선택한 출처를 그 업체 우선순위 최상위로)."""
+    company = (request.form.get("company") or "").strip()
+    stype = (request.form.get("type") or "").strip()
+    if company and stype:
+        order = presenters.get_priority_order(company)
+        if stype in order:
+            order.remove(stype)
+            order.insert(0, stype)
+            presenters.set_priority_order(order, company)
+    return redirect(url_for("index"))
+
+
 @app.route("/healthz")
 def healthz():
     return jsonify({"status": "ok", "scheduler_mode": config.SCHEDULER_MODE})

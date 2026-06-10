@@ -88,6 +88,8 @@ code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; font-size: .9e
 .source-line { margin: 0 0 10px; font-size: .9rem; }
 .source-line .tag { vertical-align: middle; }
 .inline-del { display: inline; }
+.primary-pick { display: inline; margin-left: 8px; }
+.primary-pick select { padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; font-size: .82rem; }
 .btn-x {
   border: none; background: transparent; color: #b91c1c; cursor: pointer;
   font-size: .85rem; padding: 0 4px; line-height: 1;

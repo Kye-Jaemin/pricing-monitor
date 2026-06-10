@@ -241,12 +241,25 @@ def overview() -> dict:
             t["is_free"] for es in extra_sources for t in es["tiers"]
         )
 
+        # 업체별 대표 출처 선택용 옵션(설정된 소스 타입, 없으면 스냅샷 타입)
+        opt_types: list[str] = []
+        for cfg in sources_by_company.get(company_name, []):
+            if cfg["source_type"] not in opt_types:
+                opt_types.append(cfg["source_type"])
+        if not opt_types:
+            for r in srows:
+                if r["source_type"] not in opt_types:
+                    opt_types.append(r["source_type"])
+        opt_types.sort(key=lambda tp: pmap.get(tp, 99))
+        source_options = [{"type": tp, "label": _src_label(tp)} for tp in opt_types]
+
         companies.append(
             {
                 "company": company_name,
                 "icon": _company_icon(
                     icon_map.get(company_name), [r["source_url"] for r in srows]
                 ),
+                "source_options": source_options,
                 "primary_source_type": primary["source_type"],
                 "primary_source_label": _src_label(primary["source_type"]),
                 "primary_source_url": primary["source_url"],

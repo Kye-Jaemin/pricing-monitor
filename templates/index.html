@@ -67,6 +67,18 @@
       <button type="submit" class="btn-x" title="{{ t('overview.delete_source') }}">✕</button>
     </form>
     {% if c.other_sources %}<span class="muted">· {{ t('overview.other_sources') }}: {{ c.other_sources|join(', ') }}</span>{% endif %}
+    {% if c.source_options|length > 1 %}
+    <form class="primary-pick" method="post" action="{{ url_for('priority_set_primary') }}">
+      <input type="hidden" name="company" value="{{ c.company }}">
+      <label class="muted">{{ t('overview.primary_select') }}:
+        <select name="type" onchange="this.form.submit()">
+          {% for o in c.source_options %}
+          <option value="{{ o.type }}" {% if o.type == c.primary_source_type %}selected{% endif %}>{{ o.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </form>
+    {% endif %}
   </p>
   {% if c.free_trial %}<p class="trial-line">🎁 {{ t('overview.free_trial') }}: {{ c.free_trial }}</p>{% endif %}
   <table class="price-table">
