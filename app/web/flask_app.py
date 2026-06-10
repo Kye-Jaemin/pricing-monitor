@@ -210,6 +210,7 @@ def runs():
     return render_template(
         "runs.html",
         data=presenters.runs_view(),
+        companies=presenters.companies_admin()["companies"],
         running=_run_in_progress["value"],
         access_required=bool(config.ACCESS_CODE),
         contact=config.ACCESS_CONTACT,
@@ -249,6 +250,13 @@ def run_now():
         if code != config.ACCESS_CODE:
             return redirect(url_for("runs", error="bad_code"))
 
+    # 부분 수집: scope=selected 면 체크된 소스만, 아니면 전체
+    source_ids = None
+    if (request.form.get("scope") or "all") == "selected":
+        source_ids = [int(x) for x in request.form.getlist("source_ids") if x.isdigit()]
+        if not source_ids:
+            return redirect(url_for("runs", error="no_selection"))
+
     if not _run_in_progress["value"]:
         with _run_lock:
             if not _run_in_progress["value"]:
@@ -257,7 +265,11 @@ def run_now():
                     {"running": True, "total": 0, "done": 0,
                      "current": "시작 중…", "ok": 0, "error": 0}
                 )
-                threading.Thread(target=_background_run, daemon=True).start()
+                threading.Thread(
+                    target=_background_run,
+                    kwargs={"source_ids": source_ids},
+                    daemon=True,
+                ).start()
     return redirect(url_for("runs"))
 
 
@@ -265,10 +277,10 @@ def _progress_cb(done: int, total: int, current: str) -> None:
     _progress.update({"done": done, "total": total, "current": current})
 
 
-def _background_run() -> None:
+def _background_run(source_ids=None) -> None:
     try:
-        log.info("[run-now] 수집 시작")
-        result = run_once(progress_cb=_progress_cb)
+        log.info("[run-now] 수집 시작 (source_ids=%s)", source_ids)
+        result = run_once(progress_cb=_progress_cb, source_ids=source_ids)
         _progress.update({"ok": result.ok_count, "error": result.error_count})
         log.info("[run-now] 완료: 성공 %d / 에러 %d",
                  result.ok_count, result.error_count)

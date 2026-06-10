@@ -102,7 +102,8 @@ def load_companies() -> list[dict]:
             {
                 "name": c["name"],
                 "sources": [
-                    {"type": s["source_type"], "url": s["url"]} for s in ordered
+                    {"id": s["id"], "type": s["source_type"], "url": s["url"]}
+                    for s in ordered
                 ],
             }
         )
@@ -206,15 +207,25 @@ def _process_source(
     return SourceResult(company, source_type, status, msg, changes=len(detected))
 
 
-def run_once(progress_cb=None) -> RunResult:
-    """전체 업체 × 소스를 1회 수집. 단일 진입점.
+def run_once(progress_cb=None, source_ids=None) -> RunResult:
+    """업체 × 소스를 1회 수집. 단일 진입점.
 
-    progress_cb(done:int, total:int, current:str) 가 주어지면 진행 상황을 보고한다.
+    progress_cb(done:int, total:int, current:str) 로 진행 상황 보고.
+    source_ids 가 주어지면 해당 소스만 수집(부분 수집), None 이면 전체.
     """
     store.init_db()
     run = RunResult(started_at=_utcnow_iso())
 
     companies = load_companies()
+    if source_ids is not None:
+        sid_set = {int(x) for x in source_ids}
+        companies = [
+            {"name": c["name"],
+             "sources": [s for s in c["sources"] if s.get("id") in sid_set]}
+            for c in companies
+        ]
+        companies = [c for c in companies if c["sources"]]
+
     total = sum(max(len(c["sources"]), 1) for c in companies)
     done = 0
 

@@ -139,6 +139,15 @@ th { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-s
 
 .card-head-right { display: flex; align-items: center; gap: 10px; }
 
+.sel-all { display: inline-block; margin: 4px 0 10px; font-weight: 600; }
+.select-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.select-company {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+  padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+}
+.select-company .sc-name { font-weight: 600; min-width: 140px; }
+.src-check { display: inline-flex; align-items: center; gap: 5px; font-size: .88rem; }
+
 .progress-wrap { margin: 4px 0 16px; }
 .progress-bar {
   height: 10px; background: #e5e7eb; border-radius: 999px; overflow: hidden;
