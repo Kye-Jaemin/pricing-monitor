@@ -440,21 +440,39 @@ def _effective_category(feature: str, cat_map: dict[str, str]) -> str:
 
 
 def _company_paid_data(name: str):
-    """업체의 (산점도 점들, 유료 기능 목록, 최저 유료 월가격)."""
+    """업체의 (산점도 점들, 유료 기능 목록, 최저 유료 월가격).
+
+    같은 플랜의 결제주기 티어(Monthly/Annual 등)는 (월, 연환산) 한 점으로 병합한다.
+    """
+    from . import compare as cmp
+
     rows = store.latest_snapshots_for_company(name)
     pts, feats, seen = [], [], set()
     cheapest = None
     for row in rows:
         snap = PricingSnapshot.from_payload_json(row["payload_json"])
+
+        # 결제주기 변형 티어 병합 → 한 점, 나머지는 각자
+        merged_pts, remaining = cmp.merge_billing_points(snap.tiers)
+        plot = merged_pts + [
+            {
+                "x": (t.monthly_price if t.monthly_price is not None
+                      else t.annual_price_per_month),
+                "y": (t.annual_price_per_month if t.annual_price_per_month is not None
+                      else t.monthly_price),
+                "tier": t.name,
+            }
+            for t in remaining
+            if (t.monthly_price is not None or t.annual_price_per_month is not None)
+        ]
+        for p in plot:
+            key = (p["x"], p["y"], p["tier"])
+            if key not in seen:
+                seen.add(key)
+                pts.append(p)
+
         for t in snap.tiers:
             m, a = t.monthly_price, t.annual_price_per_month
-            if m is not None or a is not None:
-                x = m if m is not None else a
-                y = a if a is not None else m
-                key = (x, y, t.name)
-                if key not in seen:
-                    seen.add(key)
-                    pts.append({"x": x, "y": y, "tier": t.name})
             is_free = (m == 0) or ("free" in t.name.lower()) or ("무료" in t.name)
             if not is_free:
                 eff = a if a is not None else m

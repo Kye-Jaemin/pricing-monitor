@@ -31,6 +31,60 @@ WEIGHTS = {c: w for c, _, w in CATEGORY_RULES}
 WEIGHTS[DEFAULT_CATEGORY] = DEFAULT_WEIGHT
 
 
+import re
+
+# 결제주기 티어 이름(한 플랜의 월/연 결제 옵션 → 하나로 병합)
+_BILLING_RE = re.compile(
+    r"^\s*(\d+[-\s]?month(s)?|monthly|month|annual(ly)?|yearly|year|"
+    r"quarter(ly)?|week(ly)?|bi[-\s]?annual|semi[-\s]?annual|연간|월간|연|월)\s*$",
+    re.IGNORECASE,
+)
+
+
+def is_billing_variant(name: str) -> bool:
+    return bool(_BILLING_RE.match(name or ""))
+
+
+def _billing_kind(name: str) -> str:
+    n = (name or "").lower()
+    if any(k in n for k in ("annual", "yearly", "year", "연")):
+        return "annual"
+    if n.strip() in ("monthly", "month", "월", "월간") or n.strip() == "monthly":
+        return "monthly"
+    return "other"  # 6-month 등 중간 주기
+
+
+def merge_billing_points(tiers) -> tuple[list[dict], list]:
+    """결제주기 변형 티어들을 (월, 연환산) 한 점으로 병합.
+
+    반환: (병합 점 리스트, 병합되지 않은 나머지 티어들).
+    결제주기 티어가 2개 미만이면 병합하지 않는다(실제 플랜 티어 보호).
+    """
+    variants = [t for t in tiers if is_billing_variant(t.name)]
+    others = [t for t in tiers if not is_billing_variant(t.name)]
+    if len(variants) < 2:
+        return [], list(tiers)
+
+    def eff(t):
+        return t.annual_price_per_month if t.annual_price_per_month is not None else t.monthly_price
+
+    monthly_eff = annual_eff = None
+    for t in variants:
+        e = eff(t)
+        if e is None:
+            continue
+        kind = _billing_kind(t.name)
+        if kind == "monthly":
+            monthly_eff = e if monthly_eff is None else min(monthly_eff, e)
+        else:  # annual / other(6-month 등)는 장기 결제 → 연환산 후보
+            annual_eff = e if annual_eff is None else min(annual_eff, e)
+
+    x = monthly_eff if monthly_eff is not None else annual_eff
+    y = annual_eff if annual_eff is not None else monthly_eff
+    points = [{"x": x, "y": y, "tier": "구독"}] if x is not None else []
+    return points, others
+
+
 def categorize_feature(feature: str) -> list[str]:
     """기능 문자열을 1개 이상의 카테고리로 분류(매칭 없으면 기타)."""
     f = feature.lower()
