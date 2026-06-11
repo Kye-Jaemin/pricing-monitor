@@ -475,6 +475,58 @@ def _company_paid_data(name: str):
     return pts, feats, price_info
 
 
+def _company_plan_tiers(name: str) -> list[dict]:
+    """업체 대표 출처의 티어를 플랜 단위로 묶어 반환(가로 열 표시용).
+
+    같은 플랜의 월/연 결제 변형은 한 열로 합치고, 무료/유료를 구분한다.
+    각 항목: {name, is_free, monthly, annual, price_note, features}
+    """
+    from . import compare as cmp
+
+    rows = store.latest_snapshots_for_company(name)
+    if not rows:
+        return []
+    primary = _pick_primary(rows, _priority_map(name))
+    snap = PricingSnapshot.from_payload_json(primary["payload_json"])
+
+    groups: dict[str, dict] = {}
+    order = 0
+    for t in snap.tiers:
+        key = cmp._plan_key(t.name)
+        g = groups.get(key)
+        if g is None:
+            g = groups[key] = {
+                "name": cmp._plan_display(t.name), "is_free": False,
+                "monthly": None, "annual": None, "price_note": t.price_note,
+                "features": [], "order": order,
+            }
+            order += 1
+        if _is_free_tier(t):
+            g["is_free"] = True
+        m, a = t.monthly_price, t.annual_price_per_month
+        if m is not None and a is not None:
+            g["monthly"] = m if g["monthly"] is None else min(g["monthly"], m)
+            g["annual"] = a if g["annual"] is None else min(g["annual"], a)
+        else:
+            price = m if m is not None else a
+            if price is not None:
+                kind = cmp._billing_kind(t.name)
+                if kind == "annual" or (kind == "other" and a is not None and m is None):
+                    g["annual"] = price if g["annual"] is None else min(g["annual"], price)
+                else:
+                    g["monthly"] = price if g["monthly"] is None else min(g["monthly"], price)
+        for f in t.features:
+            if f not in g["features"]:
+                g["features"].append(f)
+
+    # 무료 먼저, 그다음 월가격(연환산) 오름차순
+    def sort_key(g):
+        eff = g["monthly"] if g["monthly"] is not None else g["annual"]
+        return (0 if g["is_free"] else 1, eff if eff is not None else 1e9, g["order"])
+
+    return sorted(groups.values(), key=sort_key)
+
+
 # ── 업체간 비교 (/compare) ───────────────────────────────────
 def compare(names: list[str]) -> dict:
     """선택 업체 비교: 가격 산점도 + 업체별(카테고리·기능·월가격) + 카테고리 매트릭스.
@@ -516,6 +568,7 @@ def compare(names: list[str]) -> dict:
                 "icon": _company_icon(icon_map.get(name), []),
                 "monthly_price": price_info["monthly"],
                 "annual_price": price_info["annual"],
+                "tiers": _company_plan_tiers(name),
                 "categories": [
                     {"category": c, "features": fs}
                     for c, fs in sorted(cat_feats.items())

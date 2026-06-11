@@ -97,30 +97,48 @@
 
 <details class="card">
   <summary><h2>{{ t('compare.per_company_title') }}</h2></summary>
-  <div class="cmp-grid">
-    {% for pc in data.per_company %}
-    <div class="cmp-col">
-      <div class="cmp-col-head">
-        {% if pc.icon %}<img class="company-icon" src="{{ pc.icon }}" alt="" onerror="this.style.display='none'">{% endif %}
-        <strong>{{ pc.company }}</strong>
-        <span class="muted">· {{ t('compare.price_from') }}
-          {%- if pc.monthly_price is not none %} {{ t('col.monthly') }} ${{ '%g'|format(pc.monthly_price) }}{% endif %}
-          {%- if pc.annual_price is not none %}{% if pc.monthly_price is not none %} /{% endif %} {{ t('col.annual') }} ${{ '%g'|format(pc.annual_price) }}{% endif %}
-          {%- if pc.monthly_price is none and pc.annual_price is none %} —{% endif %}</span>
+  {% for pc in data.per_company %}
+  <div class="cmp-company">
+    <div class="cmp-col-head">
+      {% if pc.icon %}<img class="company-icon" src="{{ pc.icon }}" alt="" onerror="this.style.display='none'">{% endif %}
+      <strong>{{ pc.company }}</strong>
+      <span class="muted">· {{ t('compare.price_from') }}
+        {%- if pc.monthly_price is not none %} {{ t('col.monthly') }} ${{ '%g'|format(pc.monthly_price) }}{% endif %}
+        {%- if pc.annual_price is not none %}{% if pc.monthly_price is not none %} /{% endif %} {{ t('col.annual') }} ${{ '%g'|format(pc.annual_price) }}{% endif %}
+        {%- if pc.monthly_price is none and pc.annual_price is none %} —{% endif %}</span>
+    </div>
+    {% if pc.tiers %}
+    <div class="tier-row">
+      {% for tr in pc.tiers %}
+      <div class="tier-card {{ 'tier-free' if tr.is_free else 'tier-paid' }}">
+        <div class="tier-card-head">
+          <span class="tier-card-name">{{ tr.name }}</span>
+          {% if tr.is_free %}<span class="badge badge-free">{{ t('word.free') }}</span>{% endif %}
+        </div>
+        <div class="tier-card-price muted">
+          {%- if tr.monthly is not none %}{{ t('col.monthly') }} ${{ '%g'|format(tr.monthly) }}{% endif %}
+          {%- if tr.annual is not none %}{% if tr.monthly is not none %} / {% endif %}{{ t('col.annual') }} ${{ '%g'|format(tr.annual) }}{% endif %}
+          {%- if tr.monthly is none and tr.annual is none %}{{ tr.price_note or '—' }}{% endif %}
+        </div>
+        <ul class="tier-card-feats">
+          {% for f in tr.features %}<li>{{ f }}</li>{% else %}<li class="muted">—</li>{% endfor %}
+        </ul>
       </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    {# 이전에 저장된 카드(티어 데이터 없음) 호환 — 기존 카테고리 표시 #}
+    <div class="cmp-grid">
       {% for cat in pc.categories %}
       <div class="cmp-cat">
         <div class="cmp-cat-name">{{ cat.category }}</div>
-        <ul class="cmp-feats">
-          {% for f in cat.features %}<li>{{ f }}</li>{% endfor %}
-        </ul>
+        <ul class="cmp-feats">{% for f in cat.features %}<li>{{ f }}</li>{% endfor %}</ul>
       </div>
-      {% else %}
-      <p class="muted">—</p>
       {% endfor %}
     </div>
-    {% endfor %}
+    {% endif %}
   </div>
+  {% endfor %}
 </details>
 
 <details class="card">
