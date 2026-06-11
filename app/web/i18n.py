@@ -11,7 +11,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "nav.changes": "변동 로그",
         "nav.runs": "수집 상태",
         "nav.companies": "업체 관리",
-        "nav.compare": "비교",
+        "nav.compare": "업체 비교",
         "nav.howto": "사용법",
         "compare.title": "업체간 유료화 비교",
         "compare.select": "비교할 업체 선택",
