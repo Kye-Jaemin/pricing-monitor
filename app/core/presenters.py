@@ -577,6 +577,61 @@ def distinct_paid_features(names: list[str]) -> list[str]:
     return out
 
 
+# ── 저장된 비교 카드 (수동 저장 + 저장 시점 고정) ─────────────
+def save_comparison(names: list[str], title: str = "") -> int | None:
+    """현재 비교 결과를 저장 시점 그대로 카드로 저장. 유효 업체가 없으면 None."""
+    data = compare(names)
+    chosen = data.get("companies") or []
+    if not chosen:
+        return None
+    title = (title or "").strip() or " · ".join(chosen)
+    return store.save_comparison_card(
+        title=title,
+        companies_json=json.dumps(chosen, ensure_ascii=False),
+        payload_json=json.dumps(data, ensure_ascii=False),
+    )
+
+
+def saved_comparison_cards() -> list[dict]:
+    """저장된 비교 카드 목록(최신순) — 화면 카드용 요약."""
+    out: list[dict] = []
+    for row in store.list_comparison_cards():
+        try:
+            companies = json.loads(row["companies_json"])
+        except (ValueError, TypeError):
+            companies = []
+        out.append(
+            {
+                "id": row["id"],
+                "title": row["title"],
+                "companies": companies,
+                "created_at": row["created_at"],
+            }
+        )
+    return out
+
+
+def load_comparison_card(card_id: int) -> dict | None:
+    """저장된 카드의 고정 스냅샷 데이터를 화면용으로 복원. 없으면 None."""
+    row = store.get_comparison_card(card_id)
+    if row is None:
+        return None
+    try:
+        data = json.loads(row["payload_json"])
+    except (ValueError, TypeError):
+        return None
+    # 선택 목록(체크박스)은 현재 업체 기준으로 갱신해 새 비교 시작이 가능하도록.
+    data["all_companies"] = sorted(
+        c["name"] for c in store.list_companies(active_only=True)
+    )
+    return {
+        "id": row["id"],
+        "title": row["title"],
+        "created_at": row["created_at"],
+        "data": data,
+    }
+
+
 # ── 내부 API 용 ──────────────────────────────────────────────
 def latest_snapshots_api() -> list[dict]:
     rows = store.all_latest_by_source()

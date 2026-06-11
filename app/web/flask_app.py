@@ -123,10 +123,48 @@ def compare_page():
     return render_template(
         "compare.html",
         data=presenters.compare(names),
+        saved_cards=presenters.saved_comparison_cards(),
         access_required=bool(config.ACCESS_CODE),
         contact=config.ACCESS_CONTACT,
         error=request.args.get("error"),
+        notice=request.args.get("notice"),
     )
+
+
+@app.route("/compare/save", methods=["POST"])
+def compare_save():
+    """현재 비교 결과를 저장 시점 그대로 카드로 저장(수동 저장)."""
+    names = [n for n in request.form.getlist("company") if n]
+    title = (request.form.get("title") or "").strip()
+    card_id = presenters.save_comparison(names, title)
+    if card_id is None:
+        return redirect(_compare_url(names, error="no_features"))
+    return redirect(_compare_url(names, notice="saved"))
+
+
+@app.route("/compare/card/<int:card_id>")
+def compare_card(card_id: int):
+    """저장된 비교 카드를 고정 스냅샷 그대로 표시(재계산 없음)."""
+    card = presenters.load_comparison_card(card_id)
+    if card is None:
+        return redirect(url_for("compare_page"))
+    return render_template(
+        "compare.html",
+        data=card["data"],
+        saved_cards=presenters.saved_comparison_cards(),
+        saved_view=True,
+        card=card,
+        access_required=bool(config.ACCESS_CODE),
+        contact=config.ACCESS_CONTACT,
+        error=request.args.get("error"),
+        notice=request.args.get("notice"),
+    )
+
+
+@app.route("/compare/card/<int:card_id>/delete", methods=["POST"])
+def compare_card_delete(card_id: int):
+    store.delete_comparison_card(card_id)
+    return redirect(url_for("compare_page"))
 
 
 @app.route("/compare/categorize", methods=["POST"])

@@ -177,6 +177,24 @@ a.btn-primary:hover { text-decoration: none; }
 .cat-edit { display: flex; gap: 6px; align-items: center; }
 .cat-edit input[type="text"] { padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; font-size: .85rem; }
 .cat-edit input.assigned { border-color: var(--accent); }
+
+/* 저장된 비교 카드 */
+.saved-grid { display: flex; gap: 12px; flex-wrap: wrap; }
+.saved-card {
+  flex: 1 1 220px; min-width: 200px;
+  border: 1px solid var(--line); border-radius: 10px; padding: 12px;
+  background: var(--card); display: flex; flex-direction: column; gap: 6px;
+}
+.saved-card.current { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.saved-card-title { font-weight: 600; font-size: .95rem; color: var(--accent); }
+.saved-card-title:hover { text-decoration: underline; }
+.saved-card-meta { font-size: .82rem; color: var(--muted); }
+.saved-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; }
+.saved-card-foot .muted { font-size: .72rem; }
+.saved-card-actions { display: flex; align-items: center; gap: 6px; }
+.saved-card-actions form { margin: 0; }
+.saved-badge { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.save-title { padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: .9rem; min-width: 200px; }
 .btn-danger {
   background: #fff; color: #b91c1c; border: 1px solid #fca5a5;
   padding: 5px 12px; border-radius: 7px; font-size: .82rem; font-weight: 600;

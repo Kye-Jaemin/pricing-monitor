@@ -82,6 +82,14 @@ CREATE TABLE IF NOT EXISTS run_logs (
     status           TEXT NOT NULL,
     error_message    TEXT
 );
+
+CREATE TABLE IF NOT EXISTS comparison_cards (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    title          TEXT NOT NULL,
+    companies_json TEXT NOT NULL,   -- ["Notion","Slack"] (저장 시점 업체 목록)
+    payload_json   TEXT NOT NULL,   -- presenters.compare() 결과 스냅샷(저장 시점 고정)
+    created_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+);
 """
 
 
@@ -445,6 +453,39 @@ def set_feature_category(feature: str, category: str, source: str = "user") -> N
                    category=excluded.category, source=excluded.source""",
             (feature, category, source),
         )
+
+
+# ── comparison_cards (저장된 업체 비교 카드) ──────────────────
+def save_comparison_card(title: str, companies_json: str, payload_json: str) -> int:
+    """비교 결과를 저장 시점 그대로 카드로 저장하고 새 id 를 반환."""
+    with connect() as conn:
+        cur = conn.execute(
+            """INSERT INTO comparison_cards (title, companies_json, payload_json)
+               VALUES (?, ?, ?)""",
+            (title, companies_json, payload_json),
+        )
+        return int(cur.lastrowid)
+
+
+def list_comparison_cards() -> list[sqlite3.Row]:
+    """저장된 비교 카드 목록(최신순). payload 는 목록에서 제외해 가볍게."""
+    with connect() as conn:
+        return conn.execute(
+            """SELECT id, title, companies_json, created_at
+                 FROM comparison_cards ORDER BY id DESC"""
+        ).fetchall()
+
+
+def get_comparison_card(card_id: int) -> Optional[sqlite3.Row]:
+    with connect() as conn:
+        return conn.execute(
+            "SELECT * FROM comparison_cards WHERE id=?", (card_id,)
+        ).fetchone()
+
+
+def delete_comparison_card(card_id: int) -> None:
+    with connect() as conn:
+        conn.execute("DELETE FROM comparison_cards WHERE id=?", (card_id,))
 
 
 def recent_runs(limit: int = 100) -> list[sqlite3.Row]:

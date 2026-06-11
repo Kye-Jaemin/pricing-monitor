@@ -6,6 +6,40 @@
 {% if error == 'bad_code' %}<div class="alert">{{ t('runs.bad_code', contact=contact) }}</div>{% endif %}
 {% if error == 'ai_failed' %}<div class="alert">{{ t('compare.ai_failed') }}</div>{% endif %}
 {% if error == 'no_features' %}<div class="alert">{{ t('compare.no_features') }}</div>{% endif %}
+{% if notice == 'saved' %}<div class="notice">{{ t('compare.saved_notice') }}</div>{% endif %}
+
+{% if saved_view %}
+<div class="notice saved-badge">
+  <span>📌 {{ t('compare.saved_badge', at=card.created_at) }}</span>
+  <a href="{{ url_for('compare_page') }}">{{ t('compare.new_compare') }}</a>
+</div>
+{% endif %}
+
+<section class="card">
+  <h2>{{ t('compare.saved_title') }}</h2>
+  {% if saved_cards %}
+  <div class="saved-grid">
+    {% for c in saved_cards %}
+    <div class="saved-card{% if saved_view and c.id == card.id %} current{% endif %}">
+      <a class="saved-card-title" href="{{ url_for('compare_card', card_id=c.id) }}">{{ c.title }}</a>
+      <div class="saved-card-meta">{{ c.companies | join(' · ') }}</div>
+      <div class="saved-card-foot">
+        <span class="muted">{{ c.created_at }}</span>
+        <span class="saved-card-actions">
+          <a class="btn-secondary btn-sm" href="{{ url_for('compare_card', card_id=c.id) }}">{{ t('compare.open_card') }}</a>
+          <form method="post" action="{{ url_for('compare_card_delete', card_id=c.id) }}"
+                onsubmit="return confirm('{{ t('compare.confirm_delete_card') }}')">
+            <button type="submit" class="btn-danger btn-sm">{{ t('compare.delete_card') }}</button>
+          </form>
+        </span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted">{{ t('compare.saved_empty') }}</p>
+  {% endif %}
+</section>
 
 <section class="card">
   <h2>{{ t('compare.select') }}</h2>
@@ -26,6 +60,19 @@
   <div class="empty"><p>{{ t('compare.empty') }}</p></div>
 {% else %}
 
+{% if not saved_view %}
+<section class="card">
+  <div class="card-head">
+    <h2>{{ t('compare.save_card') }}</h2>
+    <form method="post" action="{{ url_for('compare_save') }}" class="run-form">
+      {% for n in data.companies %}<input type="hidden" name="company" value="{{ n }}">{% endfor %}
+      <input type="text" name="title" class="save-title" placeholder="{{ t('compare.save_title_ph') }}" autocomplete="off">
+      <button type="submit" class="btn-primary">💾 {{ t('compare.save_card') }}</button>
+    </form>
+  </div>
+  <p class="muted">{{ t('compare.save_card_help') }}</p>
+</section>
+
 <section class="card">
   <div class="card-head">
     <h2>{{ t('compare.ai_categorize') }}</h2>
@@ -37,6 +84,7 @@
   </div>
   <p class="muted">{{ t('compare.ai_help') }}</p>
 </section>
+{% endif %}
 
 <section class="card">
   <h2>{{ t('compare.scatter_title') }}</h2>
@@ -102,6 +150,7 @@
   </div>
 </details>
 
+{% if not saved_view %}
 <datalist id="catlist">
   {% for row in data.matrix %}<option value="{{ row.category }}">{% endfor %}
 </datalist>
@@ -126,7 +175,8 @@
     </tbody>
   </table>
 </details>
-{% endif %}
+{% endif %}{# saved_view #}
+{% endif %}{# data.companies #}
 {% endblock %}
 
 {% block scripts %}
