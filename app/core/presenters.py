@@ -431,7 +431,7 @@ def _is_free_tier(t) -> bool:
 
 
 def _company_paid_data(name: str):
-    """업체 대표 출처의 (산점도 점들, 유료 기능 목록, 최저 유료 월가격).
+    """업체 대표 출처의 (산점도 점들, 유료 기능 목록, 최저가 플랜의 월/연 가격).
 
     여러 출처가 있어도 현황과 동일한 우선순위로 고른 **대표 출처 한 곳**의 값만
     사용한다(가격 산점도가 출처별로 뒤섞이지 않도록).
@@ -442,10 +442,11 @@ def _company_paid_data(name: str):
 
     rows = store.latest_snapshots_for_company(name)
     if not rows:
-        return [], [], None
+        return [], [], {"monthly": None, "annual": None}
     rows = [_pick_primary(rows, _priority_map(name))]
     pts, feats, seen = [], [], set()
-    cheapest = None
+    price_info = {"monthly": None, "annual": None}
+    best_eff = None
     for row in rows:
         snap = PricingSnapshot.from_payload_json(row["payload_json"])
 
@@ -458,17 +459,20 @@ def _company_paid_data(name: str):
             if key not in seen:
                 seen.add(key)
                 pts.append(p)
+            # 대표 가격 = 최저가 플랜의 월/연을 함께 보관
+            cands = [v for v in (p.get("monthly"), p.get("annual")) if v is not None and v > 0]
+            if cands:
+                eff = min(cands)
+                if best_eff is None or eff < best_eff:
+                    best_eff = eff
+                    price_info = {"monthly": p.get("monthly"), "annual": p.get("annual")}
 
         for t in snap.tiers:
-            m, a = t.monthly_price, t.annual_price_per_month
             if not _is_free_tier(t):
-                eff = a if a is not None else m
-                if eff is not None and eff > 0:
-                    cheapest = eff if cheapest is None else min(cheapest, eff)
                 for f in t.features:
                     if f not in feats:
                         feats.append(f)
-    return pts, feats, cheapest
+    return pts, feats, price_info
 
 
 # ── 업체간 비교 (/compare) ───────────────────────────────────
@@ -492,7 +496,7 @@ def compare(names: list[str]) -> dict:
     for name in names:
         if not store.latest_snapshots_for_company(name):
             continue
-        pts, feats, cheapest = _company_paid_data(name)
+        pts, feats, price_info = _company_paid_data(name)
         scatter.append({"label": name, "data": pts})
 
         cat_feats: dict[str, list[str]] = {}
@@ -506,7 +510,8 @@ def compare(names: list[str]) -> dict:
             {
                 "company": name,
                 "icon": _company_icon(icon_map.get(name), []),
-                "monthly_price": cheapest,
+                "monthly_price": price_info["monthly"],
+                "annual_price": price_info["annual"],
                 "categories": [
                     {"category": c, "features": fs}
                     for c, fs in sorted(cat_feats.items())

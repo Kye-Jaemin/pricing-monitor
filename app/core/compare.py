@@ -117,7 +117,11 @@ def plan_points(tiers) -> list[dict]:
         y = g["annual"] if g["annual"] is not None else g["monthly"]
         if x is None:
             continue
-        points.append({"x": x, "y": y, "tier": g["display"]})
+        # x/y 는 차트용(없는 값은 반대값으로 채움), monthly/annual 은 원본(없으면 None)
+        points.append({
+            "x": x, "y": y, "tier": g["display"],
+            "monthly": g["monthly"], "annual": g["annual"],
+        })
     return points
 
 

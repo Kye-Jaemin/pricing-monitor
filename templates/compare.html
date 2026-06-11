@@ -103,7 +103,10 @@
       <div class="cmp-col-head">
         {% if pc.icon %}<img class="company-icon" src="{{ pc.icon }}" alt="" onerror="this.style.display='none'">{% endif %}
         <strong>{{ pc.company }}</strong>
-        <span class="muted">· {{ t('compare.monthly_from') }} {% if pc.monthly_price is not none %}${{ '%g'|format(pc.monthly_price) }}{% else %}—{% endif %}</span>
+        <span class="muted">· {{ t('compare.price_from') }}
+          {%- if pc.monthly_price is not none %} {{ t('col.monthly') }} ${{ '%g'|format(pc.monthly_price) }}{% endif %}
+          {%- if pc.annual_price is not none %}{% if pc.monthly_price is not none %} /{% endif %} {{ t('col.annual') }} ${{ '%g'|format(pc.annual_price) }}{% endif %}
+          {%- if pc.monthly_price is none and pc.annual_price is none %} —{% endif %}</span>
       </div>
       {% for cat in pc.categories %}
       <div class="cmp-cat">
