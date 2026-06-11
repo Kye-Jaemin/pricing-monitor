@@ -49,9 +49,76 @@ def _billing_kind(name: str) -> str:
     n = (name or "").lower()
     if any(k in n for k in ("annual", "yearly", "year", "연")):
         return "annual"
-    if n.strip() in ("monthly", "month", "월", "월간") or n.strip() == "monthly":
+    if "monthly" in n or n.strip() in ("month", "월", "월간"):
         return "monthly"
     return "other"  # 6-month 등 중간 주기
+
+
+# 플랜 이름에서 결제주기 표현을 떼어내 같은 플랜끼리 묶기 위한 정규화
+_BILLING_WORD_RE = re.compile(
+    r"(?i)\b(monthly|month|annually|annual|yearly|year|quarterly|quarter|"
+    r"weekly|week|bi[-\s]?annual|semi[-\s]?annual|billed)\b"
+    r"|연간|월간|연|월|/\s*(mo|yr|month|year)\b"
+)
+
+
+def _plan_display(name: str) -> str:
+    """티어 이름에서 결제주기 단어를 제거한 플랜 표시명. 비면 '구독'."""
+    n = re.sub(r"\(.*?\)", " ", name or "")
+    n = _BILLING_WORD_RE.sub(" ", n)
+    n = re.sub(r"[\s/|·,_-]+", " ", n).strip()
+    return n or "구독"
+
+
+def _plan_key(name: str) -> str:
+    return _plan_display(name).lower()
+
+
+def plan_points(tiers) -> list[dict]:
+    """티어들을 '플랜' 단위로 묶어 (월, 연환산) 한 점씩 만든다.
+
+    같은 플랜의 월/연 결제 변형(예: 'Premium' 월 $29 + 'Premium' 연 $12.5,
+    또는 'Premium Monthly' / 'Premium Annual')을 이름 기준으로 합쳐 점 1개로
+    만든다. 한 티어가 월·연 값을 모두 가지면 그대로 한 점. 서로 다른 플랜
+    (Pro / Business 등)은 각자 점을 가진다.
+
+    반환: [{"x": 월가격, "y": 연환산 월가격, "tier": 플랜명}, ...]
+    """
+    groups: dict[str, dict] = {}
+    order = 0
+    for t in tiers:
+        key = _plan_key(t.name)
+        g = groups.get(key)
+        if g is None:
+            g = groups[key] = {
+                "monthly": None, "annual": None,
+                "display": _plan_display(t.name), "order": order,
+            }
+            order += 1
+
+        m, a = t.monthly_price, t.annual_price_per_month
+        if m is not None and a is not None:
+            # 한 티어가 월·연을 모두 보유 → 그대로 사용
+            g["monthly"] = m if g["monthly"] is None else min(g["monthly"], m)
+            g["annual"] = a if g["annual"] is None else min(g["annual"], a)
+            continue
+        price = m if m is not None else a
+        if price is None:
+            continue
+        kind = _billing_kind(t.name)
+        if kind == "annual" or (kind == "other" and a is not None and m is None):
+            g["annual"] = price if g["annual"] is None else min(g["annual"], price)
+        else:
+            g["monthly"] = price if g["monthly"] is None else min(g["monthly"], price)
+
+    points: list[dict] = []
+    for g in sorted(groups.values(), key=lambda x: x["order"]):
+        x = g["monthly"] if g["monthly"] is not None else g["annual"]
+        y = g["annual"] if g["annual"] is not None else g["monthly"]
+        if x is None:
+            continue
+        points.append({"x": x, "y": y, "tier": g["display"]})
+    return points
 
 
 def merge_billing_points(tiers) -> tuple[list[dict], list]:

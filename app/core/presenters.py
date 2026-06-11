@@ -449,20 +449,10 @@ def _company_paid_data(name: str):
     for row in rows:
         snap = PricingSnapshot.from_payload_json(row["payload_json"])
 
-        # 결제주기 변형 티어 병합 → 한 점, 나머지는 각자 (무료 티어는 점에서 제외)
-        merged_pts, remaining = cmp.merge_billing_points(snap.tiers)
-        plot = merged_pts + [
-            {
-                "x": (t.monthly_price if t.monthly_price is not None
-                      else t.annual_price_per_month),
-                "y": (t.annual_price_per_month if t.annual_price_per_month is not None
-                      else t.monthly_price),
-                "tier": t.name,
-            }
-            for t in remaining
-            if (t.monthly_price is not None or t.annual_price_per_month is not None)
-            and not _is_free_tier(t)
-        ]
+        # 플랜 단위로 묶어 (월, 연환산) 한 점씩 (무료 티어는 점에서 제외).
+        # 같은 플랜의 월/연 결제 변형은 이름 기준으로 합쳐 점 1개로 만든다.
+        paid_tiers = [t for t in snap.tiers if not _is_free_tier(t)]
+        plot = cmp.plan_points(paid_tiers)
         for p in plot:
             key = (p["x"], p["y"], p["tier"])
             if key not in seen:
