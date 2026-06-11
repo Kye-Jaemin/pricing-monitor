@@ -542,6 +542,31 @@ def _company_plan_tiers(name: str, cat_map: dict[str, str] | None = None) -> lis
     return out
 
 
+def _company_unlock_breakdown(tiers: list[dict]) -> list[dict]:
+    """플랜 티어(가격 오름차순)에서 각 가격대에 '처음 풀리는' 기능만 추린다.
+
+    각 기능을 그 기능이 처음 제공되는 가장 싼 티어(가격)에 한 번만 귀속시켜,
+    '무료 / 월 $x / 월 $y' 형태의 증분 분리를 만든다.
+    """
+    seen: set[str] = set()
+    out: list[dict] = []
+    for tr in tiers:
+        feats: list[str] = []
+        for cat in tr.get("categories", []):
+            feats.extend(cat["features"])
+        new = [f for f in feats if f not in seen]
+        seen.update(feats)
+        if new:
+            out.append({
+                "is_free": tr["is_free"],
+                "monthly": tr["monthly"],
+                "annual": tr["annual"],
+                "price_note": tr.get("price_note"),
+                "features": new,
+            })
+    return out
+
+
 # ── 업체간 비교 (/compare) ───────────────────────────────────
 def compare(names: list[str]) -> dict:
     """선택 업체 비교: 가격 산점도 + 업체별(카테고리·기능·월가격) + 카테고리 매트릭스.
@@ -577,13 +602,15 @@ def compare(names: list[str]) -> dict:
             matrix.setdefault(c, {})[name] = matrix.get(c, {}).get(name, 0) + 1
             all_features.add(f)
 
+        plan_tiers = _company_plan_tiers(name, cat_map)
         per_company.append(
             {
                 "company": name,
                 "icon": _company_icon(icon_map.get(name), []),
                 "monthly_price": price_info["monthly"],
                 "annual_price": price_info["annual"],
-                "tiers": _company_plan_tiers(name, cat_map),
+                "tiers": plan_tiers,
+                "unlock": _company_unlock_breakdown(plan_tiers),
                 "categories": [
                     {"category": c, "features": fs}
                     for c, fs in sorted(cat_feats.items())
