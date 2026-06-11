@@ -35,42 +35,91 @@ def build_google_search_url(company: str) -> str:
     return f"https://www.google.com/search?q={q}&hl=en&gl=us"
 
 
-def fetch_google_via_serpapi(url: str) -> str:
-    """구글 검색을 SerpAPI로 가져온다(헤드리스 봇 차단 회피).
-
-    URL 의 q 파라미터로 검색하고, answer_box / ai_overview / 상위 오가닉 스니펫을
-    합쳐 텍스트로 돌려준다. config.SERPAPI_KEY 필요.
-    """
+def _serpapi_get(params: dict) -> dict:
+    """SerpAPI search.json 호출 → JSON dict. (호출 1건 = 검색 1건 과금)"""
     import json
     import urllib.request
 
     if not config.SERPAPI_KEY:
         raise FetchError("SERPAPI_KEY 미설정")
-
-    q = parse_qs(urlparse(url).query).get("q", [""])[0]
-    if not q:
-        raise FetchError(f"검색어(q) 없음: {url}")
-
-    params = urlencode(
-        {"engine": "google", "q": q, "hl": "en", "gl": "us",
-         "api_key": config.SERPAPI_KEY}
+    api = "https://serpapi.com/search.json?" + urlencode(
+        {**params, "api_key": config.SERPAPI_KEY}
     )
-    api = f"https://serpapi.com/search.json?{params}"
     try:
         req = urllib.request.Request(api, headers={"User-Agent": USER_AGENT})
         with urllib.request.urlopen(req, timeout=25) as resp:
             data = json.loads(resp.read().decode("utf-8"))
     except Exception as exc:  # noqa: BLE001
         raise FetchError(f"SerpAPI 요청 실패: {exc}") from exc
-
     if data.get("error"):
         raise FetchError(f"SerpAPI 오류: {data['error']}")
+    return data
+
+
+def _flatten_ai_overview(ai: dict) -> str:
+    """SerpAPI ai_overview(text_blocks/references)를 읽기 좋은 텍스트로 평탄화."""
+    out: list[str] = []
+
+    def walk(blocks, indent=""):
+        for b in blocks or []:
+            if b.get("snippet"):
+                out.append(indent + b["snippet"])
+            for item in b.get("list", []) or []:
+                label = " ".join(
+                    x for x in (item.get("title"), item.get("snippet")) if x
+                )
+                if label:
+                    out.append(indent + "- " + label)
+                walk(item.get("list"), indent + "  ")
+            # 일부 블록은 text_blocks 를 중첩한다
+            walk(b.get("text_blocks"), indent + "  ")
+
+    walk(ai.get("text_blocks"))
+    refs = [r.get("link") for r in (ai.get("references") or []) if r.get("link")]
+    if refs:
+        out.append("REFERENCES: " + "; ".join(refs[:10]))
+    return "\n".join(o for o in out if o).strip()
+
+
+def _ai_overview_text(ai: dict) -> str:
+    """ai_overview 블록에서 본문 추출. page_token 만 있으면 2차 호출로 본문을 받는다.
+
+    SerpAPI 는 AI Overview 를 인라인(text_blocks)으로 주거나, page_token 만 주고
+    별도 engine=google_ai_overview 호출을 요구한다(이때 호출 1건이 추가 과금).
+    """
+    if not ai.get("text_blocks") and ai.get("page_token"):
+        try:
+            data = _serpapi_get(
+                {"engine": "google_ai_overview", "page_token": ai["page_token"]}
+            )
+            ai = data.get("ai_overview", ai)
+        except FetchError:
+            return ""  # 2차 호출 실패는 치명적이지 않음(오가닉 스니펫으로 진행)
+    return _flatten_ai_overview(ai)
+
+
+def fetch_google_via_serpapi(url: str) -> str:
+    """구글 검색을 SerpAPI로 가져온다(헤드리스 봇 차단 회피).
+
+    URL 의 q 파라미터로 검색하고, answer_box / AI Overview 본문 / 상위 오가닉
+    스니펫을 합쳐 텍스트로 돌려준다. config.SERPAPI_KEY 필요.
+    AI Overview 가 page_token 형태면 2차 호출로 실제 본문을 받아온다.
+    """
+    import json
+
+    q = parse_qs(urlparse(url).query).get("q", [""])[0]
+    if not q:
+        raise FetchError(f"검색어(q) 없음: {url}")
+
+    data = _serpapi_get({"engine": "google", "q": q, "hl": "en", "gl": "us"})
 
     parts: list[str] = []
     if data.get("answer_box"):
         parts.append("ANSWER BOX:\n" + json.dumps(data["answer_box"], ensure_ascii=False))
     if data.get("ai_overview"):
-        parts.append("AI OVERVIEW:\n" + json.dumps(data["ai_overview"], ensure_ascii=False))
+        ov = _ai_overview_text(data["ai_overview"])
+        if ov:
+            parts.append("AI OVERVIEW:\n" + ov)
     for o in (data.get("organic_results") or [])[:10]:
         title = o.get("title", "")
         snippet = o.get("snippet", "")
