@@ -256,26 +256,47 @@ def _norm_type(value: str) -> str:
     return value if value in SOURCE_TYPES else "other"
 
 
-def _resolve_url(company: str, source_type: str, url: str) -> str:
-    """구글 검색 소스는 URL 을 비우면 업체명으로 자동 생성한다."""
-    if not url and source_type == "google_search":
-        return build_google_search_url(company)
-    return url
+def _resolve_source_url(company: str, source_type: str, url: str):
+    """소스 URL 을 결정한다. 비어 있으면 종류별로 자동 생성/탐색.
+
+    반환: (url, icon, error). url 이 None 이면 추가 불가(error 사유 포함).
+      - google_search: 업체명으로 검색 URL 자동 생성
+      - apple / google_play: 스토어에서 앱 자동 탐색(자동 찾기와 동일)
+      - web / other: URL 필수
+    """
+    url = (url or "").strip()
+    if url:
+        return url, None, None
+    if source_type == "google_search":
+        return build_google_search_url(company), None, None
+    if source_type == "apple":
+        found = discover.find_apple_app(company)
+        if found and found.get("url"):
+            return found["url"], found.get("icon"), None
+        return None, None, f"{company}: App Store에서 앱을 찾지 못했습니다."
+    if source_type == "google_play":
+        found = discover.find_google_play_app(company)
+        if found and found.get("url"):
+            return found["url"], None, None
+        return None, None, f"{company}: Play Store에서 앱을 찾지 못했습니다."
+    return None, None, "소스 URL은 필수입니다(공식 홈페이지/기타)."
 
 
 @app.route("/companies/add", methods=["POST"])
 def companies_add():
-    """업체 + 첫 소스를 함께 등록."""
+    """업체 + 첫 소스를 함께 등록. 스토어 종류는 URL 없이 자동 탐색."""
     name = (request.form.get("name") or "").strip()
     source_type = _norm_type(request.form.get("source_type"))
-    url = _resolve_url(name, source_type, (request.form.get("url") or "").strip())
-
     if not name:
         return redirect(url_for("companies_page", error="업체명은 필수입니다."))
-    if not url:
-        return redirect(url_for("companies_page", error="소스 URL은 필수입니다."))
+
+    url, icon, error = _resolve_source_url(name, source_type, request.form.get("url"))
+    if error:
+        return redirect(url_for("companies_page", error=error))
 
     store.add_source(company=name, source_type=source_type, url=url)
+    if icon:
+        store.set_company_icon(name, icon)
     return redirect(url_for("companies_page"))
 
 
@@ -289,15 +310,19 @@ def companies_delete():
 
 @app.route("/sources/add", methods=["POST"])
 def sources_add():
-    """기존 업체에 소스 URL 추가."""
+    """기존 업체에 소스 추가. 스토어 종류는 URL 없이 자동 탐색."""
     company = (request.form.get("company") or "").strip()
     source_type = _norm_type(request.form.get("source_type"))
-    url = _resolve_url(company, source_type, (request.form.get("url") or "").strip())
+    if not company:
+        return redirect(url_for("companies_page", error="업체가 필요합니다."))
 
-    if not (company and url):
-        return redirect(url_for("companies_page", error="업체와 소스 URL이 필요합니다."))
+    url, icon, error = _resolve_source_url(company, source_type, request.form.get("url"))
+    if error:
+        return redirect(url_for("companies_page", error=error))
 
     store.add_source(company=company, source_type=source_type, url=url)
+    if icon:
+        store.set_company_icon(company, icon)
     return redirect(url_for("companies_page"))
 
 
