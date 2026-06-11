@@ -601,6 +601,10 @@ def compare(names: list[str]) -> dict:
 
     cat_map = store.get_feature_categories()
     icon_map = {c["name"]: c["icon_url"] for c in store.list_companies(active_only=False)}
+    # 업체별 소스 URL — 앱 아이콘이 없을 때 브랜드 도메인 파비콘 폴백용
+    src_map: dict[str, list[str]] = {}
+    for s in store.list_sources(active_only=True):
+        src_map.setdefault(s["company_name"], []).append(s["url"])
 
     chosen = []
     scatter = []
@@ -616,7 +620,7 @@ def compare(names: list[str]) -> dict:
         scatter.append({
             "label": name,
             "data": pts,
-            "icon": _company_icon(icon_map.get(name), []),
+            "icon": _company_icon(icon_map.get(name), src_map.get(name, [])),
         })
 
         cat_feats: dict[str, list[str]] = {}
@@ -640,7 +644,7 @@ def compare(names: list[str]) -> dict:
         per_company.append(
             {
                 "company": name,
-                "icon": _company_icon(icon_map.get(name), []),
+                "icon": _company_icon(icon_map.get(name), src_map.get(name, [])),
                 "monthly_price": price_info["monthly"],
                 "annual_price": price_info["annual"],
                 "tiers": plan_tiers,
@@ -671,7 +675,7 @@ def compare(names: list[str]) -> dict:
         for c in used_cats
     ]
     ranking = sorted(
-        ({"company": n, "score": scores[n], "icon": _company_icon(icon_map.get(n), [])}
+        ({"company": n, "score": scores[n], "icon": _company_icon(icon_map.get(n), src_map.get(n, []))}
          for n in chosen),
         key=lambda x: x["score"],
         reverse=True,
