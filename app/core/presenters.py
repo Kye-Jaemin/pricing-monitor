@@ -685,36 +685,61 @@ def compare(names: list[str]) -> dict:
         for f in sorted(all_features)
     ]
 
-    # ── 가격대별 분석: 가격 밴드(무료→유료 오름차순)별로 업체를 묶는다 ──
+    # ── 가격대별 분석: $5 단위 밴드(무료 / ~$5 / ~$10 …) → 카테고리 → 업체(기능) ──
+    import math
+
     bands: dict = {}
     for pc in per_company:
-        ai_list = pc.get("ai_unlock") or []
         for g in pc.get("unlock", []):
+            # 연환산 월가격(가장 저렴한 실효 월가격) 우선
+            eff = g["annual"] if g["annual"] is not None else g["monthly"]
             if g["is_free"]:
-                bkey, order = ("free",), (0, 0.0)
-            elif g["monthly"] is not None:
-                bkey, order = ("m", g["monthly"]), (1, g["monthly"])
-            elif g["annual"] is not None:
-                bkey, order = ("a", g["annual"]), (1, g["annual"])
+                bkey, order, label, ub = "free", (0, 0.0), None, None
+            elif eff is not None:
+                ub = max(5, int(math.ceil(eff / 5.0)) * 5)
+                bkey, order, label = f"b{ub}", (1, float(ub)), f"~${ub}"
             else:
-                bkey, order = ("note", g["price_note"] or ""), (2, 0.0)
+                bkey, order, label, ub = "note", (2, 0.0), g["price_note"] or "문의", None
             b = bands.get(bkey)
             if b is None:
                 b = bands[bkey] = {
-                    "is_free": g["is_free"], "monthly": g["monthly"],
-                    "annual": g["annual"], "price_note": g["price_note"],
-                    "_order": order, "companies": [],
+                    "is_free": g["is_free"] and bkey == "free",
+                    "label": label,
+                    "upper": ub,
+                    "_order": order,
+                    "_cats": {},  # category -> {company -> entry}
                 }
-            ai = next((a for a in ai_list if a.get("price_label") == g["price_label"]), None)
-            b["companies"].append({
-                "company": pc["company"],
-                "icon": pc["icon"],
-                "features": g["features"],
-                "theme": ai["theme"] if ai else None,
-                "summary": ai["summary"] if ai else None,
-                "key_features": (ai.get("key_features") if ai else None) or g["features"],
-            })
-    price_bands = sorted(bands.values(), key=lambda b: b.pop("_order"))
+            # 이 가격대에서 풀리는 기능을 카테고리별로 업체에 귀속
+            for f in g["features"]:
+                c = _effective_category(f, cat_map)
+                comp_map = b["_cats"].setdefault(c, {})
+                entry = comp_map.get(pc["company"])
+                if entry is None:
+                    entry = comp_map[pc["company"]] = {
+                        "company": pc["company"],
+                        "icon": pc["icon"],
+                        "price": eff,
+                        "features": [],
+                    }
+                if f not in entry["features"]:
+                    entry["features"].append(f)
+
+    price_bands = []
+    for b in sorted(bands.values(), key=lambda x: x.pop("_order")):
+        cats = sorted(
+            b.pop("_cats").items(),
+            key=lambda kv: (-cmp.WEIGHTS.get(kv[0], cmp.DEFAULT_WEIGHT), kv[0]),
+        )
+        b["categories"] = [
+            {
+                "category": c,
+                "companies": sorted(
+                    comp_map.values(), key=lambda e: (e["price"] is None, e["price"] or 0, e["company"])
+                ),
+            }
+            for c, comp_map in cats
+        ]
+        price_bands.append(b)
 
     return {
         "companies": chosen,

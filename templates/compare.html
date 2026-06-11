@@ -195,29 +195,33 @@
 {% if data.price_bands %}
 <details class="card" open>
   <summary><h2>{{ t('compare.band_title') }}</h2></summary>
+  <p class="muted">{{ t('compare.band_help') }}</p>
   {% for b in data.price_bands %}
   <div class="band {{ 'band-free' if b.is_free else 'band-paid' }}">
     <div class="band-head">
-      {%- if b.is_free %}{{ t('compare.band_free') }}
-      {%- else %}{{ t('compare.band_paid') }}
-        {%- if b.monthly is not none %} ({{ t('col.monthly') }} ${{ '%g'|format(b.monthly) }}{% if b.annual is not none %} / {{ t('col.annual') }} ${{ '%g'|format(b.annual) }}{% endif %})
-        {%- elif b.annual is not none %} ({{ t('col.annual') }} ${{ '%g'|format(b.annual) }})
-        {%- elif b.price_note %} ({{ b.price_note }}){% endif %}
-      {%- endif %}
+      {%- if b.is_free %}{{ t('word.free') }}
+      {%- elif b.label %}{{ b.label }}{% if b.upper %} <span class="muted band-range">({{ t('compare.band_range', lo=(b.upper - 5), hi=b.upper) }})</span>{% endif %}
+      {%- else %}{{ t('word.private') }}{% endif %}
     </div>
-    <div class="band-companies">
-      {% for co in b.companies %}
-      <details class="band-co">
-        <summary>
-          {% if co.icon %}<img class="company-icon" src="{{ co.icon }}" alt="" onerror="this.style.display='none'">{% endif %}
-          <strong>{{ co.company }}</strong>
-          <span class="muted">— {% if co.theme %}{{ co.theme }}{% else %}{{ co.features|length }}{{ t('compare.band_feat_count') }}{% endif %}</span>
-        </summary>
-        {% if co.summary %}<p class="band-summary muted">{{ co.summary }}</p>{% endif %}
-        <ul class="band-feats">{% for f in co.key_features %}<li>{{ f }}</li>{% endfor %}</ul>
-      </details>
-      {% endfor %}
+    {% for cat in b.categories %}
+    <div class="band-cat">
+      <div class="band-cat-name">{{ cat.category }}</div>
+      <div class="band-companies">
+        {% for co in cat.companies %}
+        <details class="band-co">
+          <summary>
+            {% if co.icon %}<img class="company-icon" src="{{ co.icon }}" alt="" onerror="this.style.display='none'">{% endif %}
+            <strong>{{ co.company }}</strong>
+            <span class="muted">
+              {%- if co.price is not none %} ${{ '%g'|format(co.price) }}/{{ t('col.monthly') }}{% endif %}
+              — {{ co.features|length }}{{ t('compare.band_feat_count') }}</span>
+          </summary>
+          <ul class="band-feats">{% for f in co.features %}<li>{{ f }}</li>{% endfor %}</ul>
+        </details>
+        {% endfor %}
+      </div>
     </div>
+    {% endfor %}
   </div>
   {% endfor %}
 </details>

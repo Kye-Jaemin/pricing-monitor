@@ -197,6 +197,12 @@ a.btn-primary:hover { text-decoration: none; }
 .band-head { font-weight: 700; font-size: .95rem; margin-bottom: 8px; }
 .band-free .band-head { color: #1e40af; }
 .band-paid .band-head { color: #065f46; }
+.band-range { font-weight: 400; }
+.band-cat { margin: 8px 0 10px; }
+.band-cat-name {
+  font-weight: 600; font-size: .88rem; color: var(--accent);
+  margin-bottom: 4px; padding-left: 2px;
+}
 .band-companies { display: flex; flex-direction: column; gap: 4px; }
 .band-co { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
 .band-co > summary { cursor: pointer; font-size: .88rem; }
