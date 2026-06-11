@@ -76,11 +76,15 @@
 <section class="card">
   <div class="card-head">
     <h2>{{ t('compare.ai_categorize') }}</h2>
-    <form method="post" action="{{ url_for('compare_categorize') }}" class="run-form">
+    <form method="post" action="{{ url_for('compare_categorize') }}" class="run-form" id="aiCatForm">
       {% for n in data.companies %}<input type="hidden" name="company" value="{{ n }}">{% endfor %}
       {% if access_required %}<input type="password" name="access_code" class="access-input" placeholder="{{ t('runs.access_label') }}" autocomplete="off" required>{% endif %}
-      <button type="submit" class="btn-primary">🤖 {{ t('compare.ai_categorize') }}</button>
+      <button type="submit" class="btn-primary" id="aiCatBtn">🤖 {{ t('compare.ai_categorize') }}</button>
     </form>
+  </div>
+  <div class="progress-wrap" id="aiCatProg" hidden>
+    <div class="progress-bar"><div class="progress-fill indeterminate"></div></div>
+    <span class="muted">{{ t('compare.ai_running') }}</span>
   </div>
   <p class="muted">{{ t('compare.ai_help') }}</p>
 </section>
@@ -205,6 +209,18 @@
       }
     }
   });
+
+  // AI 카테고리 분류: 제출 시 진행 바 표시 (완료되면 서버가 리다이렉트)
+  (function () {
+    var form = document.getElementById('aiCatForm');
+    if (!form) return;
+    form.addEventListener('submit', function () {
+      var prog = document.getElementById('aiCatProg');
+      var btn = document.getElementById('aiCatBtn');
+      if (prog) prog.hidden = false;
+      if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+    });
+  })();
 </script>
 {% endif %}
 {% endblock %}
