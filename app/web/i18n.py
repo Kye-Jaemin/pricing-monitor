@@ -7,12 +7,11 @@ DEFAULT_LANG = "ko"
 TRANSLATIONS: dict[str, dict[str, str]] = {
     "ko": {
         # nav / chrome
-        "nav.overview": "현황",
+        "nav.overview": "업체별 구독 가격",
         "nav.changes": "변동 로그",
         "nav.runs": "수집 상태",
         "nav.companies": "업체 관리",
         "nav.compare": "가격 분석",
-        "nav.value": "피쳐 가치 분석",
         "nav.howto": "사용법",
         "value.title": "공급 측 피쳐 가치 분석",
         "value.subtitle": "업체 {n}곳의 최신 가격표에서 역산",
@@ -37,6 +36,9 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "compare.run": "비교하기",
         "compare.empty": "비교할 업체를 선택하세요.",
         "compare.scatter_title": "가격 산점도 (월 vs 연 환산 월가격, USD)",
+        "compare.zoom_hint": "휠로 확대/축소, 드래그로 이동 · Shift+드래그로 영역 확대",
+        "compare.zoom_reset": "확대 초기화",
+        "compare.zoom_full": "전체화면",
         "compare.value_title": "유료 가치 점수",
         "compare.value_help": "각 업체의 유료 티어 기능을 카테고리로 분류하고 가중치를 곱해 합산한 점수입니다(참고용 휴리스틱).",
         "compare.matrix_title": "유료 기능 카테고리 비교 (값=기능 수)",
@@ -96,7 +98,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "btn.add": "추가",
         "btn.delete": "삭제",
         # overview
-        "overview.title": "현황",
+        "overview.title": "업체별 구독 가격",
         "overview.week_changes": "이번 주 변동 {n}건",
         "overview.empty.title": "아직 수집된 데이터가 없습니다.",
         "overview.empty.hint": "수집 상태에서 [지금 수집]을 누르거나 CLI로 수집하세요.",
@@ -192,12 +194,11 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     },
     "en": {
         # nav / chrome
-        "nav.overview": "Overview",
+        "nav.overview": "Subscription Prices",
         "nav.changes": "Changes",
         "nav.runs": "Runs",
         "nav.companies": "Companies",
         "nav.compare": "Pricing Analysis",
-        "nav.value": "Feature Value",
         "nav.howto": "Help",
         "value.title": "Supply-side Feature Value Analysis",
         "value.subtitle": "Reverse-engineered from the latest pricing of {n} companies",
@@ -222,6 +223,9 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "compare.run": "Compare",
         "compare.empty": "Select companies to compare.",
         "compare.scatter_title": "Price scatter (monthly vs annual-per-month, USD)",
+        "compare.zoom_hint": "Wheel to zoom, drag to pan · Shift+drag to box-zoom",
+        "compare.zoom_reset": "Reset zoom",
+        "compare.zoom_full": "Fullscreen",
         "compare.value_title": "Paid value score",
         "compare.value_help": "Each company's paid-tier features are categorized and multiplied by a weight, then summed — a heuristic value score (for reference).",
         "compare.matrix_title": "Paid feature category comparison (value = feature count)",
@@ -281,7 +285,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "btn.add": "Add",
         "btn.delete": "Delete",
         # overview
-        "overview.title": "Overview",
+        "overview.title": "Subscription Prices",
         "overview.week_changes": "{n} changes this week",
         "overview.empty.title": "No data collected yet.",
         "overview.empty.hint": "Click [Run now] on the Runs page, or run via CLI.",

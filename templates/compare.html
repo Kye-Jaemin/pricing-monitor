@@ -91,8 +91,17 @@
 {% endif %}
 
 <section class="card">
-  <h2>{{ t('compare.scatter_title') }}</h2>
-  <canvas id="scatter" height="120"></canvas>
+  <div class="card-head">
+    <h2>{{ t('compare.scatter_title') }}</h2>
+    <div class="actions">
+      <button type="button" class="btn-secondary btn-sm" id="zoomReset">{{ t('compare.zoom_reset') }}</button>
+      <button type="button" class="btn-secondary btn-sm" id="zoomFull">⛶ {{ t('compare.zoom_full') }}</button>
+    </div>
+  </div>
+  <p class="muted zoom-hint">{{ t('compare.zoom_hint') }}</p>
+  <div id="scatterWrap" class="scatter-wrap">
+    <canvas id="scatter"></canvas>
+  </div>
 </section>
 
 <details class="card">
@@ -280,7 +289,10 @@
 {% block scripts %}
 {% if data.companies %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2"></script>
 <script>
+  if (window.ChartZoom) { Chart.register(window.ChartZoom); }
   var sc = {{ data.scatter | tojson }};
   var scatterChart;
   var datasets = sc.datasets.map(function (d, i) {
@@ -304,18 +316,49 @@
     data: { datasets: datasets },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       plugins: {
         legend: { labels: { usePointStyle: true, pointStyleWidth: 20, boxHeight: 16 } },
         tooltip: { callbacks: { label: function (ctx) {
           var p = ctx.raw;
           return ctx.dataset.label + ' · ' + (p.tier || '') + ' (월 $' + p.x + ' / 연환산 $' + p.y + ')';
-        } } }
+        } } },
+        zoom: {
+          pan: { enabled: true, mode: 'xy' },
+          zoom: {
+            wheel: { enabled: true },
+            pinch: { enabled: true },
+            drag: { enabled: true, modifierKey: 'shift' },
+            mode: 'xy'
+          }
+        }
       },
       scales: {
         x: { title: { display: true, text: '월 / Monthly ($)' }, beginAtZero: true },
         y: { title: { display: true, text: '연 환산 월가격 / Annual-per-mo ($)' }, beginAtZero: true }
       }
     }
+  });
+
+  // 확대/이동 컨트롤
+  var zr = document.getElementById('zoomReset');
+  if (zr) zr.addEventListener('click', function () {
+    if (scatterChart.resetZoom) scatterChart.resetZoom();
+  });
+  var zf = document.getElementById('zoomFull');
+  var wrap = document.getElementById('scatterWrap');
+  if (zf && wrap) zf.addEventListener('click', function () {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else if (wrap.requestFullscreen) {
+      wrap.requestFullscreen();
+    } else {
+      wrap.classList.toggle('pseudo-full');  // Fullscreen API 미지원 시 대체
+    }
+    setTimeout(function () { scatterChart.resize(); }, 120);
+  });
+  document.addEventListener('fullscreenchange', function () {
+    setTimeout(function () { scatterChart.resize(); }, 120);
   });
 
   // 제출 시 인디터미네이트 진행 바 표시(완료되면 서버가 리다이렉트)

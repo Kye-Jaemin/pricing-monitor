@@ -392,3 +392,38 @@ table.sortable th:hover { color: var(--accent); }
   padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
   font-size: .9rem; font-weight: 400;
 }
+
+/* ── 가격 산점도 확대/전체화면 ── */
+.scatter-wrap { position: relative; height: 440px; }
+.scatter-wrap canvas { width: 100% !important; height: 100% !important; }
+.scatter-wrap:fullscreen { background: var(--card); padding: 24px; height: 100vh; }
+.scatter-wrap.pseudo-full {
+  position: fixed; inset: 0; z-index: 1000; background: var(--card);
+  padding: 24px; height: 100vh; width: 100vw;
+}
+.zoom-hint { margin: -2px 0 8px; }
+
+/* ── UI 애니메이션 (은은하게) ── */
+@keyframes fadeup { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.card { animation: fadeup .28s ease both; transition: box-shadow .2s ease, border-color .2s ease; }
+.card:hover { box-shadow: 0 6px 18px rgba(20, 30, 50, .07); }
+.btn-primary, .btn-secondary, .btn-danger, .btn-x {
+  transition: transform .08s ease, background .15s ease, box-shadow .15s ease, color .15s ease;
+}
+.btn-primary:hover, .btn-secondary:hover { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(37,99,235,.18); }
+.btn-primary:active, .btn-secondary:active, .btn-danger:active { transform: translateY(0) scale(.97); }
+.topbar nav a { transition: color .15s ease; }
+.topbar nav a:hover { color: var(--accent); }
+.badge { transition: transform .15s ease; }
+.card:hover .badge { transform: translateY(-1px); }
+.company-icon { transition: transform .18s ease; }
+.company-summary:hover .company-icon { transform: scale(1.12) rotate(-3deg); }
+.company-summary:hover .cc-name { color: var(--accent); transition: color .15s ease; }
+.value-fill { transition: width .6s cubic-bezier(.22,.61,.36,1); }
+.tag, .chip { transition: transform .12s ease; }
+.saved-card { transition: transform .15s ease, box-shadow .15s ease; }
+.saved-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(20,30,50,.08); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
