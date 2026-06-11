@@ -119,9 +119,16 @@
           {%- if tr.annual is not none %}{% if tr.monthly is not none %} / {% endif %}{{ t('col.annual') }} ${{ '%g'|format(tr.annual) }}{% endif %}
           {%- if tr.monthly is none and tr.annual is none %}{{ tr.price_note or '—' }}{% endif %}
         </div>
-        <ul class="tier-card-feats">
-          {% for f in tr.features %}<li>{{ f }}</li>{% else %}<li class="muted">—</li>{% endfor %}
-        </ul>
+        {% for cat in tr.categories %}
+        <details class="tier-cat">
+          <summary>{{ cat.category }} <span class="muted">({{ cat.features|length }})</span></summary>
+          <ul class="tier-card-feats">{% for f in cat.features %}<li>{{ f }}</li>{% endfor %}</ul>
+        </details>
+        {% else %}
+        {# 이전 구조(카테고리 없이 features만) 호환 #}
+        {% if tr.features %}<ul class="tier-card-feats">{% for f in tr.features %}<li>{{ f }}</li>{% endfor %}</ul>
+        {% else %}<p class="muted tier-card-empty">—</p>{% endif %}
+        {% endfor %}
       </div>
       {% endfor %}
     </div>
@@ -230,10 +237,13 @@
     data: { datasets: datasets },
     options: {
       responsive: true,
-      plugins: { tooltip: { callbacks: { label: function (ctx) {
-        var p = ctx.raw;
-        return ctx.dataset.label + ' · ' + (p.tier || '') + ' (월 $' + p.x + ' / 연환산 $' + p.y + ')';
-      } } } },
+      plugins: {
+        legend: { labels: { usePointStyle: true, pointStyleWidth: 20, boxHeight: 16 } },
+        tooltip: { callbacks: { label: function (ctx) {
+          var p = ctx.raw;
+          return ctx.dataset.label + ' · ' + (p.tier || '') + ' (월 $' + p.x + ' / 연환산 $' + p.y + ')';
+        } } }
+      },
       scales: {
         x: { title: { display: true, text: '월 / Monthly ($)' }, beginAtZero: true },
         y: { title: { display: true, text: '연 환산 월가격 / Annual-per-mo ($)' }, beginAtZero: true }

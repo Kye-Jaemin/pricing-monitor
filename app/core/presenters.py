@@ -475,13 +475,18 @@ def _company_paid_data(name: str):
     return pts, feats, price_info
 
 
-def _company_plan_tiers(name: str) -> list[dict]:
+def _company_plan_tiers(name: str, cat_map: dict[str, str] | None = None) -> list[dict]:
     """업체 대표 출처의 티어를 플랜 단위로 묶어 반환(가로 열 표시용).
 
     같은 플랜의 월/연 결제 변형은 한 열로 합치고, 무료/유료를 구분한다.
-    각 항목: {name, is_free, monthly, annual, price_note, features}
+    각 티어의 기능은 카테고리별로 묶는다(클릭 시 세부 기능 표시용).
+    각 항목: {name, is_free, monthly, annual, price_note,
+              categories:[{category, features}]}
     """
     from . import compare as cmp
+
+    if cat_map is None:
+        cat_map = store.get_feature_categories()
 
     rows = store.latest_snapshots_for_company(name)
     if not rows:
@@ -498,7 +503,7 @@ def _company_plan_tiers(name: str) -> list[dict]:
             g = groups[key] = {
                 "name": cmp._plan_display(t.name), "is_free": False,
                 "monthly": None, "annual": None, "price_note": t.price_note,
-                "features": [], "order": order,
+                "cat_feats": {}, "order": order,
             }
             order += 1
         if _is_free_tier(t):
@@ -516,15 +521,25 @@ def _company_plan_tiers(name: str) -> list[dict]:
                 else:
                     g["monthly"] = price if g["monthly"] is None else min(g["monthly"], price)
         for f in t.features:
-            if f not in g["features"]:
-                g["features"].append(f)
+            c = _effective_category(f, cat_map)
+            fs = g["cat_feats"].setdefault(c, [])
+            if f not in fs:
+                fs.append(f)
 
     # 무료 먼저, 그다음 월가격(연환산) 오름차순
     def sort_key(g):
         eff = g["monthly"] if g["monthly"] is not None else g["annual"]
         return (0 if g["is_free"] else 1, eff if eff is not None else 1e9, g["order"])
 
-    return sorted(groups.values(), key=sort_key)
+    out = []
+    for g in sorted(groups.values(), key=sort_key):
+        cats = sorted(
+            g.pop("cat_feats").items(),
+            key=lambda kv: (-cmp.WEIGHTS.get(kv[0], cmp.DEFAULT_WEIGHT), kv[0]),
+        )
+        g["categories"] = [{"category": c, "features": fs} for c, fs in cats]
+        out.append(g)
+    return out
 
 
 # ── 업체간 비교 (/compare) ───────────────────────────────────
@@ -568,7 +583,7 @@ def compare(names: list[str]) -> dict:
                 "icon": _company_icon(icon_map.get(name), []),
                 "monthly_price": price_info["monthly"],
                 "annual_price": price_info["annual"],
-                "tiers": _company_plan_tiers(name),
+                "tiers": _company_plan_tiers(name, cat_map),
                 "categories": [
                     {"category": c, "features": fs}
                     for c, fs in sorted(cat_feats.items())

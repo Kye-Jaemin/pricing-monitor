@@ -188,8 +188,15 @@ a.btn-primary:hover { text-decoration: none; }
 .tier-card-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .tier-card-name { font-weight: 700; font-size: .9rem; }
 .tier-card-price { font-size: .78rem; margin: 3px 0 7px; }
-.tier-card-feats { margin: 0; padding-left: 16px; }
+.tier-cat { margin: 3px 0; }
+.tier-cat > summary {
+  cursor: pointer; font-size: .82rem; font-weight: 600; color: var(--accent);
+  list-style: revert; padding: 1px 0;
+}
+.tier-cat > summary:hover { text-decoration: underline; }
+.tier-card-feats { margin: 3px 0 6px; padding-left: 16px; }
 .tier-card-feats li { font-size: .82rem; margin: 2px 0; }
+.tier-card-empty { margin: 4px 0; }
 .cat-edit { display: flex; gap: 6px; align-items: center; }
 .cat-edit input[type="text"] { padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; font-size: .85rem; }
 .cat-edit input.assigned { border-color: var(--accent); }
