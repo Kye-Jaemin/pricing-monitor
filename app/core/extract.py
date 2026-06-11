@@ -26,13 +26,23 @@ Rules:
   whether a credit card is required). If there is no free trial, set it to null.
   A free trial is different from a free tier — do not confuse them.
 - Do not invent features or prices. If unsure, lower extraction_confidence.
+- ALWAYS normalize every price to a per-MONTH USD amount. Watch the billing
+  PERIOD carefully (per week / per month / per year are very different):
+  - Weekly "$X/week" (common in diet/fitness apps) -> monthly_price = X * 4.345
+    (weeks per month). Put the ORIGINAL "$X/week" in price_note. NEVER store a
+    weekly price directly as monthly_price.
+  - Daily "$X/day" -> monthly_price = X * 30; note the original in price_note.
+  - Quarterly / 6-month (longer commitment billed upfront) -> set
+    annual_price_per_month = total / number_of_months (e.g. 6-month $60 -> 10);
+    note the original term in price_note.
 - annual_price_per_month is ALWAYS the per-MONTH cost when billed annually
   (= annual total / 12), never the annual lump sum. E.g. "$71.99/year" -> 5.99.
-- If the SAME plan is sold with multiple billing periods (e.g. "Monthly $11.99,
-  Annual $71.99/yr ($5.99/mo)"), represent it as ONE tier: monthly_price = the
-  monthly-billing price (11.99), annual_price_per_month = annual total / 12 (5.99),
-  and note other terms (e.g. 6-month) in price_note. Do NOT create separate
-  "Monthly"/"Annual" tiers for one plan.
+- If the SAME plan is sold with multiple billing periods (e.g. "Weekly $6.99,
+  Monthly $11.99, Annual $71.99/yr ($5.99/mo)"), represent it as ONE tier:
+  monthly_price = the monthly-billing price (or weekly*4.345 if only weekly is
+  offered), annual_price_per_month = annual total / 12, and note the other terms
+  (weekly/6-month) in price_note. Do NOT create separate
+  "Weekly"/"Monthly"/"Annual" tiers for one plan.
 {source_hint}- "company" must be exactly: {company}
 - "source_url" must be exactly: {source_url}
 - "collected_at" must be exactly: {collected_at}
@@ -52,7 +62,9 @@ SOURCE_HINTS = {
         "shows one (e.g. 'Premium', 'Pro'); otherwise name it by billing period "
         "('Monthly', 'Annual') or 'Subscription'. Put the exact snippet wording in "
         "price_note. Put monthly amounts in monthly_price; for a yearly amount, set "
-        "annual_price_per_month to (yearly / 12). For each paid tier, also list the "
+        "annual_price_per_month to (yearly / 12); for a WEEKLY amount set "
+        "monthly_price to (weekly * 4.345) and keep the original '$X/week' in "
+        "price_note. For each paid tier, also list the "
         "key features included (from the snippets/AI overview) in the features array, "
         "not just the price. Capture any free tier or free trial mentioned. "
         "Set extraction_confidence to medium when you found prices. "
@@ -62,12 +74,16 @@ SOURCE_HINTS = {
     "apple": (
         "- This is an Apple App Store listing. Extract the in-app "
         "subscription/purchase tiers shown (use US storefront USD prices). "
-        "Map each subscription option to a tier.\n"
+        "Map each subscription option to a tier. WATCH the billing period — many "
+        "apps sell WEEKLY subscriptions (e.g. '$6.99/week'); convert weekly to "
+        "monthly_price = weekly * 4.345 and keep the original in price_note.\n"
     ),
     "google_play": (
         "- This is a Google Play Store listing. Extract the in-app "
         "subscription/purchase tiers shown (use US, USD prices). "
-        "If only a price range is given, put it in price_note and lower confidence.\n"
+        "If only a price range is given, put it in price_note and lower confidence. "
+        "WATCH the billing period — convert any WEEKLY price to "
+        "monthly_price = weekly * 4.345 and keep the original '$X/week' in price_note.\n"
     ),
 }
 
