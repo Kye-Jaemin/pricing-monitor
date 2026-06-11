@@ -482,11 +482,50 @@ def debug_source():
         )
     else:
         try:
-            text = fetch.fetch_page_text(url)
+            # google_search 는 실제 수집 경로(SerpAPI 키 있으면 SerpAPI)를 그대로 따른다
+            if stype == "google_search" and config.SERPAPI_KEY:
+                text = fetch.fetch_google_via_serpapi(url)
+            else:
+                text = fetch.fetch_page_text(url)
             body = f"[즉석 수집]\nURL: {url}\n\n{_clean_page_text(text)}"
         except Exception as exc:  # noqa: BLE001
             body = f"[즉석 수집 실패]\nURL: {url}\n\n{exc}"
     return Response(body[:40000], mimetype="text/plain; charset=utf-8")
+
+
+@app.route("/debug/serpapi")
+def debug_serpapi():
+    """SerpAPI 키 인식 여부 + 실제 호출 결과를 진단(Render 설정 검증용).
+
+    /debug/serpapi?company=<업체명>   또는   ?q=<검색어>
+    """
+    from urllib.parse import quote_plus
+
+    from ..core import fetch
+
+    key = config.SERPAPI_KEY
+    masked = f"{key[:4]}…{key[-2:]}" if len(key) >= 6 else ("(미설정)" if not key else "(너무 짧음)")
+    lines = [f"SERPAPI_KEY 감지: {bool(key)}   값(마스킹): {masked}"]
+    if not key:
+        lines.append("→ Render → 서비스 → Environment 에 SERPAPI_KEY 추가 후 재배포가 필요합니다.")
+        return Response("\n".join(lines), mimetype="text/plain; charset=utf-8")
+
+    company = (request.args.get("company") or "").strip()
+    q = (request.args.get("q") or "").strip()
+    if q:
+        url = f"https://www.google.com/search?q={quote_plus(q)}&hl=en&gl=us"
+    else:
+        url = fetch.build_google_search_url(company or "Notion")
+    lines.append(f"테스트 URL: {url}")
+    try:
+        text = fetch.fetch_google_via_serpapi(url)
+        has_ov = "AI OVERVIEW:" in text
+        lines.append(f"✅ 성공 — {len(text)}자 수신 · AI Overview 포함: {has_ov}")
+        lines.append("-" * 48)
+        lines.append(text[:8000])
+    except Exception as exc:  # noqa: BLE001
+        lines.append(f"❌ 실패: {exc}")
+    return Response("\n".join(lines)[:40000], mimetype="text/plain; charset=utf-8")
 
 
 @app.route("/priority/move", methods=["POST"])
