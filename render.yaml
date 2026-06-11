@@ -12,6 +12,8 @@ services:
     envVars:
       - key: ANTHROPIC_API_KEY
         sync: false
+      - key: SERPAPI_KEY          # 구글 검색 AI Overview 수집용(선택). 미설정이면 Playwright 폴백.
+        sync: false
       - key: ANTHROPIC_MODEL
         value: claude-sonnet-4-6
       - key: DB_PATH
