@@ -54,10 +54,10 @@ code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; font-size: .9e
 }
 .card-head {
   display: flex; align-items: baseline; justify-content: space-between;
-  gap: 12px; margin-bottom: 10px;
+  gap: 12px; margin-bottom: 10px; flex-wrap: wrap;
 }
 .card h2 { margin: 0 0 10px; font-size: 1.15rem; }
-.card-head h2 { margin: 0; }
+.card-head h2 { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 
 .badge {
   display: inline-block; font-size: .72rem; font-weight: 600;
