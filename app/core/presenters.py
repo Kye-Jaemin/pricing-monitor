@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
 from . import store
@@ -79,12 +78,6 @@ def _company_icon(icon_url: str | None, source_urls: list[str]) -> str | None:
     return None
 
 
-def _week_ago_iso() -> str:
-    return (datetime.now(timezone.utc) - timedelta(days=7)).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
-
-
 def _worst_confidence(confs: list[str]) -> str:
     if not confs:
         return "—"
@@ -148,17 +141,12 @@ def _feature_matrix(tiers: list) -> dict:
 
 # ── 1. 현황 (/) ──────────────────────────────────────────────
 def overview() -> dict:
-    """전체 업체의 대표 출처 가격표 + 이번 주 변동 배지 수.
+    """전체 업체의 대표 출처 최신 가격표.
 
     대표 출처는 우선순위(공식 홈페이지 > 구글 검색 > App Store > Play Store)로
     선정하고, 나머지 출처는 보조로 명시한다.
     """
     rows = store.all_latest_by_source()
-    recent = store.changes_since(_week_ago_iso())
-
-    change_count: dict[str, int] = {}
-    for c in recent:
-        change_count[c["company"]] = change_count.get(c["company"], 0) + 1
 
     grouped: dict[str, list] = {}
     for row in rows:
@@ -266,7 +254,6 @@ def overview() -> dict:
                 "collected_at": primary["collected_at"],
                 "currency": snap.currency,
                 "confidence": primary["confidence"],
-                "recent_changes": change_count.get(company_name, 0),
                 "source_count": len(srows),
                 "other_sources": [_src_label(r["source_type"]) for r in others],
                 "free_trial": free_trial,
@@ -278,7 +265,6 @@ def overview() -> dict:
     priority = [{"type": t, "label": _src_label(t)} for t in get_priority_order()]
     return {
         "companies": companies,
-        "total_recent_changes": len(recent),
         "priority": priority,
     }
 

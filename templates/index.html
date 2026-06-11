@@ -3,7 +3,6 @@
 {% block content %}
 <div class="page-head">
   <h1>{{ t('overview.title') }}</h1>
-  <span class="muted">{{ t('overview.week_changes', n=data.total_recent_changes) }}</span>
 </div>
 
 {% if not data.companies %}
@@ -18,7 +17,6 @@
   <summary class="company-summary">
     {% if c.icon %}<img class="company-icon" src="{{ c.icon }}" alt="" onerror="this.style.display='none'">{% endif %}
     <span class="cc-name">{{ c.company }}</span>
-    {% if c.recent_changes %}<span class="badge badge-change">{{ t('badge.changes') }} {{ c.recent_changes }}</span>{% endif %}
     {% if c.has_free_tier %}<span class="badge badge-free">{{ t('badge.free_tier') }}</span>{% endif %}
     {% if c.free_trial %}<span class="badge badge-trial">{{ t('badge.free_trial') }}</span>{% endif %}
     {% if c.confidence == 'low' %}<span class="badge badge-low">{{ t('badge.review') }}</span>{% endif %}
