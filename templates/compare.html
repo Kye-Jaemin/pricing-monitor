@@ -183,6 +183,37 @@
   {% endfor %}
 </details>
 
+{% if data.price_bands %}
+<details class="card" open>
+  <summary><h2>{{ t('compare.band_title') }}</h2></summary>
+  {% for b in data.price_bands %}
+  <div class="band {{ 'band-free' if b.is_free else 'band-paid' }}">
+    <div class="band-head">
+      {%- if b.is_free %}{{ t('compare.band_free') }}
+      {%- else %}{{ t('compare.band_paid') }}
+        {%- if b.monthly is not none %} ({{ t('col.monthly') }} ${{ '%g'|format(b.monthly) }}{% if b.annual is not none %} / {{ t('col.annual') }} ${{ '%g'|format(b.annual) }}{% endif %})
+        {%- elif b.annual is not none %} ({{ t('col.annual') }} ${{ '%g'|format(b.annual) }})
+        {%- elif b.price_note %} ({{ b.price_note }}){% endif %}
+      {%- endif %}
+    </div>
+    <div class="band-companies">
+      {% for co in b.companies %}
+      <details class="band-co">
+        <summary>
+          {% if co.icon %}<img class="company-icon" src="{{ co.icon }}" alt="" onerror="this.style.display='none'">{% endif %}
+          <strong>{{ co.company }}</strong>
+          <span class="muted">— {% if co.theme %}{{ co.theme }}{% else %}{{ co.features|length }}{{ t('compare.band_feat_count') }}{% endif %}</span>
+        </summary>
+        {% if co.summary %}<p class="band-summary muted">{{ co.summary }}</p>{% endif %}
+        <ul class="band-feats">{% for f in co.key_features %}<li>{{ f }}</li>{% endfor %}</ul>
+      </details>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</details>
+{% endif %}
+
 <details class="card">
   <summary><h2>{{ t('compare.value_title') }}</h2></summary>
   <p class="muted">{{ t('compare.value_help') }}</p>

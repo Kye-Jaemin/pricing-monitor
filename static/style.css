@@ -190,6 +190,21 @@ a.btn-primary:hover { text-decoration: none; }
 .unlock-theme { color: var(--accent); }
 .unlock-keyfeats { display: block; font-size: .8rem; margin-top: 2px; }
 
+/* 가격대별 분석 (가격대 → 업체 → 기능) */
+.band { margin: 10px 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); }
+.band-free { background: #eff6ff; border-color: #bfdbfe; }
+.band-paid { background: #ecfdf5; border-color: #a7f3d0; }
+.band-head { font-weight: 700; font-size: .95rem; margin-bottom: 8px; }
+.band-free .band-head { color: #1e40af; }
+.band-paid .band-head { color: #065f46; }
+.band-companies { display: flex; flex-direction: column; gap: 4px; }
+.band-co { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+.band-co > summary { cursor: pointer; font-size: .88rem; }
+.band-co > summary:hover { color: var(--accent); }
+.band-summary { margin: 6px 0 2px; font-size: .82rem; }
+.band-feats { margin: 4px 0 2px; padding-left: 18px; }
+.band-feats li { font-size: .83rem; margin: 2px 0; }
+
 /* 업체별 — 티어를 가로 열로 (무료=파랑 / 유료=초록) */
 .cmp-company { padding: 12px 0; border-top: 1px solid var(--line); }
 .cmp-company:first-of-type { border-top: none; padding-top: 4px; }

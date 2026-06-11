@@ -685,10 +685,42 @@ def compare(names: list[str]) -> dict:
         for f in sorted(all_features)
     ]
 
+    # ── 가격대별 분석: 가격 밴드(무료→유료 오름차순)별로 업체를 묶는다 ──
+    bands: dict = {}
+    for pc in per_company:
+        ai_list = pc.get("ai_unlock") or []
+        for g in pc.get("unlock", []):
+            if g["is_free"]:
+                bkey, order = ("free",), (0, 0.0)
+            elif g["monthly"] is not None:
+                bkey, order = ("m", g["monthly"]), (1, g["monthly"])
+            elif g["annual"] is not None:
+                bkey, order = ("a", g["annual"]), (1, g["annual"])
+            else:
+                bkey, order = ("note", g["price_note"] or ""), (2, 0.0)
+            b = bands.get(bkey)
+            if b is None:
+                b = bands[bkey] = {
+                    "is_free": g["is_free"], "monthly": g["monthly"],
+                    "annual": g["annual"], "price_note": g["price_note"],
+                    "_order": order, "companies": [],
+                }
+            ai = next((a for a in ai_list if a.get("price_label") == g["price_label"]), None)
+            b["companies"].append({
+                "company": pc["company"],
+                "icon": pc["icon"],
+                "features": g["features"],
+                "theme": ai["theme"] if ai else None,
+                "summary": ai["summary"] if ai else None,
+                "key_features": (ai.get("key_features") if ai else None) or g["features"],
+            })
+    price_bands = sorted(bands.values(), key=lambda b: b.pop("_order"))
+
     return {
         "companies": chosen,
         "scatter": {"datasets": scatter},
         "per_company": per_company,
+        "price_bands": price_bands,
         "matrix": matrix_rows,
         "ranking": ranking,
         "editable": editable,
