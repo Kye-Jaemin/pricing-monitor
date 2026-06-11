@@ -154,7 +154,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "nav.changes": "Changes",
         "nav.runs": "Runs",
         "nav.companies": "Companies",
-        "nav.compare": "Compare",
+        "nav.compare": "Compare Companies",
         "nav.howto": "Help",
         "compare.title": "Pricing comparison",
         "compare.select": "Select companies to compare",
