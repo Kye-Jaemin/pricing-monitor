@@ -431,14 +431,19 @@ def _is_free_tier(t) -> bool:
 
 
 def _company_paid_data(name: str):
-    """업체의 (산점도 점들, 유료 기능 목록, 최저 유료 월가격).
+    """업체 대표 출처의 (산점도 점들, 유료 기능 목록, 최저 유료 월가격).
 
+    여러 출처가 있어도 현황과 동일한 우선순위로 고른 **대표 출처 한 곳**의 값만
+    사용한다(가격 산점도가 출처별로 뒤섞이지 않도록).
     같은 플랜의 결제주기 티어(Monthly/Annual 등)는 (월, 연환산) 한 점으로 병합한다.
     무료 티어는 산점도에 표시하지 않는다(유료 가격 비교 목적).
     """
     from . import compare as cmp
 
     rows = store.latest_snapshots_for_company(name)
+    if not rows:
+        return [], [], None
+    rows = [_pick_primary(rows, _priority_map(name))]
     pts, feats, seen = [], [], set()
     cheapest = None
     for row in rows:
