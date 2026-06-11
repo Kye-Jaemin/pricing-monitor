@@ -63,19 +63,18 @@ def _favicon(url: str) -> str | None:
 
 
 def _company_icon(icon_url: str | None, source_urls: list[str]) -> str | None:
-    """업체 아이콘: 저장된 icon_url(앱 아이콘) 우선, 없으면 브랜드 도메인 파비콘."""
+    """업체 아이콘: 저장된 icon_url(앱 아이콘) 우선, 없으면 브랜드 도메인 파비콘.
+
+    구글 검색/스토어(google.com·apple.com 등) 호스트는 파비콘 대상에서 제외한다
+    (그 도메인의 파비콘 = 구글/애플 로고가 잘못 표시되는 문제 방지). 브랜드
+    도메인이 없으면 None 을 돌려 호출측이 기본 점으로 폴백하게 한다.
+    """
     if icon_url:
         return icon_url
-    # 스토어/검색이 아닌 브랜드 도메인을 우선
     for u in source_urls:
         host = urlparse(u).netloc.lower() if u else ""
         if host and not any(s in host for s in _STORE_HOSTS):
             return _favicon(u)
-    for u in source_urls:
-        if u:
-            fav = _favicon(u)
-            if fav:
-                return fav
     return None
 
 
