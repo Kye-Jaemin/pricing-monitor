@@ -97,6 +97,20 @@
 
 <details class="card">
   <summary><h2>{{ t('compare.per_company_title') }}</h2></summary>
+  {% if not saved_view %}
+  <div class="card-head">
+    <p class="muted">{{ t('compare.ai_pricing_help') }}</p>
+    <form method="post" action="{{ url_for('compare_analyze_pricing') }}" class="run-form" id="aiPriceForm">
+      {% for n in data.companies %}<input type="hidden" name="company" value="{{ n }}">{% endfor %}
+      {% if access_required %}<input type="password" name="access_code" class="access-input" placeholder="{{ t('runs.access_label') }}" autocomplete="off" required>{% endif %}
+      <button type="submit" class="btn-primary" id="aiPriceBtn">🤖 {{ t('compare.ai_pricing') }}</button>
+    </form>
+  </div>
+  <div class="progress-wrap" id="aiPriceProg" hidden>
+    <div class="progress-bar"><div class="progress-fill indeterminate"></div></div>
+    <span class="muted">{{ t('compare.ai_pricing_running') }}</span>
+  </div>
+  {% endif %}
   {% for pc in data.per_company %}
   <div class="cmp-company">
     <div class="cmp-col-head">
@@ -108,8 +122,10 @@
     </div>
     {% if pc.unlock %}
     <div class="unlock-block">
-      <div class="unlock-title muted">{{ t('compare.unlock_title') }}</div>
+      <div class="unlock-title muted">{{ t('compare.unlock_title') }}
+        {%- if pc.ai_unlock %} · 🤖 AI{% if pc.ai_stale %} <span class="badge badge-low">{{ t('compare.ai_stale') }}</span>{% endif %}{% endif %}</div>
       {% for g in pc.unlock %}
+      {% set ai = (pc.ai_unlock | selectattr('price_label', 'equalto', g.price_label) | first) if pc.ai_unlock else none %}
       <div class="unlock-row {{ 'unlock-free' if g.is_free else 'unlock-paid' }}">
         <span class="unlock-price">
           {%- if g.is_free %}{{ t('word.free') }}
@@ -117,7 +133,11 @@
           {%- elif g.annual is not none %}{{ t('col.annual') }} ${{ '%g'|format(g.annual) }}
           {%- else %}{{ g.price_note or '—' }}{% endif %}
         </span>
-        <span class="unlock-feats">{{ g.features | join(', ') }}</span>
+        <span class="unlock-feats">
+          {%- if ai %}<strong class="unlock-theme">{{ ai.theme }}</strong>{% if ai.summary %} — {{ ai.summary }}{% endif %}
+          <span class="muted unlock-keyfeats">{{ (ai.key_features or g.features) | join(', ') }}</span>
+          {%- else %}{{ g.features | join(', ') }}{% endif %}
+        </span>
       </div>
       {% endfor %}
     </div>
@@ -267,17 +287,19 @@
     }
   });
 
-  // AI 카테고리 분류: 제출 시 진행 바 표시 (완료되면 서버가 리다이렉트)
-  (function () {
-    var form = document.getElementById('aiCatForm');
+  // 제출 시 인디터미네이트 진행 바 표시(완료되면 서버가 리다이렉트)
+  function wireProgress(formId, progId, btnId) {
+    var form = document.getElementById(formId);
     if (!form) return;
     form.addEventListener('submit', function () {
-      var prog = document.getElementById('aiCatProg');
-      var btn = document.getElementById('aiCatBtn');
+      var prog = document.getElementById(progId);
+      var btn = document.getElementById(btnId);
       if (prog) prog.hidden = false;
       if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
     });
-  })();
+  }
+  wireProgress('aiCatForm', 'aiCatProg', 'aiCatBtn');     // AI 카테고리 분류
+  wireProgress('aiPriceForm', 'aiPriceProg', 'aiPriceBtn'); // AI 가격 분석
 </script>
 {% endif %}
 {% endblock %}

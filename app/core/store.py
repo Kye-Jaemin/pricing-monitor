@@ -80,6 +80,13 @@ CREATE TABLE IF NOT EXISTS feature_canonical (
     source        TEXT NOT NULL DEFAULT 'auto'  -- auto | ai | user
 );
 
+CREATE TABLE IF NOT EXISTS pricing_analysis (
+    company      TEXT PRIMARY KEY,
+    payload_json TEXT NOT NULL,   -- AI 가격대별 분석 결과(price_points)
+    signature    TEXT NOT NULL DEFAULT '',  -- 분석 당시 증분 데이터 해시(스테일 감지)
+    updated_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+);
+
 CREATE TABLE IF NOT EXISTS run_logs (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     run_started_at   TEXT NOT NULL,
@@ -515,6 +522,27 @@ def set_feature_canonical(feature: str, canonical_id: str, source: str = "auto")
                    canonical_id=excluded.canonical_id, source=excluded.source""",
             (feature, canonical_id, source),
         )
+
+
+# ── pricing_analysis (AI 가격대별 분석 결과) ──────────────────
+def set_pricing_analysis(company: str, payload_json: str, signature: str = "") -> None:
+    with connect() as conn:
+        conn.execute(
+            """INSERT INTO pricing_analysis (company, payload_json, signature, updated_at)
+               VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+               ON CONFLICT(company) DO UPDATE SET
+                   payload_json=excluded.payload_json,
+                   signature=excluded.signature,
+                   updated_at=excluded.updated_at""",
+            (company, payload_json, signature),
+        )
+
+
+def get_pricing_analysis(company: str) -> Optional[sqlite3.Row]:
+    with connect() as conn:
+        return conn.execute(
+            "SELECT * FROM pricing_analysis WHERE company=?", (company,)
+        ).fetchone()
 
 
 def recent_runs(limit: int = 100) -> list[sqlite3.Row]:

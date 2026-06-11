@@ -160,6 +160,60 @@ def categorize_features_ai(features: list[str]) -> dict:
     return {str(k): str(v) for k, v in data.items() if v}
 
 
+def analyze_pricing_ai(company: str, groups: list[dict]) -> list[dict]:
+    """가격대별 '처음 풀리는 기능'(결정적 증분)을 AI가 분석해 테마·요약을 붙인다.
+
+    입력 groups: [{"price_label": "무료"|"$10/월"|..., "features": [...]}, ...]
+    반환:        [{"price_label", "theme", "summary", "key_features": [...]}, ...]
+    가격/증분 자체는 입력으로 고정(환각 방지)하고, AI 는 의미 해석만 더한다.
+    """
+    if not config.ANTHROPIC_API_KEY:
+        raise ExtractError("ANTHROPIC_API_KEY 가 설정되지 않았습니다 (.env 확인).")
+    if not groups:
+        return []
+
+    from anthropic import Anthropic
+
+    client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
+    payload = json.dumps({"company": company, "price_points": groups}, ensure_ascii=False)
+    prompt = (
+        "You are a SaaS pricing analyst. For ONE company, you are given the features "
+        "that first unlock at each price point (already de-duplicated incrementally). "
+        "For EACH price point, explain what that price buys.\n"
+        "For each price point return:\n"
+        "- price_label: copy the given label verbatim\n"
+        "- theme: a short 2-4 word label for the value unlocked at this price\n"
+        "- summary: ONE concise sentence — what you get / who it's for\n"
+        "- key_features: the 2-6 most important features at this price (clean, "
+        "deduplicated, human-readable; only from the given features)\n"
+        "Use the SAME language as the features (Korean or English). Do not invent "
+        "features or prices. Keep the SAME order and the SAME set of price points.\n"
+        "Return ONLY JSON: {\"price_points\": [{price_label, theme, summary, "
+        "key_features:[...]}, ...]}. No prose, no code fences.\n\n"
+        f"INPUT:\n{payload}\n"
+    )
+    resp = client.messages.create(
+        model=config.ANTHROPIC_MODEL,
+        max_tokens=4096,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    raw = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
+    raw = _strip_code_fences(raw)
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ExtractError(f"가격 분석 JSON 파싱 실패: {exc}") from exc
+    out = []
+    for p in data.get("price_points", []):
+        out.append({
+            "price_label": str(p.get("price_label", "")),
+            "theme": str(p.get("theme", "")),
+            "summary": str(p.get("summary", "")),
+            "key_features": [str(f) for f in (p.get("key_features") or [])],
+        })
+    return out
+
+
 def extract_pricing(
     *,
     company: str,

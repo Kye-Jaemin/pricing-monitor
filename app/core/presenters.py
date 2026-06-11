@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from urllib.parse import urlparse
 
@@ -557,7 +558,16 @@ def _company_unlock_breakdown(tiers: list[dict]) -> list[dict]:
         new = [f for f in feats if f not in seen]
         seen.update(feats)
         if new:
+            if tr["is_free"]:
+                label = "무료"
+            elif tr["monthly"] is not None:
+                label = f"${tr['monthly']:g}/월"
+            elif tr["annual"] is not None:
+                label = f"${tr['annual']:g}/월(연)"
+            else:
+                label = tr.get("price_note") or "문의"
             out.append({
+                "price_label": label,
                 "is_free": tr["is_free"],
                 "monthly": tr["monthly"],
                 "annual": tr["annual"],
@@ -565,6 +575,20 @@ def _company_unlock_breakdown(tiers: list[dict]) -> list[dict]:
                 "features": new,
             })
     return out
+
+
+def _unlock_signature(groups: list[dict]) -> str:
+    """증분 데이터의 해시 — AI 분석 이후 데이터가 바뀌었는지(스테일) 감지용."""
+    basis = [[g["price_label"], sorted(g["features"])] for g in groups]
+    blob = json.dumps(basis, ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
+
+
+def unlock_groups_for(name: str) -> tuple[list[dict], str]:
+    """업체의 가격대별 증분 그룹과 서명(AI 분석 입력/스테일 판정용)."""
+    cat_map = store.get_feature_categories()
+    groups = _company_unlock_breakdown(_company_plan_tiers(name, cat_map))
+    return groups, _unlock_signature(groups)
 
 
 # ── 업체간 비교 (/compare) ───────────────────────────────────
@@ -603,6 +627,16 @@ def compare(names: list[str]) -> dict:
             all_features.add(f)
 
         plan_tiers = _company_plan_tiers(name, cat_map)
+        unlock = _company_unlock_breakdown(plan_tiers)
+        ai_unlock, ai_stale = None, False
+        ai_row = store.get_pricing_analysis(name)
+        if ai_row:
+            try:
+                ai_unlock = json.loads(ai_row["payload_json"]) or None
+            except (ValueError, TypeError):
+                ai_unlock = None
+            if ai_unlock is not None:
+                ai_stale = ai_row["signature"] != _unlock_signature(unlock)
         per_company.append(
             {
                 "company": name,
@@ -610,7 +644,9 @@ def compare(names: list[str]) -> dict:
                 "monthly_price": price_info["monthly"],
                 "annual_price": price_info["annual"],
                 "tiers": plan_tiers,
-                "unlock": _company_unlock_breakdown(plan_tiers),
+                "unlock": unlock,
+                "ai_unlock": ai_unlock,
+                "ai_stale": ai_stale,
                 "categories": [
                     {"category": c, "features": fs}
                     for c, fs in sorted(cat_feats.items())

@@ -7,6 +7,7 @@
 """
 from __future__ import annotations
 
+import json
 import logging
 import threading
 from pathlib import Path
@@ -194,6 +195,37 @@ def compare_categorize():
         if existing.get(feature, (None, "ai"))[1] == "user":
             continue
         store.set_feature_category(feature, category, source="ai")
+    return redirect(_compare_url(names))
+
+
+@app.route("/compare/analyze-pricing", methods=["POST"])
+def compare_analyze_pricing():
+    """선택 업체의 가격대별 증분을 AI가 분석(테마·요약). AI 작업 → 코드 필요."""
+    names = [n for n in request.form.getlist("company") if n]
+    if config.ACCESS_CODE and (request.form.get("access_code") or "").strip() != config.ACCESS_CODE:
+        return redirect(_compare_url(names, error="bad_code"))
+
+    from ..core import extract
+
+    analyzed = 0
+    for name in names:
+        groups, sig = presenters.unlock_groups_for(name)
+        if not groups:
+            continue
+        try:
+            result = extract.analyze_pricing_ai(
+                name, [{"price_label": g["price_label"], "features": g["features"]}
+                       for g in groups]
+            )
+        except Exception:  # noqa: BLE001
+            log.exception("[compare] AI 가격 분석 실패: %s", name)
+            return redirect(_compare_url(names, error="ai_failed"))
+        store.set_pricing_analysis(
+            name, json.dumps(result, ensure_ascii=False), sig
+        )
+        analyzed += 1
+    if not analyzed:
+        return redirect(_compare_url(names, error="no_features"))
     return redirect(_compare_url(names))
 
 

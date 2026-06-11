@@ -187,6 +187,8 @@ a.btn-primary:hover { text-decoration: none; }
 .unlock-free .unlock-price { background: #eff6ff; color: #1e40af; }
 .unlock-paid .unlock-price { background: #ecfdf5; color: #065f46; }
 .unlock-feats { font-size: .85rem; }
+.unlock-theme { color: var(--accent); }
+.unlock-keyfeats { display: block; font-size: .8rem; margin-top: 2px; }
 
 /* 업체별 — 티어를 가로 열로 (무료=파랑 / 유료=초록) */
 .cmp-company { padding: 12px 0; border-top: 1px solid var(--line); }
