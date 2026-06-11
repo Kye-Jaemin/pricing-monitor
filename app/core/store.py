@@ -74,6 +74,12 @@ CREATE TABLE IF NOT EXISTS feature_categories (
     source    TEXT NOT NULL DEFAULT 'ai'   -- ai | user
 );
 
+CREATE TABLE IF NOT EXISTS feature_canonical (
+    feature       TEXT PRIMARY KEY,
+    canonical_id  TEXT NOT NULL,
+    source        TEXT NOT NULL DEFAULT 'auto'  -- auto | ai | user
+);
+
 CREATE TABLE IF NOT EXISTS run_logs (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     run_started_at   TEXT NOT NULL,
@@ -486,6 +492,29 @@ def get_comparison_card(card_id: int) -> Optional[sqlite3.Row]:
 def delete_comparison_card(card_id: int) -> None:
     with connect() as conn:
         conn.execute("DELETE FROM comparison_cards WHERE id=?", (card_id,))
+
+
+# ── feature_canonical (기능→canonical id 매핑) ────────────────
+def get_feature_canonical_map() -> dict[str, str]:
+    """feature -> canonical_id (저장된 매핑만; 없으면 호출측에서 결정적 슬러그 사용)."""
+    with connect() as conn:
+        return {
+            r["feature"]: r["canonical_id"]
+            for r in conn.execute(
+                "SELECT feature, canonical_id FROM feature_canonical"
+            )
+        }
+
+
+def set_feature_canonical(feature: str, canonical_id: str, source: str = "auto") -> None:
+    with connect() as conn:
+        conn.execute(
+            """INSERT INTO feature_canonical (feature, canonical_id, source)
+               VALUES (?, ?, ?)
+               ON CONFLICT(feature) DO UPDATE SET
+                   canonical_id=excluded.canonical_id, source=excluded.source""",
+            (feature, canonical_id, source),
+        )
 
 
 def recent_runs(limit: int = 100) -> list[sqlite3.Row]:

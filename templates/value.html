@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}{{ t('value.title') }} · Pricing Monitor{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ t('value.title') }}</h1>
+  <span class="muted">{{ t('value.subtitle', n=data.n_companies) }}</span>
+</div>
+
+<div class="notice value-disclaimer">⚠️ {{ data.disclaimer if lang != 'en' else data.disclaimer_en }}</div>
+
+{% if not data.rows %}
+  <div class="empty"><p>{{ t('value.empty') }}</p></div>
+{% else %}
+
+<section class="card">
+  <h2>{{ t('value.scatter_title') }}</h2>
+  <canvas id="valScatter" height="160"></canvas>
+  <p class="muted">{{ t('value.axis_x') }} &nbsp;·&nbsp; {{ t('value.axis_y') }}</p>
+</section>
+
+<section class="card">
+  <h2>{{ t('value.table_title') }}</h2>
+  <div class="matrix-wrap">
+    <table class="matrix sortable" id="valTable">
+      <thead>
+        <tr>
+          <th data-type="text">{{ t('value.col.feature') }}</th>
+          <th data-type="num">{{ t('value.col.penetration') }}</th>
+          <th data-type="num">{{ t('value.col.entry') }}</th>
+          <th data-type="num">{{ t('value.col.unlock') }}</th>
+          <th data-type="num">{{ t('value.col.gating') }}</th>
+          <th data-type="num">{{ t('value.col.marginal') }}</th>
+          <th data-type="num">{{ t('value.col.value') }}</th>
+          <th data-type="num">{{ t('value.col.commodity') }}</th>
+          <th data-type="text">{{ t('value.col.quadrant') }}</th>
+          <th data-type="text">{{ t('value.col.confidence') }}</th>
+          <th data-type="text">{{ t('value.col.flags') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in data.rows %}
+        <tr>
+          <td class="feat" title="{{ r.raw_examples | join(' · ') }}">{{ r.canonical_feature }}</td>
+          <td data-v="{{ r.penetration }}">{{ '%.0f%%'|format(r.penetration * 100) }}</td>
+          <td data-v="{{ r.entry_inclusion }}">{{ '%.0f%%'|format(r.entry_inclusion * 100) }}</td>
+          <td data-v="{{ r.unlock_price_median if r.unlock_price_median is not none else -1 }}">
+            {% if r.unlock_price_median is not none %}${{ '%g'|format(r.unlock_price_median) }}{% else %}—{% endif %}</td>
+          <td data-v="{{ r.gating_depth if r.gating_depth is not none else -1 }}">
+            {% if r.gating_depth is not none %}{{ '%.2f'|format(r.gating_depth) }} <span class="muted">({{ r.gating_coverage }})</span>{% else %}—{% endif %}</td>
+          <td data-v="{{ r.marginal_usd if r.marginal_usd is not none else -1 }}">
+            {% if r.marginal_usd is not none %}${{ '%g'|format(r.marginal_usd) }}{% if r.bundle_id %} <span class="muted">⛓</span>{% endif %}{% else %}—{% endif %}</td>
+          <td data-v="{{ r.value_score }}"><b>{{ '%.2f'|format(r.value_score) }}</b></td>
+          <td data-v="{{ r.commodity_score }}">{{ '%.2f'|format(r.commodity_score) }}</td>
+          <td><span class="tag tag-{{ r.quadrant_key }}">{{ r.quadrant if lang != 'en' else r.quadrant_en }}</span></td>
+          <td><span class="badge conf-{{ r.confidence }}">{{ r.confidence }}</span></td>
+          <td class="muted">{{ r.flags | join(', ') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if data.rows %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+  var rows = {{ data.rows | tojson }};
+  var vMed = {{ data.value_median }}, cMed = {{ data.commodity_median }};
+  // 사분면별 색
+  function quadColor(v, c) {
+    if (v >= vMed && c <  cMed) return '#2563eb'; // 수익화 가능한 차별화
+    if (v >= vMed && c >= cMed) return '#16a34a'; // 표준 수익 레버
+    if (v <  vMed && c >= cMed) return '#9ca3af'; // 기본기
+    return '#f59e0b';                              // 실험/틈새
+  }
+  var pts = rows.map(function (r) {
+    return { x: r.commodity_score, y: r.value_score, f: r.canonical_feature,
+             q: r.quadrant, conf: r.confidence,
+             bg: quadColor(r.value_score, r.commodity_score) };
+  });
+  // 중앙값 사분면 가이드선
+  var medLines = {
+    id: 'medLines',
+    afterDraw: function (chart) {
+      var a = chart.chartArea, sc = chart.scales;
+      var ctx = chart.ctx;
+      ctx.save();
+      ctx.strokeStyle = '#cbd5e1'; ctx.setLineDash([5, 4]); ctx.lineWidth = 1;
+      var xm = sc.x.getPixelForValue(cMed), ym = sc.y.getPixelForValue(vMed);
+      ctx.beginPath(); ctx.moveTo(xm, a.top); ctx.lineTo(xm, a.bottom); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(a.left, ym); ctx.lineTo(a.right, ym); ctx.stroke();
+      ctx.restore();
+    }
+  };
+  new Chart(document.getElementById('valScatter'), {
+    type: 'scatter',
+    data: { datasets: [{
+      data: pts,
+      backgroundColor: pts.map(function (p) { return p.bg; }),
+      pointRadius: 6, pointHoverRadius: 9
+    }] },
+    options: {
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: function (ctx) {
+          var p = ctx.raw;
+          return p.f + ' — ' + p.q + ' (' + p.conf + ') · V=' + p.y.toFixed(2) + ' C=' + p.x.toFixed(2);
+        } } }
+      },
+      scales: {
+        x: { min: 0, max: 1, title: { display: true, text: 'Commodity →' } },
+        y: { min: 0, max: 1, title: { display: true, text: 'Value →' } }
+      }
+    },
+    plugins: [medLines]
+  });
+
+  // 정렬 가능한 표
+  (function () {
+    var table = document.getElementById('valTable');
+    if (!table) return;
+    var ths = table.tHead.rows[0].cells;
+    Array.prototype.forEach.call(ths, function (th, idx) {
+      th.style.cursor = 'pointer';
+      var asc = true;
+      th.addEventListener('click', function () {
+        var type = th.getAttribute('data-type');
+        var body = table.tBodies[0];
+        var rows = Array.prototype.slice.call(body.rows);
+        rows.sort(function (a, b) {
+          var av, bv;
+          if (type === 'num') {
+            av = parseFloat(a.cells[idx].getAttribute('data-v'));
+            bv = parseFloat(b.cells[idx].getAttribute('data-v'));
+          } else {
+            av = a.cells[idx].innerText.trim();
+            bv = b.cells[idx].innerText.trim();
+            return asc ? av.localeCompare(bv) : bv.localeCompare(av);
+          }
+          return asc ? av - bv : bv - av;
+        });
+        rows.forEach(function (r) { body.appendChild(r); });
+        asc = !asc;
+      });
+    });
+  })();
+</script>
+{% endif %}
+{% endblock %}

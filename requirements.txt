@@ -16,6 +16,10 @@ anthropic>=0.39
 # Schema validation
 pydantic>=2.7
 
+# Feature value analysis (supply-side) — NNLS marginal pricing
+numpy>=1.26
+scipy>=1.11
+
 # Scheduling (internal mode)
 APScheduler>=3.10
 

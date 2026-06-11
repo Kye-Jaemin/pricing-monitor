@@ -27,6 +27,8 @@
       <td>Recent run times and per-company success/failure/confidence. <b>[Run now]</b> triggers an immediate collection. You can also clear logs / reset all data here.</td></tr>
     <tr><td class="nowrap"><a href="{{ url_for('compare_page') }}">Compare Companies</a></td>
       <td>Pick companies to compare side by side: a price scatter, per-company paid features by category, a category matrix, and a heuristic value score. Optional <b>AI categorization</b> groups features dynamically. Click <b>[Save this comparison]</b> to keep the result as a <b>card</b> frozen at save time — reopen it anytime without re-running.</td></tr>
+    <tr><td class="nowrap"><a href="{{ url_for('value_page') }}">Feature Value</a></td>
+      <td>Supply-side analysis: from the latest snapshots only, it scores how the <b>market prices each feature</b> — prevalence, unlock price, gating depth, and a <b>NNLS marginal-pricing</b> regression (features always sold together are reported as a bundle). Shows a value × commodity 2×2 scatter and a sortable table. It is a pricing-behavior signal, <b>not</b> actual customer willingness-to-pay.</td></tr>
   </tbody></table>
 </section>
 
@@ -121,6 +123,10 @@
       <tr>
         <td class="nowrap"><a href="{{ url_for('compare_page') }}">업체 비교</a></td>
         <td>여러 업체를 골라 나란히 비교합니다: 가격 산점도 · 업체별 유료 기능(카테고리별) · 카테고리 매트릭스 · 가치 점수. <b>AI 카테고리 분류</b>로 기능을 자동 그룹화할 수 있고, <b>[이 비교 저장]</b>을 누르면 결과가 <b>저장 시점 그대로 카드</b>로 보관되어 다시 비교하지 않고 언제든 다시 열어볼 수 있습니다.</td>
+      </tr>
+      <tr>
+        <td class="nowrap"><a href="{{ url_for('value_page') }}">피쳐 가치 분석</a></td>
+        <td>공급 측 분석: 최신 스냅샷만으로 <b>시장이 각 피쳐를 어떻게 값매기는지</b>를 정량화합니다 — 보급도 · 해금가 · 게이팅 깊이 + <b>NNLS 한계가격 회귀</b>(항상 함께 파는 피쳐는 묶음으로 보고). 가치 × 커머디티 2×2 산점도와 정렬 가능한 표를 보여줍니다. 실제 고객 지불의사가 <b>아니라</b> 가격 책정 행동에서 역산한 신호입니다.</td>
       </tr>
     </tbody>
   </table>

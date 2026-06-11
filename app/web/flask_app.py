@@ -205,6 +205,14 @@ def compare_set_category():
     return redirect(_compare_url(names))
 
 
+@app.route("/value")
+def value_page():
+    """공급 측 피쳐 가치 분석 — 2×2 산점도 + 정렬 가능한 표."""
+    from ..core import value_analysis
+
+    return render_template("value.html", data=value_analysis.analyze())
+
+
 @app.route("/companies")
 def companies_page():
     return render_template(
