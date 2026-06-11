@@ -439,10 +439,16 @@ def _effective_category(feature: str, cat_map: dict[str, str]) -> str:
     return cmp.categorize_feature(feature)[0]
 
 
+def _is_free_tier(t) -> bool:
+    """무료 티어 여부: 월가격 0이거나 이름에 free/무료 포함."""
+    return (t.monthly_price == 0) or ("free" in t.name.lower()) or ("무료" in t.name)
+
+
 def _company_paid_data(name: str):
     """업체의 (산점도 점들, 유료 기능 목록, 최저 유료 월가격).
 
     같은 플랜의 결제주기 티어(Monthly/Annual 등)는 (월, 연환산) 한 점으로 병합한다.
+    무료 티어는 산점도에 표시하지 않는다(유료 가격 비교 목적).
     """
     from . import compare as cmp
 
@@ -452,7 +458,7 @@ def _company_paid_data(name: str):
     for row in rows:
         snap = PricingSnapshot.from_payload_json(row["payload_json"])
 
-        # 결제주기 변형 티어 병합 → 한 점, 나머지는 각자
+        # 결제주기 변형 티어 병합 → 한 점, 나머지는 각자 (무료 티어는 점에서 제외)
         merged_pts, remaining = cmp.merge_billing_points(snap.tiers)
         plot = merged_pts + [
             {
@@ -464,6 +470,7 @@ def _company_paid_data(name: str):
             }
             for t in remaining
             if (t.monthly_price is not None or t.annual_price_per_month is not None)
+            and not _is_free_tier(t)
         ]
         for p in plot:
             key = (p["x"], p["y"], p["tier"])
@@ -473,8 +480,7 @@ def _company_paid_data(name: str):
 
         for t in snap.tiers:
             m, a = t.monthly_price, t.annual_price_per_month
-            is_free = (m == 0) or ("free" in t.name.lower()) or ("무료" in t.name)
-            if not is_free:
+            if not _is_free_tier(t):
                 eff = a if a is not None else m
                 if eff is not None and eff > 0:
                     cheapest = eff if cheapest is None else min(cheapest, eff)
