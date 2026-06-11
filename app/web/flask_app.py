@@ -49,6 +49,9 @@ start_scheduler()
 # [지금 수집] 중복 실행 방지용 락 + 진행 상황
 _run_lock = threading.Lock()
 _run_in_progress = {"value": False}
+# 진행 중 선택된 source_ids (선택 수집일 때만 set, 전체 수집/비실행 시 None)
+# → 진행 중에는 화면이 사용자의 실제 선택을 유지하고, 완료 후 전체 선택으로 복귀.
+_running_ids = {"value": None}
 _progress = {
     "running": False,
     "total": 0,
@@ -346,11 +349,13 @@ def source_delete():
 
 @app.route("/runs")
 def runs():
+    running_ids = _running_ids["value"]
     return render_template(
         "runs.html",
         data=presenters.runs_view(),
         companies=presenters.companies_admin()["companies"],
         running=_run_in_progress["value"],
+        running_ids=list(running_ids) if running_ids is not None else None,
         access_required=bool(config.ACCESS_CODE),
         contact=config.ACCESS_CONTACT,
         error=request.args.get("error"),
@@ -400,6 +405,8 @@ def run_now():
         with _run_lock:
             if not _run_in_progress["value"]:
                 _run_in_progress["value"] = True
+                # 선택 수집이면 그 선택을 진행 중 화면에 유지(전체 수집은 None=전체)
+                _running_ids["value"] = set(source_ids) if source_ids else None
                 _progress.update(
                     {"running": True, "total": 0, "done": 0,
                      "current": "시작 중…", "ok": 0, "error": 0}
@@ -428,6 +435,7 @@ def _background_run(source_ids=None) -> None:
     finally:
         _progress.update({"running": False, "current": ""})
         _run_in_progress["value"] = False
+        _running_ids["value"] = None
 
 
 @app.route("/run-progress")

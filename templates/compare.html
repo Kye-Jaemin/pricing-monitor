@@ -191,15 +191,26 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
   var sc = {{ data.scatter | tojson }};
-  new Chart(document.getElementById('scatter'), {
+  var scatterChart;
+  var datasets = sc.datasets.map(function (d, i) {
+    var hue = (i * 67) % 360;
+    var color = 'hsl(' + hue + ',70%,50%)';
+    var ds = { label: d.label, data: d.data,
+      backgroundColor: color, borderColor: color, pointRadius: 6, pointHoverRadius: 8 };
+    // 업체 아이콘이 있으면 점 대신 아이콘으로 표시(로드되면 차트 갱신)
+    if (d.icon) {
+      var img = new Image(22, 22);
+      img.onload = function () { if (scatterChart) scatterChart.update('none'); };
+      img.src = d.icon;
+      ds.pointStyle = img;
+      ds.pointRadius = 11;
+      ds.pointHoverRadius = 13;
+    }
+    return ds;
+  });
+  scatterChart = new Chart(document.getElementById('scatter'), {
     type: 'scatter',
-    data: {
-      datasets: sc.datasets.map(function (d, i) {
-        var hue = (i * 67) % 360;
-        return { label: d.label, data: d.data,
-          backgroundColor: 'hsl(' + hue + ',70%,50%)', pointRadius: 6, pointHoverRadius: 8 };
-      })
-    },
+    data: { datasets: datasets },
     options: {
       responsive: true,
       plugins: { tooltip: { callbacks: { label: function (ctx) {

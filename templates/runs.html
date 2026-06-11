@@ -28,13 +28,13 @@
     {% if access_required %}
     <p><input type="password" name="access_code" class="access-input" placeholder="{{ t('runs.access_label') }}" autocomplete="off" required></p>
     {% endif %}
-    <label class="muted sel-all"><input type="checkbox" id="selAll" checked> {{ t('runs.select_all') }}</label>
+    <label class="muted sel-all"><input type="checkbox" id="selAll" {% if not running or running_ids is none %}checked{% endif %}> {{ t('runs.select_all') }}</label>
     <div class="select-list">
       {% for c in companies %}
       <div class="select-company">
         <span class="sc-name">{% if c.icon %}<img class="company-icon" src="{{ c.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ c.name }}</span>
         {% for s in c.sources %}
-        <label class="src-check"><input type="checkbox" name="source_ids" value="{{ s.id }}" checked> <span class="tag tag-src-{{ s.source_type }}">{{ s.source_label }}</span></label>
+        <label class="src-check"><input type="checkbox" name="source_ids" value="{{ s.id }}" {% if not running or running_ids is none or s.id in running_ids %}checked{% endif %}> <span class="tag tag-src-{{ s.source_type }}">{{ s.source_label }}</span></label>
         {% endfor %}
         {% if not c.sources %}<span class="muted">{{ t('runs.no_sources') }}</span>{% endif %}
       </div>

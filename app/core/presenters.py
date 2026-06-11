@@ -497,7 +497,11 @@ def compare(names: list[str]) -> dict:
         if not store.latest_snapshots_for_company(name):
             continue
         pts, feats, price_info = _company_paid_data(name)
-        scatter.append({"label": name, "data": pts})
+        scatter.append({
+            "label": name,
+            "data": pts,
+            "icon": _company_icon(icon_map.get(name), []),
+        })
 
         cat_feats: dict[str, list[str]] = {}
         for f in feats:
