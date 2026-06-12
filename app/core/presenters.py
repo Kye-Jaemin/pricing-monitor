@@ -7,10 +7,35 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from urllib.parse import urlparse
 
 from . import store
 from .models import SOURCE_TYPE_LABELS, SOURCE_TYPES, PricingSnapshot
+
+# 기능 텍스트 정규화에서 무시할 수식어/조사(같은 기능의 표현 차이를 흡수)
+_FEATURE_FILLER = {
+    "a", "an", "the", "with", "for", "and", "or", "of", "to", "your", "you",
+    "all", "any", "new", "get", "unlimited", "advanced", "premium", "pro",
+    "plus", "basic", "full", "complete", "extra", "additional", "powered",
+    "enabled", "included", "per", "more", "access",
+}
+
+
+def _normalize_feature(text: str) -> str:
+    """기능 텍스트를 정규화한 canonical 키. 대소문자·괄호·구두점·수식어·어순·
+    단순 복수형 차이를 흡수해, 표현이 달라도 같은 기능이면 같은 키가 되게 한다."""
+    s = (text or "").lower()
+    s = re.sub(r"\(.*?\)", " ", s)                # 괄호 주석 제거
+    s = re.sub(r"[^a-z0-9가-힣\s]", " ", s)        # 구두점 → 공백
+    toks = []
+    for t in s.split():
+        if t in _FEATURE_FILLER:
+            continue
+        if len(t) > 3 and t.endswith("s"):        # 단순 복수형 정리
+            t = t[:-1]
+        toks.append(t)
+    return " ".join(sorted(set(toks))) or s.strip()
 
 _CONF_RANK = {"low": 0, "medium": 1, "high": 2}
 _STORE_HOSTS = ("apple.com", "play.google.com", "google.com")
@@ -554,8 +579,13 @@ def _company_unlock_breakdown(tiers: list[dict]) -> list[dict]:
         feats: list[str] = []
         for cat in tr.get("categories", []):
             feats.extend(cat["features"])
-        new = [f for f in feats if f not in seen]
-        seen.update(feats)
+        # canonical 키로 중복 제거 — 표현이 달라도 같은 기능이면 한 번만(가장 싼 티어)
+        new = []
+        for f in feats:
+            k = _normalize_feature(f)
+            if k not in seen:
+                seen.add(k)
+                new.append(f)
         if new:
             if tr["is_free"]:
                 label = "무료"
@@ -688,41 +718,55 @@ def compare(names: list[str]) -> dict:
     # ── 가격대별 분석: $5 단위 밴드(무료 / ~$5 / ~$10 …) → 카테고리 → 업체(기능) ──
     import math
 
-    bands: dict = {}
+    # 1) 같은 기능(canonical)이 여러 업체·가격대에 나타나면 '가장 싼' 한 곳만 남긴다
+    best: dict[str, dict] = {}
     for pc in per_company:
         for g in pc.get("unlock", []):
-            # 연환산 월가격(가장 저렴한 실효 월가격) 우선
             eff = g["annual"] if g["annual"] is not None else g["monthly"]
-            if g["is_free"]:
-                bkey, order, label, ub = "free", (0, 0.0), None, None
-            elif eff is not None:
-                ub = max(5, int(math.ceil(eff / 5.0)) * 5)
-                bkey, order, label = f"b{ub}", (1, float(ub)), f"~${ub}"
-            else:
-                bkey, order, label, ub = "note", (2, 0.0), g["price_note"] or "문의", None
-            b = bands.get(bkey)
-            if b is None:
-                b = bands[bkey] = {
-                    "is_free": g["is_free"] and bkey == "free",
-                    "label": label,
-                    "upper": ub,
-                    "_order": order,
-                    "_cats": {},  # category -> {company -> entry}
-                }
-            # 이 가격대에서 풀리는 기능을 카테고리별로 업체에 귀속
+            # 정렬 가격: 무료/저가 우선, 미공개는 맨 뒤
+            cand_price = eff if eff is not None else float("inf")
             for f in g["features"]:
-                c = _effective_category(f, cat_map)
-                comp_map = b["_cats"].setdefault(c, {})
-                entry = comp_map.get(pc["company"])
-                if entry is None:
-                    entry = comp_map[pc["company"]] = {
-                        "company": pc["company"],
-                        "icon": pc["icon"],
-                        "price": eff,
-                        "features": [],
+                key = _normalize_feature(f)
+                rank = (cand_price, pc["company"])
+                cur = best.get(key)
+                if cur is None or rank < cur["_rank"]:
+                    best[key] = {
+                        "feature": f, "company": pc["company"], "icon": pc["icon"],
+                        "eff": eff, "is_free": g["is_free"],
+                        "price_note": g["price_note"], "_rank": rank,
                     }
-                if f not in entry["features"]:
-                    entry["features"].append(f)
+
+    # 2) 중복 제거된 기능들만으로 밴드 → 카테고리 → 업체 구성
+    bands: dict = {}
+    for e in best.values():
+        eff = e["eff"]
+        if e["is_free"]:
+            bkey, order, label, ub = "free", (0, 0.0), None, None
+        elif eff is not None:
+            ub = max(5, int(math.ceil(eff / 5.0)) * 5)
+            bkey, order, label = f"b{ub}", (1, float(ub)), f"~${ub}"
+        else:
+            bkey, order, label, ub = "note", (2, 0.0), e["price_note"] or "문의", None
+        b = bands.get(bkey)
+        if b is None:
+            b = bands[bkey] = {
+                "is_free": e["is_free"] and bkey == "free",
+                "label": label,
+                "upper": ub,
+                "_order": order,
+                "_cats": {},  # category -> {company -> entry}
+            }
+        c = _effective_category(e["feature"], cat_map)
+        comp_map = b["_cats"].setdefault(c, {})
+        entry = comp_map.get(e["company"])
+        if entry is None:
+            entry = comp_map[e["company"]] = {
+                "company": e["company"],
+                "icon": e["icon"],
+                "price": eff,
+                "features": [],
+            }
+        entry["features"].append(e["feature"])
 
     price_bands = []
     for b in sorted(bands.values(), key=lambda x: x.pop("_order")):
