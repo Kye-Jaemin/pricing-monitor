@@ -174,7 +174,7 @@
 </details>
 
 {% if data.price_bands %}
-<details class="card" open>
+<details class="card">
   <summary><h2>{{ t('compare.band_title') }}</h2></summary>
   <p class="muted">{{ t('compare.band_help') }}</p>
   {% for b in data.price_bands %}
@@ -209,7 +209,7 @@
 {% endif %}
 
 {% if data.feature_analysis %}
-<details class="card" open>
+<details class="card">
   <summary><h2>{{ t('compare.feat_title') }}</h2></summary>
   <p class="muted">{{ t('compare.feat_help') }}</p>
   {% for fc in data.feature_analysis %}
