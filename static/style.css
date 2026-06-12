@@ -211,6 +211,24 @@ a.btn-primary:hover { text-decoration: none; }
 .band-feats { margin: 4px 0 2px; padding-left: 18px; }
 .band-feats li { font-size: .83rem; margin: 2px 0; }
 
+/* 기능별 분석 (카테고리 → 가격대 열 → 세부 기능·업체) */
+.feat-cat { margin: 10px 0 14px; }
+.feat-cat-name { font-weight: 700; font-size: .95rem; color: var(--accent); margin-bottom: 6px; }
+.feat-band-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; align-items: flex-start; }
+.feat-band-col {
+  flex: 0 0 170px; min-width: 170px;
+  border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px;
+}
+.feat-band-col.band-free { background: #eff6ff; border-color: #bfdbfe; }
+.feat-band-col.band-paid { background: #ecfdf5; border-color: #a7f3d0; }
+.feat-band-head { font-weight: 700; font-size: .82rem; margin-bottom: 6px; text-align: center; }
+.feat-band-col.band-free .feat-band-head { color: #1e40af; }
+.feat-band-col.band-paid .feat-band-head { color: #065f46; }
+.feat-item { background: #fff; border: 1px solid var(--line); border-radius: 7px; padding: 4px 7px; margin: 4px 0; }
+.feat-name { display: block; font-size: .83rem; font-weight: 600; }
+.feat-co { display: block; font-size: .74rem; margin-top: 1px; }
+.feat-co .company-icon { width: 14px; height: 14px; vertical-align: -2px; margin-right: 3px; }
+
 /* 업체별 — 티어를 가로 열로 (무료=파랑 / 유료=초록) */
 .cmp-company { padding: 12px 0; border-top: 1px solid var(--line); }
 .cmp-company:first-of-type { border-top: none; padding-top: 4px; }

@@ -227,6 +227,35 @@
 </details>
 {% endif %}
 
+{% if data.feature_analysis %}
+<details class="card" open>
+  <summary><h2>{{ t('compare.feat_title') }}</h2></summary>
+  <p class="muted">{{ t('compare.feat_help') }}</p>
+  {% for fc in data.feature_analysis %}
+  <div class="feat-cat">
+    <div class="feat-cat-name">{{ fc.category }}</div>
+    <div class="feat-band-row">
+      {% for band in fc.bands %}
+      <div class="feat-band-col {{ 'band-free' if band.is_free else 'band-paid' }}">
+        <div class="feat-band-head">
+          {%- if band.is_free %}{{ t('word.free') }}
+          {%- elif band.label %}{{ band.label }}
+          {%- else %}{{ t('word.private') }}{% endif %}
+        </div>
+        {% for it in band.entries %}
+        <div class="feat-item">
+          <span class="feat-name">{{ it.feature }}</span>
+          <span class="feat-co muted">{% if it.icon %}<img class="company-icon" src="{{ it.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ it.company }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</details>
+{% endif %}
+
 <details class="card">
   <summary><h2>{{ t('compare.value_title') }}</h2></summary>
   <p class="muted">{{ t('compare.value_help') }}</p>

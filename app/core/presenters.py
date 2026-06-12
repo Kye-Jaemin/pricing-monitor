@@ -741,11 +741,31 @@ def compare(names: list[str]) -> dict:
         ]
         price_bands.append(b)
 
+    # ── 기능별 분석: 카테고리 → 가격대(열) → 세부 기능·업체 (price_bands 전치) ──
+    cat_bands: dict[str, dict] = {}     # category -> {band_index -> [items]}
+    band_descs: list[dict] = []         # band_index -> {is_free, label, upper}
+    for bi, b in enumerate(price_bands):
+        band_descs.append({"is_free": b["is_free"], "label": b["label"], "upper": b["upper"]})
+        for cat in b["categories"]:
+            slot = cat_bands.setdefault(cat["category"], {}).setdefault(bi, [])
+            for co in cat["companies"]:
+                for f in co["features"]:
+                    slot.append({"feature": f, "company": co["company"],
+                                 "icon": co["icon"], "price": co["price"]})
+    feature_analysis = []
+    for c in sorted(cat_bands, key=lambda c: (-cmp.WEIGHTS.get(c, cmp.DEFAULT_WEIGHT), c)):
+        bands_out = [
+            {**band_descs[bi], "entries": cat_bands[c][bi]}
+            for bi in sorted(cat_bands[c])
+        ]
+        feature_analysis.append({"category": c, "bands": bands_out})
+
     return {
         "companies": chosen,
         "scatter": {"datasets": scatter},
         "per_company": per_company,
         "price_bands": price_bands,
+        "feature_analysis": feature_analysis,
         "matrix": matrix_rows,
         "ranking": ranking,
         "editable": editable,
