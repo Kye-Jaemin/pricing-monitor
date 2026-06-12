@@ -229,6 +229,17 @@ a.btn-primary:hover { text-decoration: none; }
 .feat-co { display: block; font-size: .74rem; margin-top: 1px; }
 .feat-co .company-icon { width: 14px; height: 14px; vertical-align: -2px; margin-right: 3px; }
 
+/* 커머디티/차별화 배지 + 필터 */
+.feat-badge {
+  display: inline-block; font-size: .66rem; font-weight: 700;
+  padding: 0 5px; border-radius: 999px; vertical-align: middle; white-space: nowrap;
+}
+.badge-commodity { background: #dbeafe; color: #1e40af; }
+.badge-standard { background: #fef3c7; color: #92400e; }
+.badge-differentiated { background: #dcfce7; color: #166534; }
+.feat-filter { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 12px; }
+.feat-filter button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+
 /* 업체별 — 티어를 가로 열로 (무료=파랑 / 유료=초록) */
 .cmp-company { padding: 12px 0; border-top: 1px solid var(--line); }
 .cmp-company:first-of-type { border-top: none; padding-top: 4px; }

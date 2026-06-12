@@ -208,10 +208,30 @@
 </details>
 {% endif %}
 
+{% if data.feature_positioning %}
+<details class="card">
+  <summary><h2>{{ t('compare.pos_title') }}</h2></summary>
+  <p class="muted">{{ t('compare.pos_help') }}</p>
+  <p class="muted">
+    <span class="feat-badge badge-commodity">{{ t('compare.class_commodity') }}</span> {{ t('compare.class_commodity_help') }} &nbsp;·&nbsp;
+    <span class="feat-badge badge-standard">{{ t('compare.class_standard') }}</span> {{ t('compare.class_standard_help') }} &nbsp;·&nbsp;
+    <span class="feat-badge badge-differentiated">{{ t('compare.class_differentiated') }}</span> {{ t('compare.class_differentiated_help') }}
+  </p>
+  <div class="scatter-wrap" style="height:340px"><canvas id="posScatter"></canvas></div>
+  <p class="muted">{{ t('compare.pos_axes') }}</p>
+</details>
+{% endif %}
+
 {% if data.feature_analysis %}
 <details class="card">
   <summary><h2>{{ t('compare.feat_title') }}</h2></summary>
   <p class="muted">{{ t('compare.feat_help') }}</p>
+  <div class="feat-filter" id="featFilter">
+    <button type="button" class="btn-secondary btn-sm on" data-f="all">{{ t('compare.filter_all') }}</button>
+    <button type="button" class="btn-secondary btn-sm" data-f="commodity">{{ t('compare.class_commodity') }}</button>
+    <button type="button" class="btn-secondary btn-sm" data-f="standard">{{ t('compare.class_standard') }}</button>
+    <button type="button" class="btn-secondary btn-sm" data-f="differentiated">{{ t('compare.class_differentiated') }}</button>
+  </div>
   {% for fc in data.feature_analysis %}
   <div class="feat-cat">
     <div class="feat-cat-name">{{ fc.category }}</div>
@@ -224,8 +244,10 @@
           {%- else %}{{ t('word.private') }}{% endif %}
         </div>
         {% for it in band.entries %}
-        <div class="feat-item">
-          <span class="feat-name">{{ it.feature }}</span>
+        <div class="feat-item" data-label="{{ it.label }}">
+          <span class="feat-name">{{ it.feature }}
+            <span class="feat-badge badge-{{ it.label }}" title="{{ t('compare.pos_providers', n=it.providers, total=it.total) }}">{{ t('compare.class_' ~ it.label) }} {{ it.providers }}</span>
+          </span>
           <span class="feat-co muted">{% if it.icon %}<img class="company-icon" src="{{ it.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ it.company }}</span>
         </div>
         {% endfor %}
@@ -374,6 +396,51 @@
   document.addEventListener('fullscreenchange', function () {
     setTimeout(function () { scatterChart.resize(); }, 120);
   });
+
+  // 기능 포지셔닝 2×2 (보급률 × 해금가), 색=커머디티/표준/차별화
+  var pos = {{ data.feature_positioning | tojson }};
+  var posCanvas = document.getElementById('posScatter');
+  if (posCanvas && pos && pos.length) {
+    var COLORS = { commodity: '#2563eb', standard: '#f59e0b', differentiated: '#16a34a' };
+    var groups = { commodity: [], standard: [], differentiated: [] };
+    pos.forEach(function (p) {
+      (groups[p.label] || (groups[p.label] = [])).push(
+        { x: p.penetration, y: p.unlock_price, f: p.feature, prov: p.providers, total: p.total });
+    });
+    new Chart(posCanvas, {
+      type: 'scatter',
+      data: { datasets: Object.keys(groups).map(function (k) {
+        return { label: k, data: groups[k], backgroundColor: COLORS[k] || '#9ca3af',
+                 pointRadius: 6, pointHoverRadius: 8 };
+      }) },
+      options: {
+        maintainAspectRatio: false,
+        plugins: { tooltip: { callbacks: { label: function (ctx) {
+          var p = ctx.raw;
+          return p.f + ' · ' + p.prov + '/' + p.total + ' · $' + p.y + '/mo';
+        } } } },
+        scales: {
+          x: { min: 0, max: 1, title: { display: true, text: '보급률 / Penetration →' } },
+          y: { beginAtZero: true, title: { display: true, text: '해금가 / Unlock $ ↑' } }
+        }
+      }
+    });
+  }
+
+  // 기능별 분석 필터 (전체/커머디티/표준/차별화)
+  (function () {
+    var bar = document.getElementById('featFilter');
+    if (!bar) return;
+    bar.addEventListener('click', function (e) {
+      var btn = e.target.closest('button[data-f]');
+      if (!btn) return;
+      var f = btn.getAttribute('data-f');
+      bar.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b === btn); });
+      document.querySelectorAll('.feat-item[data-label]').forEach(function (it) {
+        it.style.display = (f === 'all' || it.getAttribute('data-label') === f) ? '' : 'none';
+      });
+    });
+  })();
 </script>
 {% endif %}
 <script>

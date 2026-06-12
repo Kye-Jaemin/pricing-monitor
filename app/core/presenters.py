@@ -727,6 +727,54 @@ def compare(names: list[str]) -> dict:
 
     # ── 가격대별 분석: $5 단위 밴드(무료 / ~$5 / ~$10 …) → 카테고리 → 업체(기능) ──
     import math
+    import statistics
+
+    # 0) 기능(canonical) 보급률·해금가 집계 → 커머디티/차별화 분류
+    n_co = len(per_company)
+    agg: dict[str, dict] = {}
+    for pc in per_company:
+        for g in pc.get("unlock", []):
+            eff = g["annual"] if g["annual"] is not None else g["monthly"]
+            for f in g["features"]:
+                key = _normalize_feature(f)
+                a = agg.get(key)
+                if a is None:
+                    a = agg[key] = {"display": f, "companies": set(),
+                                    "free": set(), "prices": []}
+                a["companies"].add(pc["company"])
+                if g["is_free"]:
+                    a["free"].add(pc["company"])
+                if eff is not None:
+                    a["prices"].append(eff)
+
+    def _classify(key: str) -> dict:
+        a = agg.get(key)
+        if not a or n_co == 0:
+            return {"label": "standard", "providers": 0, "penetration": 0.0}
+        providers = len(a["companies"])
+        pen = providers / n_co
+        entry = (len(a["free"]) / providers) if providers else 0.0
+        if pen >= 0.6:
+            label = "commodity" if entry >= 0.4 else "standard"
+        else:
+            label = "differentiated"
+        return {"label": label, "providers": providers,
+                "penetration": round(pen, 3)}
+
+    feature_positioning = []
+    for key, a in agg.items():
+        cls = _classify(key)
+        price = statistics.median(a["prices"]) if a["prices"] else 0.0
+        feature_positioning.append({
+            "feature": a["display"],
+            "category": _effective_category(a["display"], cat_map),
+            "providers": cls["providers"],
+            "total": n_co,
+            "penetration": cls["penetration"],
+            "unlock_price": round(price, 2),
+            "label": cls["label"],
+        })
+    feature_positioning.sort(key=lambda x: (-x["penetration"], x["unlock_price"]))
 
     # 1) 같은 기능(canonical)이 여러 업체·가격대에 나타나면 '가장 싼' 한 곳만 남긴다
     best: dict[str, dict] = {}
@@ -804,8 +852,11 @@ def compare(names: list[str]) -> dict:
             slot = cat_bands.setdefault(cat["category"], {}).setdefault(bi, [])
             for co in cat["companies"]:
                 for f in co["features"]:
+                    cls = _classify(_normalize_feature(f))
                     slot.append({"feature": f, "company": co["company"],
-                                 "icon": co["icon"], "price": co["price"]})
+                                 "icon": co["icon"], "price": co["price"],
+                                 "label": cls["label"], "providers": cls["providers"],
+                                 "total": n_co})
     feature_analysis = []
     for c in sorted(cat_bands, key=lambda c: (-cmp.WEIGHTS.get(c, cmp.DEFAULT_WEIGHT), c)):
         bands_out = [
@@ -820,6 +871,7 @@ def compare(names: list[str]) -> dict:
         "per_company": per_company,
         "price_bands": price_bands,
         "feature_analysis": feature_analysis,
+        "feature_positioning": feature_positioning,
         "matrix": matrix_rows,
         "ranking": ranking,
         "editable": editable,
