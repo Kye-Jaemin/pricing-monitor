@@ -171,61 +171,81 @@ def compare_card_delete(card_id: int):
     return redirect(url_for("compare_page"))
 
 
-@app.route("/compare/categorize", methods=["POST"])
-def compare_categorize():
-    """선택 업체 유료 기능을 AI로 동적 카테고리 분류(사용자 지정은 보존). AI 작업→코드 필요."""
-    names = [n for n in request.form.getlist("company") if n]
-    if config.ACCESS_CODE and (request.form.get("access_code") or "").strip() != config.ACCESS_CODE:
-        return redirect(_compare_url(names, error="bad_code"))
-
+def _apply_categorize(names: list[str]) -> None:
+    """선택 업체 전체 기능을 AI로 카테고리 분류해 저장(사용자 지정은 보존)."""
     feats = presenters.distinct_features(names)
     if not feats:
-        return redirect(_compare_url(names, error="no_features"))
-    try:
-        from ..core import extract
+        return
+    from ..core import extract
 
-        mapping = extract.categorize_features_ai(feats)
-    except Exception:  # noqa: BLE001
-        log.exception("[compare] AI 카테고리 분류 실패")
-        return redirect(_compare_url(names, error="ai_failed"))
-
+    mapping = extract.categorize_features_ai(feats)
     existing = store.get_feature_category_rows()
     for feature, category in mapping.items():
-        # 사용자가 직접 지정한 항목은 덮어쓰지 않음
         if existing.get(feature, (None, "ai"))[1] == "user":
             continue
         store.set_feature_category(feature, category, source="ai")
+
+
+def _apply_pricing(names: list[str]) -> None:
+    """선택 업체의 가격대별 증분을 AI가 분석(테마·요약)해 저장."""
+    from ..core import extract
+
+    for name in names:
+        groups, sig = presenters.unlock_groups_for(name)
+        if not groups:
+            continue
+        result = extract.analyze_pricing_ai(
+            name, [{"price_label": g["price_label"], "features": g["features"]}
+                   for g in groups]
+        )
+        store.set_pricing_analysis(name, json.dumps(result, ensure_ascii=False), sig)
+
+
+@app.route("/compare/run", methods=["POST"])
+def compare_run():
+    """비교하기 — 선택 업체 + 체크한 AI 분석(카테고리/가격)을 한 번에 실행."""
+    names = [n for n in request.form.getlist("company") if n]
+    do_cat = bool(request.form.get("ai_categorize"))
+    do_price = bool(request.form.get("ai_pricing"))
+    if do_cat or do_price:
+        if config.ACCESS_CODE and (request.form.get("access_code") or "").strip() != config.ACCESS_CODE:
+            return redirect(_compare_url(names, error="bad_code"))
+        try:
+            if do_cat:
+                _apply_categorize(names)
+            if do_price:
+                _apply_pricing(names)
+        except Exception:  # noqa: BLE001
+            log.exception("[compare] AI 분석 실패")
+            return redirect(_compare_url(names, error="ai_failed"))
+    return redirect(_compare_url(names))
+
+
+@app.route("/compare/categorize", methods=["POST"])
+def compare_categorize():
+    """(개별) 선택 업체 기능을 AI로 카테고리 분류. AI 작업 → 코드 필요."""
+    names = [n for n in request.form.getlist("company") if n]
+    if config.ACCESS_CODE and (request.form.get("access_code") or "").strip() != config.ACCESS_CODE:
+        return redirect(_compare_url(names, error="bad_code"))
+    try:
+        _apply_categorize(names)
+    except Exception:  # noqa: BLE001
+        log.exception("[compare] AI 카테고리 분류 실패")
+        return redirect(_compare_url(names, error="ai_failed"))
     return redirect(_compare_url(names))
 
 
 @app.route("/compare/analyze-pricing", methods=["POST"])
 def compare_analyze_pricing():
-    """선택 업체의 가격대별 증분을 AI가 분석(테마·요약). AI 작업 → 코드 필요."""
+    """(개별) 선택 업체의 가격대별 증분을 AI가 분석. AI 작업 → 코드 필요."""
     names = [n for n in request.form.getlist("company") if n]
     if config.ACCESS_CODE and (request.form.get("access_code") or "").strip() != config.ACCESS_CODE:
         return redirect(_compare_url(names, error="bad_code"))
-
-    from ..core import extract
-
-    analyzed = 0
-    for name in names:
-        groups, sig = presenters.unlock_groups_for(name)
-        if not groups:
-            continue
-        try:
-            result = extract.analyze_pricing_ai(
-                name, [{"price_label": g["price_label"], "features": g["features"]}
-                       for g in groups]
-            )
-        except Exception:  # noqa: BLE001
-            log.exception("[compare] AI 가격 분석 실패: %s", name)
-            return redirect(_compare_url(names, error="ai_failed"))
-        store.set_pricing_analysis(
-            name, json.dumps(result, ensure_ascii=False), sig
-        )
-        analyzed += 1
-    if not analyzed:
-        return redirect(_compare_url(names, error="no_features"))
+    try:
+        _apply_pricing(names)
+    except Exception:  # noqa: BLE001
+        log.exception("[compare] AI 가격 분석 실패")
+        return redirect(_compare_url(names, error="ai_failed"))
     return redirect(_compare_url(names))
 
 

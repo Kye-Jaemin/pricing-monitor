@@ -295,6 +295,13 @@ table.sortable th:hover { color: var(--accent); }
 
 .card-head-right { display: flex; align-items: center; gap: 10px; }
 
+.compare-ai-opts {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+  margin: 10px 0 12px; padding: 8px 10px;
+  background: #f8fafc; border: 1px dashed var(--line); border-radius: 8px;
+}
+.compare-ai-opts .ai-opts-label { font-weight: 600; }
+
 .sel-all { display: inline-block; margin: 4px 0 10px; font-weight: 600; }
 .select-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
 .select-company {

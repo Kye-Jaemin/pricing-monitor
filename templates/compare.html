@@ -43,7 +43,7 @@
 
 <section class="card">
   <h2>{{ t('compare.select') }}</h2>
-  <form method="get" action="{{ url_for('compare_page') }}">
+  <form method="post" action="{{ url_for('compare_run') }}" id="compareForm">
     <div class="select-list">
       {% for name in data.all_companies %}
       <label class="src-check">
@@ -52,8 +52,19 @@
       </label>
       {% endfor %}
     </div>
-    <button type="submit" class="btn-primary">{{ t('compare.run') }}</button>
+    <div class="compare-ai-opts">
+      <span class="muted ai-opts-label">{{ t('compare.ai_opts_label') }}</span>
+      <label class="src-check"><input type="checkbox" name="ai_categorize" value="1"> 🤖 {{ t('compare.ai_categorize') }}</label>
+      <label class="src-check"><input type="checkbox" name="ai_pricing" value="1"> 🤖 {{ t('compare.ai_pricing') }}</label>
+      {% if access_required %}<input type="password" name="access_code" class="access-input" placeholder="{{ t('runs.access_label') }}" autocomplete="off">{% endif %}
+    </div>
+    <button type="submit" class="btn-primary" id="compareBtn">{{ t('compare.run') }}</button>
+    <div class="progress-wrap" id="compareProg" hidden>
+      <div class="progress-bar"><div class="progress-fill indeterminate"></div></div>
+      <span class="muted">{{ t('compare.ai_running') }}</span>
+    </div>
   </form>
+  <p class="muted">{{ t('compare.ai_opts_help') }}</p>
 </section>
 
 {% if not data.companies %}
@@ -71,22 +82,6 @@
     </form>
   </div>
   <p class="muted">{{ t('compare.save_card_help') }}</p>
-</section>
-
-<section class="card">
-  <div class="card-head">
-    <h2>{{ t('compare.ai_categorize') }}</h2>
-    <form method="post" action="{{ url_for('compare_categorize') }}" class="run-form" id="aiCatForm">
-      {% for n in data.companies %}<input type="hidden" name="company" value="{{ n }}">{% endfor %}
-      {% if access_required %}<input type="password" name="access_code" class="access-input" placeholder="{{ t('runs.access_label') }}" autocomplete="off" required>{% endif %}
-      <button type="submit" class="btn-primary" id="aiCatBtn">🤖 {{ t('compare.ai_categorize') }}</button>
-    </form>
-  </div>
-  <div class="progress-wrap" id="aiCatProg" hidden>
-    <div class="progress-bar"><div class="progress-fill indeterminate"></div></div>
-    <span class="muted">{{ t('compare.ai_running') }}</span>
-  </div>
-  <p class="muted">{{ t('compare.ai_help') }}</p>
 </section>
 {% endif %}
 
@@ -106,20 +101,6 @@
 
 <details class="card">
   <summary><h2>{{ t('compare.per_company_title') }}</h2></summary>
-  {% if not saved_view %}
-  <div class="card-head">
-    <p class="muted">{{ t('compare.ai_pricing_help') }}</p>
-    <form method="post" action="{{ url_for('compare_analyze_pricing') }}" class="run-form" id="aiPriceForm">
-      {% for n in data.companies %}<input type="hidden" name="company" value="{{ n }}">{% endfor %}
-      {% if access_required %}<input type="password" name="access_code" class="access-input" placeholder="{{ t('runs.access_label') }}" autocomplete="off" required>{% endif %}
-      <button type="submit" class="btn-primary" id="aiPriceBtn">🤖 {{ t('compare.ai_pricing') }}</button>
-    </form>
-  </div>
-  <div class="progress-wrap" id="aiPriceProg" hidden>
-    <div class="progress-bar"><div class="progress-fill indeterminate"></div></div>
-    <span class="muted">{{ t('compare.ai_pricing_running') }}</span>
-  </div>
-  {% endif %}
   {% for pc in data.per_company %}
   <div class="cmp-company">
     <div class="cmp-col-head">
@@ -393,20 +374,22 @@
   document.addEventListener('fullscreenchange', function () {
     setTimeout(function () { scatterChart.resize(); }, 120);
   });
-
-  // 제출 시 인디터미네이트 진행 바 표시(완료되면 서버가 리다이렉트)
-  function wireProgress(formId, progId, btnId) {
-    var form = document.getElementById(formId);
+</script>
+{% endif %}
+<script>
+  // 비교하기: AI 분석 체크 시에만 진행 바 표시(완료되면 서버가 리다이렉트)
+  (function () {
+    var form = document.getElementById('compareForm');
     if (!form) return;
     form.addEventListener('submit', function () {
-      var prog = document.getElementById(progId);
-      var btn = document.getElementById(btnId);
+      var ai = form.querySelector('input[name="ai_categorize"]:checked')
+            || form.querySelector('input[name="ai_pricing"]:checked');
+      if (!ai) return;
+      var prog = document.getElementById('compareProg');
+      var btn = document.getElementById('compareBtn');
       if (prog) prog.hidden = false;
       if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
     });
-  }
-  wireProgress('aiCatForm', 'aiCatProg', 'aiCatBtn');     // AI 카테고리 분류
-  wireProgress('aiPriceForm', 'aiPriceProg', 'aiPriceBtn'); // AI 가격 분석
+  })();
 </script>
-{% endif %}
 {% endblock %}
