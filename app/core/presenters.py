@@ -838,6 +838,22 @@ def distinct_paid_features(names: list[str]) -> list[str]:
     return out
 
 
+def distinct_features(names: list[str]) -> list[str]:
+    """선택 업체들의 전체 기능 합집합(무료+유료) — AI 카테고리 분류 대상.
+
+    무료 티어 기능까지 포함해 'AI'·'기타' 휴리스틱 버킷에 남는 기능을 줄인다.
+    """
+    cat_map = store.get_feature_categories()
+    out: list[str] = []
+    for name in names:
+        for tr in _company_plan_tiers(name, cat_map):
+            for cat in tr["categories"]:
+                for f in cat["features"]:
+                    if f not in out:
+                        out.append(f)
+    return out
+
+
 # ── 저장된 비교 카드 (수동 저장 + 저장 시점 고정) ─────────────
 def save_comparison(names: list[str], title: str = "") -> int | None:
     """현재 비교 결과를 저장 시점 그대로 카드로 저장. 유효 업체가 없으면 None."""

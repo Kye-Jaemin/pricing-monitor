@@ -178,7 +178,7 @@ def compare_categorize():
     if config.ACCESS_CODE and (request.form.get("access_code") or "").strip() != config.ACCESS_CODE:
         return redirect(_compare_url(names, error="bad_code"))
 
-    feats = presenters.distinct_paid_features(names)
+    feats = presenters.distinct_features(names)
     if not feats:
         return redirect(_compare_url(names, error="no_features"))
     try:
