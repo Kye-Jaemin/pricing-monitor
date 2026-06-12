@@ -22,9 +22,21 @@ _FEATURE_FILLER = {
 }
 
 
+def _stem(t: str) -> str:
+    """경량 어간 추출: -ing/-er/-ion/-ment/-s 등 어미 제거 + 끝 중복자음 정리.
+    scan/scanner/scanning → scan, track/tracker/tracking → track 처럼 묶기 위함."""
+    for suf in ("ings", "ing", "ers", "er", "ions", "ion", "ments", "ment", "es", "s"):
+        if t.endswith(suf) and len(t) - len(suf) >= 3:
+            t = t[: -len(suf)]
+            break
+    if len(t) > 3 and t[-1] == t[-2] and t[-1] not in "aeiou":
+        t = t[:-1]               # scann → scan, trackk → track
+    return t
+
+
 def _normalize_feature(text: str) -> str:
     """기능 텍스트를 정규화한 canonical 키. 대소문자·괄호·구두점·수식어·어순·
-    단순 복수형 차이를 흡수해, 표현이 달라도 같은 기능이면 같은 키가 되게 한다."""
+    어형(복수/-ing/-er 등) 차이를 흡수해, 표현이 달라도 같은 기능이면 같은 키."""
     s = (text or "").lower()
     s = re.sub(r"\(.*?\)", " ", s)                # 괄호 주석 제거
     s = re.sub(r"[^a-z0-9가-힣\s]", " ", s)        # 구두점 → 공백
@@ -32,9 +44,7 @@ def _normalize_feature(text: str) -> str:
     for t in s.split():
         if t in _FEATURE_FILLER:
             continue
-        if len(t) > 3 and t.endswith("s"):        # 단순 복수형 정리
-            t = t[:-1]
-        toks.append(t)
+        toks.append(_stem(t))
     return " ".join(sorted(set(toks))) or s.strip()
 
 _CONF_RANK = {"low": 0, "medium": 1, "high": 2}
