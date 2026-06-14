@@ -51,6 +51,8 @@ SCHEDULE_DAY_OF_WEEK: str = _get("SCHEDULE_DAY_OF_WEEK", "mon")
 SCHEDULE_HOUR: int = _get_int("SCHEDULE_HOUR", 9)
 SCHEDULE_MINUTE: int = _get_int("SCHEDULE_MINUTE", 0)
 SCHEDULE_TIMEZONE: str = _get("SCHEDULE_TIMEZONE", "America/New_York")
+# 스케줄러는 '최근 수집이 이 일수를 넘긴(또는 미수집)' 소스만 수집한다(0 이하면 전체).
+SCHEDULE_STALE_DAYS: int = _get_int("SCHEDULE_STALE_DAYS", 7)
 
 # ── US / USD 강제 (8장) ──────────────────────────────────────
 LOCALE: str = _get("LOCALE", "en-US")

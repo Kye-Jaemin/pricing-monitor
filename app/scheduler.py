@@ -59,10 +59,10 @@ def start_scheduler() -> bool:
 
 
 def _job() -> None:
-    log.info("주간 수집 시작")
+    log.info("주간 수집 시작 (stale_days=%s 만 대상)", config.SCHEDULE_STALE_DAYS)
     try:
-        result = run_once()
-        log.info("주간 수집 완료: 성공 %d / 에러 %d",
-                 result.ok_count, result.error_count)
+        result = run_once(stale_days=config.SCHEDULE_STALE_DAYS)
+        log.info("주간 수집 완료: 대상 %d개 · 성공 %d / 에러 %d",
+                 len(result.results), result.ok_count, result.error_count)
     except Exception:  # noqa: BLE001
         log.exception("주간 수집 실패")

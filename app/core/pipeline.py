@@ -11,7 +11,7 @@ from __future__ import annotations
 import hashlib
 import sys
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import yaml
@@ -207,11 +207,21 @@ def _process_source(
     return SourceResult(company, source_type, status, msg, changes=len(detected))
 
 
-def run_once(progress_cb=None, source_ids=None) -> RunResult:
+def _is_stale(company: str, source: dict, cutoff_iso: str) -> bool:
+    """해당 소스의 최근 수집이 cutoff 이전이거나(=오래됨) 미수집이면 True."""
+    url = fetch.normalize_us_url(source["type"], source["url"])
+    prev = store.latest_snapshot_row(company, url)
+    if prev is None:
+        return True  # 한 번도 수집 안 함 → 대상
+    return (prev["collected_at"] or "") <= cutoff_iso
+
+
+def run_once(progress_cb=None, source_ids=None, stale_days=None) -> RunResult:
     """업체 × 소스를 1회 수집. 단일 진입점.
 
     progress_cb(done:int, total:int, current:str) 로 진행 상황 보고.
     source_ids 가 주어지면 해당 소스만 수집(부분 수집), None 이면 전체.
+    stale_days 가 주어지면 '최근 수집이 그 일수를 넘긴(또는 미수집)' 소스만 수집.
     """
     store.init_db()
     run = RunResult(started_at=_utcnow_iso())
@@ -222,6 +232,17 @@ def run_once(progress_cb=None, source_ids=None) -> RunResult:
         companies = [
             {"name": c["name"],
              "sources": [s for s in c["sources"] if s.get("id") in sid_set]}
+            for c in companies
+        ]
+        companies = [c for c in companies if c["sources"]]
+
+    if stale_days and stale_days > 0:
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=stale_days)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        companies = [
+            {"name": c["name"],
+             "sources": [s for s in c["sources"] if _is_stale(c["name"], s, cutoff)]}
             for c in companies
         ]
         companies = [c for c in companies if c["sources"]]
