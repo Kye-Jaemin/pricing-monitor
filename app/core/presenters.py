@@ -19,6 +19,8 @@ _FEATURE_FILLER = {
     "all", "any", "new", "get", "unlimited", "advanced", "premium", "pro",
     "plus", "basic", "full", "complete", "extra", "additional", "powered",
     "enabled", "included", "per", "more", "access",
+    # 수량/상한 게이팅 수식어(같은 기능의 '제한판' 표현 차이를 흡수)
+    "capped", "limited", "metered", "standard", "lite", "starter", "essential",
 }
 
 

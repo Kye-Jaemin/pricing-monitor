@@ -207,29 +207,37 @@ def dedupe_features_ai(features: list[str]) -> dict:
     from anthropic import Anthropic
 
     client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
-    BATCH = 50
-    result: dict = {}
-    known: list[str] = []
-    for i in range(0, len(features), BATCH):
-        chunk = features[i:i + BATCH]
+
+    rules = (
+        "You merge duplicate product features into clusters and give each cluster ONE "
+        "canonical name. Features that mean the same thing MUST receive the EXACT same "
+        "canonical name (character-for-character). Keep genuinely different capabilities "
+        "separate.\n"
+        "Two features are the SAME capability — MERGE them — when they differ only by:\n"
+        "  • wording or language — 'API access' / 'API 액세스' / 'Developer API'\n"
+        "  • a quantity, cap, or limit on the SAME capability — 'AI food scanner' / "
+        "'Capped AI scans' / 'Limited AI scans' / '10 AI scans per day' / 'Unlimited AI "
+        "scans' all mean the AI-scan capability → one canonical 'AI scans'\n"
+        "  • a qualifier of degree/tier on the same thing — 'Basic analytics' / "
+        "'Advanced analytics' / 'Analytics' → 'Analytics'; 'Priority support' / "
+        "'Standard support' / 'Email support' → 'Support'\n"
+        "Do NOT merge features that deliver a genuinely different outcome even if they "
+        "share a word (e.g. 'Barcode scanner' vs 'AI food scanner' are different).\n"
+        "Strip caps/limits/tier adjectives (capped, limited, unlimited, basic, advanced, "
+        "premium, pro, '/day', 'per month', numbers) from the canonical name — name the "
+        "capability itself, in the clearest shortest wording, matching the dominant "
+        "language of the inputs.\n"
+        "Return ONLY a JSON object mapping each feature (verbatim) to its canonical name. "
+        "No prose, no code fences.\n"
+    )
+
+    def _run(chunk: list[str], known: list[str]) -> dict:
         feat_list = "\n".join(f"- {f}" for f in chunk)
         known_hint = (
-            f"Existing canonical names to reuse when a feature means the same thing: "
-            f"{', '.join(known)}.\n" if known else ""
+            f"Reuse these existing canonical names whenever a feature means the same "
+            f"thing: {', '.join(known)}.\n" if known else ""
         )
-        prompt = (
-            "You merge duplicate product features. Two features are the SAME if they "
-            "describe the same capability even when worded differently or in another "
-            "language (e.g. 'API access' / 'API 액세스' / 'Developer API'). Give each "
-            "feature a canonical name — features that mean the same thing MUST share "
-            "the exact same canonical name. Keep genuinely different features separate "
-            "(their canonical name is themselves). Use the clearest, shortest wording; "
-            "match the dominant language of the inputs.\n"
-            + known_hint +
-            "Return ONLY a JSON object mapping each feature (verbatim) to its canonical "
-            "name. No prose, no code fences.\n\n"
-            f"FEATURES:\n{feat_list}\n"
-        )
+        prompt = rules + known_hint + f"\nFEATURES:\n{feat_list}\n"
         resp = client.messages.create(
             model=config.ANTHROPIC_MODEL,
             max_tokens=8192,
@@ -242,6 +250,15 @@ def dedupe_features_ai(features: list[str]) -> dict:
             raise ExtractError(f"유사 기능 통합 JSON 파싱 실패: {exc}") from exc
         if not isinstance(data, dict):
             raise ExtractError("유사 기능 통합 응답이 객체(JSON object)가 아닙니다.")
+        return data
+
+    # 작은 집합(대부분의 경우)은 한 번에 처리해 전역적으로 일관되게 군집화한다.
+    # (배치로 쪼개면 같은 기능이 서로 다른 배치에 흩어져 통합이 누락됨)
+    BATCH = 120
+    result: dict = {}
+    known: list[str] = []
+    for i in range(0, len(features), BATCH):
+        data = _run(features[i:i + BATCH], known)
         for k, v in data.items():
             if v:
                 canon = str(v)
