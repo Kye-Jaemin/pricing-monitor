@@ -478,3 +478,12 @@ table.sortable th:hover { color: var(--accent); }
 .pos-feat > summary:hover { color: var(--accent); }
 .pos-providers { margin: 6px 0 2px; padding-left: 18px; }
 .pos-providers li { font-size: .85rem; margin: 3px 0; }
+
+/* 분류 기준 범례 + 포지셔닝 점 클릭 이동 하이라이트 */
+.class-criteria { margin: 6px 0 10px; padding-left: 18px; }
+.class-criteria li { margin: 4px 0; font-size: .9rem; }
+.pos-feat.flash { animation: posflash 1.6s ease; }
+@keyframes posflash {
+  0%, 100% { background: #fff; }
+  20% { background: #fef9c3; box-shadow: 0 0 0 2px #fde047; }
+}

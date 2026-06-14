@@ -209,42 +209,6 @@
 </details>
 {% endif %}
 
-{% if data.feature_positioning %}
-<details class="card">
-  <summary><h2>{{ t('compare.pos_title') }}</h2></summary>
-  <p class="muted">{{ t('compare.pos_help') }}</p>
-  <p class="muted">
-    <span class="feat-badge badge-commodity">{{ t('compare.class_commodity') }}</span> {{ t('compare.class_commodity_help') }} &nbsp;·&nbsp;
-    <span class="feat-badge badge-standard">{{ t('compare.class_standard') }}</span> {{ t('compare.class_standard_help') }} &nbsp;·&nbsp;
-    <span class="feat-badge badge-differentiated">{{ t('compare.class_differentiated') }}</span> {{ t('compare.class_differentiated_help') }}
-  </p>
-  <div class="scatter-wrap" style="height:340px"><canvas id="posScatter"></canvas></div>
-  <p class="muted">{{ t('compare.pos_axes') }}</p>
-
-  <div class="pos-list">
-    <div class="pos-list-title muted">{{ t('compare.pos_providers_title') }}</div>
-    {% for fp in data.feature_positioning %}
-    <details class="pos-feat">
-      <summary>
-        <span class="feat-badge badge-{{ fp.label }}">{{ t('compare.class_' + fp.label) }}</span>
-        <strong>{{ fp.feature }}</strong>
-        <span class="muted">— {{ t('compare.pos_providers', n=fp.providers, total=fp.total) }}{% if fp.unlock_price %} · ${{ '%g'|format(fp.unlock_price) }}{% endif %}</span>
-      </summary>
-      <ul class="pos-providers">
-        {% for pv in fp.providers_list %}
-        <li>
-          <strong>{{ pv.company }}</strong>
-          <span class="muted">{% if pv.is_free %}{{ t('word.free') }}{% elif pv.price is not none %}${{ '%g'|format(pv.price) }}/{{ t('col.monthly') }}{% endif %}</span>
-          — {{ pv.features | join(', ') }}
-        </li>
-        {% endfor %}
-      </ul>
-    </details>
-    {% endfor %}
-  </div>
-</details>
-{% endif %}
-
 {% if data.feature_analysis %}
 <details class="card">
   <summary><h2>{{ t('compare.feat_title') }}</h2></summary>
@@ -279,6 +243,42 @@
     </div>
   </div>
   {% endfor %}
+</details>
+{% endif %}
+
+{% if data.feature_positioning %}
+<details class="card" id="posSection">
+  <summary><h2>{{ t('compare.pos_title') }}</h2></summary>
+  <p class="muted">{{ t('compare.pos_help') }}</p>
+  <ul class="class-criteria">
+    <li><span class="feat-badge badge-commodity">{{ t('compare.class_commodity') }}</span> {{ t('compare.class_commodity_help') }} <span class="muted">— {{ t('compare.class_commodity_rule') }}</span></li>
+    <li><span class="feat-badge badge-standard">{{ t('compare.class_standard') }}</span> {{ t('compare.class_standard_help') }} <span class="muted">— {{ t('compare.class_standard_rule') }}</span></li>
+    <li><span class="feat-badge badge-differentiated">{{ t('compare.class_differentiated') }}</span> {{ t('compare.class_differentiated_help') }} <span class="muted">— {{ t('compare.class_differentiated_rule') }}</span></li>
+  </ul>
+  <div class="scatter-wrap" style="height:340px"><canvas id="posScatter"></canvas></div>
+  <p class="muted">{{ t('compare.pos_axes') }} · {{ t('compare.pos_click_hint') }}</p>
+
+  <div class="pos-list">
+    <div class="pos-list-title muted">{{ t('compare.pos_providers_title') }}</div>
+    {% for fp in data.feature_positioning %}
+    <details class="pos-feat" id="posfeat-{{ loop.index0 }}">
+      <summary>
+        <span class="feat-badge badge-{{ fp.label }}">{{ t('compare.class_' + fp.label) }}</span>
+        <strong>{{ fp.feature }}</strong>
+        <span class="muted">— {{ t('compare.pos_providers', n=fp.providers, total=fp.total) }}{% if fp.unlock_price %} · ${{ '%g'|format(fp.unlock_price) }}{% endif %}</span>
+      </summary>
+      <ul class="pos-providers">
+        {% for pv in fp.providers_list %}
+        <li>
+          <strong>{{ pv.company }}</strong>
+          <span class="muted">{% if pv.is_free %}{{ t('word.free') }}{% elif pv.price is not none %}${{ '%g'|format(pv.price) }}/{{ t('col.monthly') }}{% endif %}</span>
+          — {{ pv.features | join(', ') }}
+        </li>
+        {% endfor %}
+      </ul>
+    </details>
+    {% endfor %}
+  </div>
 </details>
 {% endif %}
 
@@ -426,18 +426,35 @@
   if (posCanvas && pos && pos.length) {
     var COLORS = { commodity: '#2563eb', standard: '#f59e0b', differentiated: '#16a34a' };
     var groups = { commodity: [], standard: [], differentiated: [] };
-    pos.forEach(function (p) {
+    pos.forEach(function (p, idx) {
       (groups[p.label] || (groups[p.label] = [])).push(
-        { x: p.penetration, y: p.unlock_price, f: p.feature, prov: p.providers, total: p.total });
+        { x: p.penetration, y: p.unlock_price, f: p.feature, prov: p.providers, total: p.total, i: idx });
     });
+    function gotoFeature(i) {
+      var el = document.getElementById('posfeat-' + i);
+      if (!el) return;
+      el.open = true;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('flash');
+      setTimeout(function () { el.classList.remove('flash'); }, 1600);
+    }
     new Chart(posCanvas, {
       type: 'scatter',
       data: { datasets: Object.keys(groups).map(function (k) {
         return { label: k, data: groups[k], backgroundColor: COLORS[k] || '#9ca3af',
-                 pointRadius: 6, pointHoverRadius: 8 };
+                 pointRadius: 6, pointHoverRadius: 9 };
       }) },
       options: {
         maintainAspectRatio: false,
+        onClick: function (evt, els) {
+          if (els && els.length) {
+            var d = this.data.datasets[els[0].datasetIndex].data[els[0].index];
+            if (d && typeof d.i === 'number') gotoFeature(d.i);
+          }
+        },
+        onHover: function (evt, els) {
+          evt.native.target.style.cursor = (els && els.length) ? 'pointer' : 'default';
+        },
         plugins: { tooltip: { callbacks: { label: function (ctx) {
           var p = ctx.raw;
           return p.f + ' · ' + p.prov + '/' + p.total + ' · $' + p.y + '/mo';
@@ -473,7 +490,8 @@
     if (!form) return;
     form.addEventListener('submit', function () {
       var ai = form.querySelector('input[name="ai_categorize"]:checked')
-            || form.querySelector('input[name="ai_pricing"]:checked');
+            || form.querySelector('input[name="ai_pricing"]:checked')
+            || form.querySelector('input[name="ai_dedupe"]:checked');
       if (!ai) return;
       var prog = document.getElementById('compareProg');
       var btn = document.getElementById('compareBtn');
