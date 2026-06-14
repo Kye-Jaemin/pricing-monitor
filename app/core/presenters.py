@@ -768,6 +768,10 @@ def compare(names: list[str]) -> dict:
                     d["price"] = eff if d["price"] is None else min(d["price"], eff)
 
     def _classify(key: str) -> dict:
+        # 분류 기준(보급률 = 제공 업체 수 / 전체 업체 수):
+        #   commodity     : 다수(≥60%)가 제공 + 그중 절반 이상이 무료/기본 → 기본기
+        #   differentiated: 소수(≤⅓)만 제공 — 단, 업체가 3곳 이상일 때만(소표본 과대분류 방지)
+        #   standard      : 그 외(상당수가 제공하나 유료 게이팅 등)
         a = agg.get(key)
         if not a or n_co == 0:
             return {"label": "standard", "providers": 0, "penetration": 0.0}
@@ -775,9 +779,11 @@ def compare(names: list[str]) -> dict:
         pen = providers / n_co
         entry = (len(a["free"]) / providers) if providers else 0.0
         if pen >= 0.6:
-            label = "commodity" if entry >= 0.4 else "standard"
-        else:
+            label = "commodity" if entry >= 0.5 else "standard"
+        elif n_co >= 3 and pen <= 0.34:
             label = "differentiated"
+        else:
+            label = "standard"
         return {"label": label, "providers": providers,
                 "penetration": round(pen, 3)}
 
