@@ -729,23 +729,43 @@ def compare(names: list[str]) -> dict:
     import math
     import statistics
 
-    # 0) 기능(canonical) 보급률·해금가 집계 → 커머디티/차별화 분류
+    # AI 유사 기능 통합 매핑(있으면 의미상 같은 기능을 한 그룹으로)
+    alias_map = store.get_feature_aliases()
+
+    def _canon_key(f: str) -> str:
+        a = alias_map.get(f)
+        return ("ALIAS::" + a) if a else _normalize_feature(f)
+
+    def _canon_disp(f: str) -> str:
+        return alias_map.get(f) or f
+
+    # 0) 기능(canonical) 보급률·해금가 집계 → 커머디티/차별화 분류 (무료 기능 포함)
     n_co = len(per_company)
     agg: dict[str, dict] = {}
     for pc in per_company:
         for g in pc.get("unlock", []):
             eff = g["annual"] if g["annual"] is not None else g["monthly"]
             for f in g["features"]:
-                key = _normalize_feature(f)
+                key = _canon_key(f)
                 a = agg.get(key)
                 if a is None:
-                    a = agg[key] = {"display": f, "companies": set(),
-                                    "free": set(), "prices": []}
+                    a = agg[key] = {"display": _canon_disp(f), "companies": set(),
+                                    "free": set(), "prices": [], "detail": {}}
+                elif alias_map.get(f):
+                    a["display"] = alias_map[f]  # 별칭이 있으면 대표명으로 승격
                 a["companies"].add(pc["company"])
                 if g["is_free"]:
                     a["free"].add(pc["company"])
                 if eff is not None:
                     a["prices"].append(eff)
+                d = a["detail"].setdefault(
+                    pc["company"], {"features": set(), "is_free": False, "price": None}
+                )
+                d["features"].add(f)
+                if g["is_free"]:
+                    d["is_free"] = True
+                if eff is not None:
+                    d["price"] = eff if d["price"] is None else min(d["price"], eff)
 
     def _classify(key: str) -> dict:
         a = agg.get(key)
@@ -765,6 +785,18 @@ def compare(names: list[str]) -> dict:
     for key, a in agg.items():
         cls = _classify(key)
         price = statistics.median(a["prices"]) if a["prices"] else 0.0
+        providers_list = sorted(
+            (
+                {
+                    "company": co,
+                    "features": sorted(dd["features"]),
+                    "is_free": dd["is_free"],
+                    "price": dd["price"],
+                }
+                for co, dd in a["detail"].items()
+            ),
+            key=lambda e: (e["price"] is None, e["price"] or 0, e["company"]),
+        )
         feature_positioning.append({
             "feature": a["display"],
             "category": _effective_category(a["display"], cat_map),
@@ -773,6 +805,7 @@ def compare(names: list[str]) -> dict:
             "penetration": cls["penetration"],
             "unlock_price": round(price, 2),
             "label": cls["label"],
+            "providers_list": providers_list,
         })
     feature_positioning.sort(key=lambda x: (-x["penetration"], x["unlock_price"]))
 
@@ -784,7 +817,7 @@ def compare(names: list[str]) -> dict:
             # 정렬 가격: 무료/저가 우선, 미공개는 맨 뒤
             cand_price = eff if eff is not None else float("inf")
             for f in g["features"]:
-                key = _normalize_feature(f)
+                key = _canon_key(f)
                 rank = (cand_price, pc["company"])
                 cur = best.get(key)
                 if cur is None or rank < cur["_rank"]:
@@ -852,7 +885,7 @@ def compare(names: list[str]) -> dict:
             slot = cat_bands.setdefault(cat["category"], {}).setdefault(bi, [])
             for co in cat["companies"]:
                 for f in co["features"]:
-                    cls = _classify(_normalize_feature(f))
+                    cls = _classify(_canon_key(f))
                     slot.append({"feature": f, "company": co["company"],
                                  "icon": co["icon"], "price": co["price"],
                                  "label": cls["label"], "providers": cls["providers"],

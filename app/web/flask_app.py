@@ -186,6 +186,17 @@ def _apply_categorize(names: list[str]) -> None:
         store.set_feature_category(feature, category, source="ai")
 
 
+def _apply_dedupe(names: list[str]) -> None:
+    """선택 업체 전체 기능(무료 포함)을 AI로 유사 통합해 별칭으로 저장."""
+    feats = presenters.distinct_features(names)
+    if not feats:
+        return
+    from ..core import extract
+
+    mapping = extract.dedupe_features_ai(feats)
+    store.set_feature_aliases(mapping)
+
+
 def _apply_pricing(names: list[str]) -> None:
     """선택 업체의 가격대별 증분을 AI가 분석(테마·요약)해 저장."""
     from ..core import extract
@@ -207,10 +218,13 @@ def compare_run():
     names = [n for n in request.form.getlist("company") if n]
     do_cat = bool(request.form.get("ai_categorize"))
     do_price = bool(request.form.get("ai_pricing"))
-    if do_cat or do_price:
+    do_dedupe = bool(request.form.get("ai_dedupe"))
+    if do_cat or do_price or do_dedupe:
         if config.ACCESS_CODE and (request.form.get("access_code") or "").strip() != config.ACCESS_CODE:
             return redirect(_compare_url(names, error="bad_code"))
         try:
+            if do_dedupe:
+                _apply_dedupe(names)
             if do_cat:
                 _apply_categorize(names)
             if do_price:

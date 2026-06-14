@@ -54,6 +54,7 @@
     </div>
     <div class="compare-ai-opts">
       <span class="muted ai-opts-label">{{ t('compare.ai_opts_label') }}</span>
+      <label class="src-check"><input type="checkbox" name="ai_dedupe" value="1"> 🤖 {{ t('compare.ai_dedupe') }}</label>
       <label class="src-check"><input type="checkbox" name="ai_categorize" value="1"> 🤖 {{ t('compare.ai_categorize') }}</label>
       <label class="src-check"><input type="checkbox" name="ai_pricing" value="1"> 🤖 {{ t('compare.ai_pricing') }}</label>
       {% if access_required %}<input type="password" name="access_code" class="access-input" placeholder="{{ t('runs.access_label') }}" autocomplete="off">{% endif %}
@@ -219,6 +220,28 @@
   </p>
   <div class="scatter-wrap" style="height:340px"><canvas id="posScatter"></canvas></div>
   <p class="muted">{{ t('compare.pos_axes') }}</p>
+
+  <div class="pos-list">
+    <div class="pos-list-title muted">{{ t('compare.pos_providers_title') }}</div>
+    {% for fp in data.feature_positioning %}
+    <details class="pos-feat">
+      <summary>
+        <span class="feat-badge badge-{{ fp.label }}">{{ t('compare.class_' + fp.label) }}</span>
+        <strong>{{ fp.feature }}</strong>
+        <span class="muted">— {{ t('compare.pos_providers', n=fp.providers, total=fp.total) }}{% if fp.unlock_price %} · ${{ '%g'|format(fp.unlock_price) }}{% endif %}</span>
+      </summary>
+      <ul class="pos-providers">
+        {% for pv in fp.providers_list %}
+        <li>
+          <strong>{{ pv.company }}</strong>
+          <span class="muted">{% if pv.is_free %}{{ t('word.free') }}{% elif pv.price is not none %}${{ '%g'|format(pv.price) }}/{{ t('col.monthly') }}{% endif %}</span>
+          — {{ pv.features | join(', ') }}
+        </li>
+        {% endfor %}
+      </ul>
+    </details>
+    {% endfor %}
+  </div>
 </details>
 {% endif %}
 

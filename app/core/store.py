@@ -103,6 +103,11 @@ CREATE TABLE IF NOT EXISTS comparison_cards (
     payload_json   TEXT NOT NULL,   -- presenters.compare() 결과 스냅샷(저장 시점 고정)
     created_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
 );
+
+CREATE TABLE IF NOT EXISTS feature_aliases (
+    variant    TEXT PRIMARY KEY,   -- 원본 기능 문자열
+    canonical  TEXT NOT NULL       -- AI가 묶은 대표(통합) 기능명
+);
 """
 
 
@@ -455,6 +460,27 @@ def get_feature_category_rows() -> dict[str, tuple]:
                 "SELECT feature, category, source FROM feature_categories"
             )
         }
+
+
+def get_feature_aliases() -> dict[str, str]:
+    """원본 기능 → 통합(대표) 기능명 매핑."""
+    with connect() as conn:
+        return {
+            r["variant"]: r["canonical"]
+            for r in conn.execute("SELECT variant, canonical FROM feature_aliases")
+        }
+
+
+def set_feature_aliases(mapping: dict) -> None:
+    with connect() as conn:
+        for variant, canonical in mapping.items():
+            if not variant or not canonical:
+                continue
+            conn.execute(
+                """INSERT INTO feature_aliases (variant, canonical) VALUES (?, ?)
+                   ON CONFLICT(variant) DO UPDATE SET canonical=excluded.canonical""",
+                (str(variant), str(canonical)),
+            )
 
 
 def set_feature_category(feature: str, category: str, source: str = "user") -> None:

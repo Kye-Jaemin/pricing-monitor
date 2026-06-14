@@ -193,6 +193,64 @@ def categorize_features_ai(features: list[str]) -> dict:
     return result
 
 
+def dedupe_features_ai(features: list[str]) -> dict:
+    """의미상 같은 기능들을 묶어 대표(통합) 이름을 부여한다.
+
+    반환: {원본 기능: 통합 기능명}. 같은 클러스터의 기능들은 동일한 통합명을 받는다.
+    정말 같은 기능만 묶고, 구별되는 기능은 자기 자신을 통합명으로 둔다.
+    """
+    if not config.ANTHROPIC_API_KEY:
+        raise ExtractError("ANTHROPIC_API_KEY 가 설정되지 않았습니다 (.env 확인).")
+    if not features:
+        return {}
+
+    from anthropic import Anthropic
+
+    client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
+    BATCH = 50
+    result: dict = {}
+    known: list[str] = []
+    for i in range(0, len(features), BATCH):
+        chunk = features[i:i + BATCH]
+        feat_list = "\n".join(f"- {f}" for f in chunk)
+        known_hint = (
+            f"Existing canonical names to reuse when a feature means the same thing: "
+            f"{', '.join(known)}.\n" if known else ""
+        )
+        prompt = (
+            "You merge duplicate product features. Two features are the SAME if they "
+            "describe the same capability even when worded differently or in another "
+            "language (e.g. 'API access' / 'API 액세스' / 'Developer API'). Give each "
+            "feature a canonical name — features that mean the same thing MUST share "
+            "the exact same canonical name. Keep genuinely different features separate "
+            "(their canonical name is themselves). Use the clearest, shortest wording; "
+            "match the dominant language of the inputs.\n"
+            + known_hint +
+            "Return ONLY a JSON object mapping each feature (verbatim) to its canonical "
+            "name. No prose, no code fences.\n\n"
+            f"FEATURES:\n{feat_list}\n"
+        )
+        resp = client.messages.create(
+            model=config.ANTHROPIC_MODEL,
+            max_tokens=8192,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
+        try:
+            data = _loads_loose(raw)
+        except json.JSONDecodeError as exc:
+            raise ExtractError(f"유사 기능 통합 JSON 파싱 실패: {exc}") from exc
+        if not isinstance(data, dict):
+            raise ExtractError("유사 기능 통합 응답이 객체(JSON object)가 아닙니다.")
+        for k, v in data.items():
+            if v:
+                canon = str(v)
+                result[str(k)] = canon
+                if canon not in known:
+                    known.append(canon)
+    return result
+
+
 def analyze_pricing_ai(company: str, groups: list[dict]) -> list[dict]:
     """가격대별 '처음 풀리는 기능'(결정적 증분)을 AI가 분석해 테마·요약을 붙인다.
 
