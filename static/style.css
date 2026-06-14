@@ -31,7 +31,13 @@ code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; font-size: .9e
 }
 .brand { font-weight: 700; font-size: 1.1rem; }
 .topbar nav { display: flex; gap: 18px; }
-.topbar nav a { color: var(--ink); font-weight: 500; }
+.topbar nav a { color: var(--ink); font-weight: 500; padding: 4px 0; border-bottom: 2px solid transparent; }
+.topbar nav a.on { color: var(--accent); border-bottom-color: var(--accent); }
+.topbar nav a.on:hover { text-decoration: none; }
+/* 모바일 햄버거 (데스크톱에선 숨김) */
+.nav-toggle { display: none; }
+.nav-burger { display: none; cursor: pointer; flex-direction: column; gap: 4px; padding: 6px; }
+.nav-burger span { display: block; width: 22px; height: 2px; background: var(--ink); border-radius: 2px; transition: transform .2s ease, opacity .2s ease; }
 .lang-toggle { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: .85rem; }
 .lang-toggle a { color: var(--muted); font-weight: 600; }
 .lang-toggle a.on { color: var(--accent); text-decoration: underline; }
@@ -161,6 +167,7 @@ th { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-s
 a.btn-primary, a.btn-secondary { text-decoration: none; display: inline-block; }
 a.btn-primary:hover { text-decoration: none; }
 
+/* 가치 랭킹 막대 (/compare) */
 .value-row { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
 .value-name { min-width: 160px; font-weight: 600; }
 .value-bar { flex: 1; height: 14px; background: #eef0f3; border-radius: 999px; overflow: hidden; }
@@ -284,18 +291,7 @@ a.btn-primary:hover { text-decoration: none; }
 .saved-badge { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .save-title { padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: .9rem; min-width: 200px; }
 
-/* 피쳐 가치 분석 (/value) */
-.value-disclaimer { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
-table.sortable th { user-select: none; white-space: nowrap; }
-table.sortable th:hover { color: var(--accent); }
 .matrix td.feat { font-weight: 600; }
-.conf-high { background: #dcfce7; color: #166534; }
-.conf-medium { background: #fef9c3; color: #854d0e; }
-.conf-low { background: #fee2e2; color: #991b1b; }
-.tag-diff { background: #dbeafe; color: #1e40af; }
-.tag-lever { background: #dcfce7; color: #166534; }
-.tag-stakes { background: #f3f4f6; color: #4b5563; }
-.tag-niche { background: #fef3c7; color: #92400e; }
 .btn-danger {
   background: #fff; color: #b91c1c; border: 1px solid #fca5a5;
   padding: 5px 12px; border-radius: 7px; font-size: .82rem; font-weight: 600;
@@ -499,3 +495,39 @@ table.sortable th:hover { color: var(--accent); }
 .sched-time input { width: 56px; }
 .sched-tz { width: 180px; }
 .sched-num { width: 90px; }
+
+/* 키보드 포커스 표시 (접이식 카드/요약) */
+details.card > summary:focus-visible,
+.extra-source > summary:focus-visible,
+.band-co > summary:focus-visible,
+.tier-cat > summary:focus-visible,
+.pos-feat > summary:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px;
+}
+
+/* ── 반응형 (태블릿/모바일) ── */
+@media (max-width: 760px) {
+  .container { padding: 16px; }
+  .topbar { flex-wrap: wrap; gap: 12px 16px; padding: 10px 16px; }
+  .nav-burger { display: flex; order: 3; margin-left: auto; }
+  .lang-toggle { order: 2; margin-left: auto; }
+  .topbar nav {
+    order: 4; flex-basis: 100%; flex-direction: column; gap: 0;
+    max-height: 0; overflow: hidden; transition: max-height .25s ease;
+  }
+  .nav-toggle:checked ~ nav { max-height: 420px; }
+  .topbar nav a { padding: 10px 2px; border-bottom: 1px solid var(--line); }
+  .topbar nav a.on { border-bottom-color: var(--line); padding-left: 8px;
+    border-left: 3px solid var(--accent); }
+  /* 햄버거 → X 모션 */
+  .nav-toggle:checked ~ .nav-burger span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+  .nav-toggle:checked ~ .nav-burger span:nth-child(2) { opacity: 0; }
+  .nav-toggle:checked ~ .nav-burger span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+  .page-head { flex-direction: column; align-items: stretch; }
+  /* 폭이 좁을 때 표는 가로 스크롤 (마크업 변경 없이) */
+  .price-table, .log-table { display: block; overflow-x: auto; white-space: nowrap; }
+  .company-summary .cc-when { margin-left: 0; flex-basis: 100%; }
+  .scatter-wrap { height: 340px; }
+  .sched-row { gap: 10px; }
+}

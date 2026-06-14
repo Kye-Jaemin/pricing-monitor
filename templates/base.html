@@ -9,13 +9,16 @@
 <body>
   <header class="topbar">
     <a class="brand" href="{{ url_for('index') }}">💲 Pricing Monitor</a>
+    <input type="checkbox" id="navToggle" class="nav-toggle">
+    <label for="navToggle" class="nav-burger" aria-label="menu"><span></span><span></span><span></span></label>
+    {% set ep = request.endpoint %}
     <nav>
-      <a href="{{ url_for('index') }}">{{ t('nav.overview') }}</a>
-      <a href="{{ url_for('compare_page') }}">{{ t('nav.compare') }}</a>
-      <a href="{{ url_for('changes') }}">{{ t('nav.changes') }}</a>
-      <a href="{{ url_for('companies_page') }}">{{ t('nav.companies') }}</a>
-      <a href="{{ url_for('runs') }}">{{ t('nav.runs') }}</a>
-      <a href="{{ url_for('howto') }}">{{ t('nav.howto') }}</a>
+      <a href="{{ url_for('index') }}" class="{{ 'on' if ep == 'index' }}"{% if ep == 'index' %} aria-current="page"{% endif %}>{{ t('nav.overview') }}</a>
+      <a href="{{ url_for('compare_page') }}" class="{{ 'on' if ep == 'compare_page' }}"{% if ep == 'compare_page' %} aria-current="page"{% endif %}>{{ t('nav.compare') }}</a>
+      <a href="{{ url_for('changes') }}" class="{{ 'on' if ep == 'changes' }}"{% if ep == 'changes' %} aria-current="page"{% endif %}>{{ t('nav.changes') }}</a>
+      <a href="{{ url_for('companies_page') }}" class="{{ 'on' if ep == 'companies_page' }}"{% if ep == 'companies_page' %} aria-current="page"{% endif %}>{{ t('nav.companies') }}</a>
+      <a href="{{ url_for('runs') }}" class="{{ 'on' if ep == 'runs' }}"{% if ep == 'runs' %} aria-current="page"{% endif %}>{{ t('nav.runs') }}</a>
+      <a href="{{ url_for('howto') }}" class="{{ 'on' if ep == 'howto' }}"{% if ep == 'howto' %} aria-current="page"{% endif %}>{{ t('nav.howto') }}</a>
     </nav>
     <div class="lang-toggle">
       <a href="{{ url_for('set_lang', code='ko') }}" class="{{ 'on' if lang == 'ko' else '' }}">한</a>
