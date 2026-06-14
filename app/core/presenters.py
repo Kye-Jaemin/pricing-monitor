@@ -949,6 +949,24 @@ def load_comparison_card(card_id: int) -> dict | None:
         data = json.loads(row["payload_json"])
     except (ValueError, TypeError):
         return None
+    if not isinstance(data, dict):
+        return None
+    # 예전 구조로 저장된 카드 호환: 누락된 키를 안전 기본값으로 채운다
+    # (새 템플릿이 data.feature_positioning 등을 tojson/순회하다 깨지는 것 방지).
+    defaults = {
+        "companies": [],
+        "scatter": {"datasets": []},
+        "per_company": [],
+        "price_bands": [],
+        "feature_analysis": [],
+        "feature_positioning": [],
+        "matrix": [],
+        "ranking": [],
+        "editable": [],
+    }
+    for k, v in defaults.items():
+        if data.get(k) is None:
+            data[k] = v
     # 선택 목록(체크박스)은 현재 업체 기준으로 갱신해 새 비교 시작이 가능하도록.
     data["all_companies"] = sorted(
         c["name"] for c in store.list_companies(active_only=True)
