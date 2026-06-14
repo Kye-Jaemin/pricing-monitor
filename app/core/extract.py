@@ -120,6 +120,21 @@ def _strip_code_fences(text: str) -> str:
     return text
 
 
+def _loads_loose(raw: str):
+    """JSON 느슨 파싱: 코드펜스 제거 → 직접 파싱 → 실패 시 첫 { ~ 마지막 } 구간 재시도."""
+    s = _strip_code_fences(raw)
+    try:
+        return json.loads(s)
+    except json.JSONDecodeError:
+        pass
+    # 앞뒤에 잡설/잘림이 있을 때 가장 바깥 객체만 추출 시도
+    start = s.find("{")
+    end = s.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        return json.loads(s[start:end + 1])
+    raise json.JSONDecodeError("no JSON object found", s, 0)
+
+
 def categorize_features_ai(features: list[str]) -> dict:
     """기능 목록을 보고 해당 서비스에 맞는 카테고리를 동적으로 생성·할당한다.
 
@@ -133,31 +148,49 @@ def categorize_features_ai(features: list[str]) -> dict:
     from anthropic import Anthropic
 
     client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
-    feat_list = "\n".join(f"- {f}" for f in features)
-    prompt = (
-        "You are organizing subscription product features into categories. "
-        "Look at the actual features below and invent a small set (about 4-10) of "
-        "clear, descriptive category names that fit THESE services (not a generic "
-        "fixed list). Use the same language as the features (Korean or English). "
-        "Assign every feature to exactly one category.\n"
-        "Return ONLY a JSON object mapping each feature (verbatim) to its category "
-        "name. No prose, no code fences.\n\n"
-        f"FEATURES:\n{feat_list}\n"
-    )
-    resp = client.messages.create(
-        model=config.ANTHROPIC_MODEL,
-        max_tokens=4096,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    raw = "".join(
-        b.text for b in resp.content if getattr(b, "type", None) == "text"
-    )
-    raw = _strip_code_fences(raw)
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise ExtractError(f"카테고리 JSON 파싱 실패: {exc}") from exc
-    return {str(k): str(v) for k, v in data.items() if v}
+
+    # 기능이 많으면 응답 JSON 이 max_tokens 에서 잘려 파싱 실패하므로 묶음 처리.
+    # 1차 묶음에서 만들어진 카테고리를 이후 묶음에 알려줘 일관성 유지.
+    BATCH = 40
+    result: dict = {}
+    known: list[str] = []
+    for i in range(0, len(features), BATCH):
+        chunk = features[i:i + BATCH]
+        feat_list = "\n".join(f"- {f}" for f in chunk)
+        known_hint = (
+            f"Prefer reusing these existing categories when they fit: "
+            f"{', '.join(known)}.\n" if known else ""
+        )
+        prompt = (
+            "You are organizing subscription product features into categories. "
+            "Invent a small set (about 4-10) of clear, descriptive category names "
+            "that fit THESE services (not a generic fixed list). Use the same "
+            "language as the features (Korean or English). Assign every feature to "
+            "exactly one category.\n"
+            + known_hint +
+            "Return ONLY a JSON object mapping each feature (verbatim) to its "
+            "category name. No prose, no code fences.\n\n"
+            f"FEATURES:\n{feat_list}\n"
+        )
+        resp = client.messages.create(
+            model=config.ANTHROPIC_MODEL,
+            max_tokens=8192,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
+        try:
+            data = _loads_loose(raw)
+        except json.JSONDecodeError as exc:
+            raise ExtractError(f"카테고리 JSON 파싱 실패: {exc}") from exc
+        if not isinstance(data, dict):
+            raise ExtractError("카테고리 응답이 객체(JSON object)가 아닙니다.")
+        for k, v in data.items():
+            if v:
+                cat = str(v)
+                result[str(k)] = cat
+                if cat not in known:
+                    known.append(cat)
+    return result
 
 
 def analyze_pricing_ai(company: str, groups: list[dict]) -> list[dict]:
@@ -194,15 +227,16 @@ def analyze_pricing_ai(company: str, groups: list[dict]) -> list[dict]:
     )
     resp = client.messages.create(
         model=config.ANTHROPIC_MODEL,
-        max_tokens=4096,
+        max_tokens=8192,
         messages=[{"role": "user", "content": prompt}],
     )
     raw = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
-    raw = _strip_code_fences(raw)
     try:
-        data = json.loads(raw)
+        data = _loads_loose(raw)
     except json.JSONDecodeError as exc:
         raise ExtractError(f"가격 분석 JSON 파싱 실패: {exc}") from exc
+    if not isinstance(data, dict):
+        raise ExtractError("가격 분석 응답이 객체(JSON object)가 아닙니다.")
     out = []
     for p in data.get("price_points", []):
         out.append({
@@ -252,9 +286,8 @@ def extract_pricing(
     raw = "".join(
         block.text for block in resp.content if getattr(block, "type", None) == "text"
     )
-    raw = _strip_code_fences(raw)
 
     try:
-        return json.loads(raw)
+        return _loads_loose(raw)
     except json.JSONDecodeError as exc:
         raise ExtractError(f"JSON 파싱 실패: {exc}\n원문 앞부분: {raw[:300]}") from exc
