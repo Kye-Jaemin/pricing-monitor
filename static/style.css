@@ -487,3 +487,15 @@ table.sortable th:hover { color: var(--accent); }
   0%, 100% { background: #fff; }
   20% { background: #fef9c3; box-shadow: 0 0 0 2px #fde047; }
 }
+
+/* 스케줄러 설정 */
+.sched-card > summary { cursor: pointer; }
+.sched-form { margin-top: 10px; }
+.sched-toggle { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; margin-bottom: 10px; }
+.sched-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; margin-bottom: 12px; }
+.sched-row label { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; font-weight: 600; }
+.sched-row select, .sched-row input { padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; font-size: .9rem; font-weight: 400; }
+.sched-time { display: inline-flex; align-items: center; gap: 4px; }
+.sched-time input { width: 56px; }
+.sched-tz { width: 180px; }
+.sched-num { width: 90px; }

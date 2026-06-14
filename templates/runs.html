@@ -21,6 +21,42 @@
 <div class="alert">{{ t('runs.no_selection') }}</div>
 {% endif %}
 
+{% set sc = scheduler %}
+<details class="card sched-card">
+  <summary>
+    ⏰ <strong>{{ t('sched.title') }}</strong>
+    {% if sc.enabled %}<span class="badge badge-free">{{ t('sched.status_on') }}</span>{% else %}<span class="badge badge-low">{{ t('sched.status_off') }}</span>{% endif %}
+    {% if sc.next_run_time %}<span class="muted">· {{ t('sched.next') }}: {{ sc.next_run_time }}</span>{% endif %}
+  </summary>
+  {% if not sc.internal %}<p class="notice">{{ t('sched.external_note') }}</p>{% endif %}
+  <form method="post" action="{{ url_for('scheduler_save') }}" class="sched-form">
+    <label class="sched-toggle"><input type="checkbox" name="enabled" value="1" {% if sc.enabled %}checked{% endif %}> {{ t('sched.enabled') }}</label>
+    <div class="sched-row">
+      <label>{{ t('sched.day') }}
+        <select name="day_of_week">
+          {% set days = [('*','daily'),('mon','mon'),('tue','tue'),('wed','wed'),('thu','thu'),('fri','fri'),('sat','sat'),('sun','sun')] %}
+          {% for val, key in days %}
+          <option value="{{ val }}" {% if val == sc.day_of_week %}selected{% endif %}>{{ t('sched.' + key) }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>{{ t('sched.time') }}
+        <span class="sched-time">
+          <input type="number" name="hour" min="0" max="23" value="{{ sc.hour }}"> :
+          <input type="number" name="minute" min="0" max="59" value="{{ '%02d'|format(sc.minute) }}">
+        </span>
+      </label>
+      <label>{{ t('sched.timezone') }}
+        <input type="text" name="timezone" value="{{ sc.timezone }}" class="sched-tz">
+      </label>
+      <label>{{ t('sched.stale') }}
+        <input type="number" name="stale_days" min="0" value="{{ sc.stale_days }}" class="sched-num">
+      </label>
+    </div>
+    <button type="submit" class="btn-primary">{{ t('sched.save') }}</button>
+  </form>
+</details>
+
 <section class="card">
   <h2>{{ t('runs.select_title') }}</h2>
   {% if access_required %}<p class="notice">🔒 {{ t('runs.access_note', contact=contact) }}</p>{% endif %}

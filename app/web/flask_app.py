@@ -28,6 +28,7 @@ from ..core import discover, presenters, store
 from ..core.fetch import build_google_search_url
 from ..core.models import SOURCE_TYPE_LABELS, SOURCE_TYPES
 from ..core.pipeline import run_once
+from .. import scheduler as sched
 from ..scheduler import start_scheduler
 from .i18n import DEFAULT_LANG, LANGUAGES, translate
 
@@ -416,8 +417,31 @@ def runs():
         running_ids=list(running_ids) if running_ids is not None else None,
         access_required=bool(config.ACCESS_CODE),
         contact=config.ACCESS_CONTACT,
+        scheduler=sched.get_status(),
         error=request.args.get("error"),
     )
+
+
+@app.route("/scheduler/save", methods=["POST"])
+def scheduler_save():
+    """스케줄러 온/오프·주기·stale 일수 설정 저장 + 즉시 재구성."""
+    f = request.form
+    sched.save_settings(
+        enabled=bool(f.get("enabled")),
+        day_of_week=(f.get("day_of_week") or config.SCHEDULE_DAY_OF_WEEK).strip(),
+        hour=max(0, min(23, _safe_int(f.get("hour"), config.SCHEDULE_HOUR))),
+        minute=max(0, min(59, _safe_int(f.get("minute"), config.SCHEDULE_MINUTE))),
+        timezone=(f.get("timezone") or config.SCHEDULE_TIMEZONE).strip(),
+        stale_days=max(0, _safe_int(f.get("stale_days"), config.SCHEDULE_STALE_DAYS)),
+    )
+    return redirect(url_for("runs"))
+
+
+def _safe_int(v, default: int) -> int:
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return default
 
 
 # ── 액션 ─────────────────────────────────────────────────────
