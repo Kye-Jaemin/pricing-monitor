@@ -790,6 +790,7 @@ def compare(names: list[str]) -> dict:
                 "penetration": round(pen, 3)}
 
     feature_positioning = []
+    pos_by_key: dict[str, dict] = {}
     for key, a in agg.items():
         cls = _classify(key)
         price = statistics.median(a["prices"]) if a["prices"] else 0.0
@@ -805,7 +806,7 @@ def compare(names: list[str]) -> dict:
             ),
             key=lambda e: (e["price"] is None, e["price"] or 0, e["company"]),
         )
-        feature_positioning.append({
+        entry = {
             "feature": a["display"],
             "category": _effective_category(a["display"], cat_map),
             "providers": cls["providers"],
@@ -814,7 +815,9 @@ def compare(names: list[str]) -> dict:
             "unlock_price": round(price, 2),
             "label": cls["label"],
             "providers_list": providers_list,
-        })
+        }
+        feature_positioning.append(entry)
+        pos_by_key[key] = entry
     feature_positioning.sort(key=lambda x: (-x["penetration"], x["unlock_price"]))
 
     # 1) 같은 기능(canonical)이 여러 업체·가격대에 나타나면 '가장 싼' 한 곳만 남긴다
@@ -893,11 +896,15 @@ def compare(names: list[str]) -> dict:
             slot = cat_bands.setdefault(cat["category"], {}).setdefault(bi, [])
             for co in cat["companies"]:
                 for f in co["features"]:
-                    cls = _classify(_canon_key(f))
-                    slot.append({"feature": f, "company": co["company"],
-                                 "icon": co["icon"], "price": co["price"],
-                                 "label": cls["label"], "providers": cls["providers"],
-                                 "total": n_co})
+                    key = _canon_key(f)
+                    pe = pos_by_key.get(key, {})
+                    slot.append({
+                        "feature": pe.get("feature", f),  # 대표명(별칭 통합 반영)
+                        "label": pe.get("label", "standard"),
+                        "providers": pe.get("providers", 0),
+                        "total": n_co,
+                        "providers_list": pe.get("providers_list", []),
+                    })
     feature_analysis = []
     for c in sorted(cat_bands, key=lambda c: (-cmp.WEIGHTS.get(c, cmp.DEFAULT_WEIGHT), c)):
         bands_out = [

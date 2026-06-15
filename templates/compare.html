@@ -213,12 +213,6 @@
 <details class="card">
   <summary><h2>{{ t('compare.feat_title') }}</h2></summary>
   <p class="muted">{{ t('compare.feat_help') }}</p>
-  <div class="feat-filter" id="featFilter">
-    <button type="button" class="btn-secondary btn-sm on" data-f="all">{{ t('compare.filter_all') }}</button>
-    <button type="button" class="btn-secondary btn-sm" data-f="commodity">{{ t('compare.class_commodity') }}</button>
-    <button type="button" class="btn-secondary btn-sm" data-f="standard">{{ t('compare.class_standard') }}</button>
-    <button type="button" class="btn-secondary btn-sm" data-f="differentiated">{{ t('compare.class_differentiated') }}</button>
-  </div>
   {% for fc in data.feature_analysis %}
   <div class="feat-cat">
     <div class="feat-cat-name">{{ fc.category }}</div>
@@ -231,12 +225,20 @@
           {%- else %}{{ t('word.private') }}{% endif %}
         </div>
         {% for it in band.entries %}
-        <div class="feat-item" data-label="{{ it.label }}">
-          <span class="feat-name">{{ it.feature }}
-            <span class="feat-badge badge-{{ it.label }}" title="{{ t('compare.pos_providers', n=it.providers, total=it.total) }}">{{ t('compare.class_' ~ it.label) }} {{ it.providers }}</span>
-          </span>
-          <span class="feat-co muted">{% if it.icon %}<img class="company-icon" src="{{ it.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ it.company }}</span>
-        </div>
+        <details class="feat-item">
+          <summary>
+            <span class="feat-name">{{ it.feature }}
+              <span class="feat-badge badge-{{ it.label }}" title="{{ t('compare.pos_providers', n=it.providers, total=it.total) }}">{{ t('compare.class_' ~ it.label) }} {{ it.providers }}</span>
+            </span>
+          </summary>
+          <ul class="feat-providers">
+            {% for pv in it.providers_list %}
+            <li><strong>{{ pv.company }}</strong>
+              <span class="muted">{% if pv.is_free %}{{ t('word.free') }}{% elif pv.price is not none %}${{ '%g'|format(pv.price) }}/{{ t('col.monthly') }}{% endif %}</span>
+              — {{ pv.features | join(', ') }}</li>
+            {% endfor %}
+          </ul>
+        </details>
         {% endfor %}
       </div>
       {% endfor %}
@@ -485,21 +487,6 @@
       }
     });
   }
-
-  // 기능별 분석 필터 (전체/커머디티/표준/차별화)
-  (function () {
-    var bar = document.getElementById('featFilter');
-    if (!bar) return;
-    bar.addEventListener('click', function (e) {
-      var btn = e.target.closest('button[data-f]');
-      if (!btn) return;
-      var f = btn.getAttribute('data-f');
-      bar.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b === btn); });
-      document.querySelectorAll('.feat-item[data-label]').forEach(function (it) {
-        it.style.display = (f === 'all' || it.getAttribute('data-label') === f) ? '' : 'none';
-      });
-    });
-  })();
 </script>
 {% endif %}
 <script>

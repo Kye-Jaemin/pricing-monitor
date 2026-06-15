@@ -232,7 +232,11 @@ a.btn-primary:hover { text-decoration: none; }
 .feat-band-col.band-free .feat-band-head { color: #1e40af; }
 .feat-band-col.band-paid .feat-band-head { color: #065f46; }
 .feat-item { background: #fff; border: 1px solid var(--line); border-radius: 7px; padding: 4px 7px; margin: 4px 0; }
-.feat-name { display: block; font-size: .83rem; font-weight: 600; }
+.feat-item > summary { cursor: pointer; list-style: revert; }
+.feat-item > summary:hover .feat-name { color: var(--accent); }
+.feat-name { display: inline; font-size: .83rem; font-weight: 600; }
+.feat-providers { margin: 5px 0 2px; padding-left: 15px; }
+.feat-providers li { font-size: .77rem; margin: 2px 0; }
 .feat-co { display: block; font-size: .74rem; margin-top: 1px; }
 .feat-co .company-icon { width: 14px; height: 14px; vertical-align: -2px; margin-right: 3px; }
 
