@@ -425,11 +425,30 @@
   var posCanvas = document.getElementById('posScatter');
   if (posCanvas && pos && pos.length) {
     var COLORS = { commodity: '#2563eb', standard: '#f59e0b', differentiated: '#16a34a' };
-    var groups = { commodity: [], standard: [], differentiated: [] };
-    pos.forEach(function (p, idx) {
-      (groups[p.label] || (groups[p.label] = [])).push(
-        { x: p.penetration, y: p.unlock_price, f: p.feature, prov: p.providers, total: p.total, i: idx });
+    // 모든 점 평탄화(원본 좌표는 price/pen 으로 보존)
+    var pts = pos.map(function (p, idx) {
+      return { x: p.penetration, y: p.unlock_price, price: p.unlock_price,
+               f: p.feature, prov: p.providers, total: p.total, i: idx, label: p.label };
     });
+    // 같은 (보급률, 해금가) 좌표의 점들을 작은 원형으로 흩어 겹침 방지(지터)
+    var ymax = Math.max.apply(null, pts.map(function (p) { return p.y; })) || 1;
+    var coord = {};
+    pts.forEach(function (p) {
+      var k = p.x.toFixed(4) + ',' + p.y.toFixed(4);
+      (coord[k] || (coord[k] = [])).push(p);
+    });
+    Object.keys(coord).forEach(function (k) {
+      var arr = coord[k];
+      if (arr.length < 2) return;
+      var rx = 0.014, ry = Math.max(0.5, ymax * 0.02);
+      arr.forEach(function (p, j) {
+        var ring = Math.floor(j / 8) + 1, ang = (Math.PI * 2 * (j % 8)) / 8;
+        p.x = Math.min(1, Math.max(0, p.x + rx * ring * Math.cos(ang)));
+        p.y = Math.max(0, p.y + ry * ring * Math.sin(ang));
+      });
+    });
+    var groups = { commodity: [], standard: [], differentiated: [] };
+    pts.forEach(function (p) { (groups[p.label] || (groups[p.label] = [])).push(p); });
     function gotoFeature(i) {
       var el = document.getElementById('posfeat-' + i);
       if (!el) return;
@@ -457,7 +476,7 @@
         },
         plugins: { tooltip: { callbacks: { label: function (ctx) {
           var p = ctx.raw;
-          return p.f + ' · ' + p.prov + '/' + p.total + ' · $' + p.y + '/mo';
+          return p.f + ' · ' + p.prov + '/' + p.total + ' · $' + p.price + '/mo';
         } } } },
         scales: {
           x: { min: 0, max: 1, title: { display: true, text: '보급률 / Penetration →' } },
