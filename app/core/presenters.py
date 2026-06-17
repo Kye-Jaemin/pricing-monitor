@@ -752,12 +752,10 @@ def compare(names: list[str]) -> dict:
                 a = agg.get(key)
                 if a is None:
                     a = agg[key] = {"display": _canon_disp(f), "companies": set(),
-                                    "free": set(), "prices": [], "detail": {}}
+                                    "prices": [], "detail": {}}
                 elif alias_map.get(f):
                     a["display"] = alias_map[f]  # 별칭이 있으면 대표명으로 승격
                 a["companies"].add(pc["company"])
-                if g["is_free"]:
-                    a["free"].add(pc["company"])
                 if eff is not None:
                     a["prices"].append(eff)
                 d = a["detail"].setdefault(
@@ -771,18 +769,25 @@ def compare(names: list[str]) -> dict:
 
     def _classify(key: str) -> dict:
         # 분류 기준(보급률 = 제공 업체 수 / 전체 업체 수):
-        #   commodity     : 다수(≥60%)가 제공 + 그중 절반 이상이 무료/기본 → 기본기
-        #   differentiated: 소수(≤⅓)만 제공 — 단, 업체가 3곳 이상일 때만(소표본 과대분류 방지)
-        #   standard      : 그 외(상당수가 제공하나 유료 게이팅 등)
+        #   commodity     : 다수(≥60%)가 제공 + 그중 절반 이상이 무료/$5 이하 → 기본기
+        #   differentiated: 소수(≤⅓)만 제공 + 그중 절반 이상이 유료(무료/$5 초과)
+        #                   — 단, 업체가 3곳 이상일 때만(소표본 과대분류 방지)
+        #   standard      : 그 외
         a = agg.get(key)
         if not a or n_co == 0:
             return {"label": "standard", "providers": 0, "penetration": 0.0}
         providers = len(a["companies"])
         pen = providers / n_co
-        entry = (len(a["free"]) / providers) if providers else 0.0
-        if pen >= 0.6:
-            label = "commodity" if entry >= 0.5 else "standard"
-        elif n_co >= 3 and pen <= 0.34:
+        # 제공 업체 중 '무료/$5 이하(저렴)' 비율 — 가격 미공개(비공개)는 유료로 간주
+        cheap = sum(
+            1 for dd in a["detail"].values()
+            if dd["is_free"] or (dd["price"] is not None and dd["price"] <= 5.0)
+        )
+        entry = (cheap / providers) if providers else 0.0
+        paid_ratio = 1.0 - entry  # 무료/$5 초과(유료)로 제공하는 업체 비율
+        if pen >= 0.6 and entry >= 0.5:
+            label = "commodity"
+        elif n_co >= 3 and pen <= 0.34 and paid_ratio >= 0.5:
             label = "differentiated"
         else:
             label = "standard"
