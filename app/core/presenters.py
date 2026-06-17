@@ -49,6 +49,25 @@ def _normalize_feature(text: str) -> str:
         toks.append(_stem(t))
     return " ".join(sorted(set(toks))) or s.strip()
 
+# "이전 티어/플랜의 모든 기능 포함" 류 안내 문구(실제 기능이 아님)
+_INCLUSION_RE = re.compile(
+    r"everything\s+(in|from|plus|else)\b"             # everything in/from Pro …
+    r"|includ\w*\s+(all|everything)\b"                # includes all / including everything
+    r"|all\b.{0,40}\bfeatures?\b.{0,25}\b(includ\w+|plus)\b"  # All X features included
+    r"|\b(all|everything)\b.{0,30}\b(previous|prior|lower|preceding)\b"  # all previous tier
+    r"|모든\s*기능.{0,12}포함"                         # 모든 기능 … 포함
+    r"|포함.{0,12}모든\s*기능"                         # … 모든 기능 포함
+    r"|이전.{0,12}(티어|플랜|요금제).{0,15}기능",       # 이전 티어/플랜 기능
+    re.IGNORECASE,
+)
+
+
+def _is_inclusion_phrase(f: str) -> bool:
+    """'이전 티어의 모든 기능 포함'처럼 상위 티어가 하위 티어를 포함한다는
+    안내 문구인지 판별(기능 포지셔닝/분석에서 제외하기 위함)."""
+    return bool(_INCLUSION_RE.search(f or ""))
+
+
 _CONF_RANK = {"low": 0, "medium": 1, "high": 2}
 _STORE_HOSTS = ("apple.com", "play.google.com", "google.com")
 PRIORITY_SETTING_KEY = "source_priority"
@@ -748,6 +767,8 @@ def compare(names: list[str]) -> dict:
         for g in pc.get("unlock", []):
             eff = g["annual"] if g["annual"] is not None else g["monthly"]
             for f in g["features"]:
+                if _is_inclusion_phrase(f):
+                    continue  # '이전 티어 모든 기능 포함' 류는 실제 기능이 아님
                 key = _canon_key(f)
                 a = agg.get(key)
                 if a is None:
@@ -833,6 +854,8 @@ def compare(names: list[str]) -> dict:
             # 정렬 가격: 무료/저가 우선, 미공개는 맨 뒤
             cand_price = eff if eff is not None else float("inf")
             for f in g["features"]:
+                if _is_inclusion_phrase(f):
+                    continue  # '이전 티어 모든 기능 포함' 류는 실제 기능이 아님
                 key = _canon_key(f)
                 rank = (cand_price, pc["company"])
                 cur = best.get(key)
