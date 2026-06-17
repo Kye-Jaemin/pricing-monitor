@@ -68,6 +68,26 @@ def _is_inclusion_phrase(f: str) -> bool:
     return bool(_INCLUSION_RE.search(f or ""))
 
 
+# 광고 관련 기능(유료 혜택일 뿐 차별화 기능이 아님) — 'ad/ads/광고' 단어 경계 매칭
+_AD_RE = re.compile(
+    r"\bads?\b"            # ad / ads (단어)
+    r"|\bad[-\s]?free\b"   # ad-free
+    r"|advertis\w*"        # advertising / advertisement
+    r"|광고",
+    re.IGNORECASE,
+)
+
+
+def _is_ad_feature(f: str) -> bool:
+    """'Ad-free' / 'No ads' / '광고 제거'처럼 광고 관련 기능인지 판별."""
+    return bool(_AD_RE.search(f or ""))
+
+
+def _skip_feature(f: str) -> bool:
+    """기능 포지셔닝/분석 집계에서 제외할 노이즈(포함 안내 문구·광고 관련)."""
+    return _is_inclusion_phrase(f) or _is_ad_feature(f)
+
+
 _CONF_RANK = {"low": 0, "medium": 1, "high": 2}
 _STORE_HOSTS = ("apple.com", "play.google.com", "google.com")
 PRIORITY_SETTING_KEY = "source_priority"
@@ -767,8 +787,8 @@ def compare(names: list[str]) -> dict:
         for g in pc.get("unlock", []):
             eff = g["annual"] if g["annual"] is not None else g["monthly"]
             for f in g["features"]:
-                if _is_inclusion_phrase(f):
-                    continue  # '이전 티어 모든 기능 포함' 류는 실제 기능이 아님
+                if _skip_feature(f):
+                    continue  # 포함 안내 문구·광고 관련은 실제 기능이 아님
                 key = _canon_key(f)
                 a = agg.get(key)
                 if a is None:
@@ -854,8 +874,8 @@ def compare(names: list[str]) -> dict:
             # 정렬 가격: 무료/저가 우선, 미공개는 맨 뒤
             cand_price = eff if eff is not None else float("inf")
             for f in g["features"]:
-                if _is_inclusion_phrase(f):
-                    continue  # '이전 티어 모든 기능 포함' 류는 실제 기능이 아님
+                if _skip_feature(f):
+                    continue  # 포함 안내 문구·광고 관련은 실제 기능이 아님
                 key = _canon_key(f)
                 rank = (cand_price, pc["company"])
                 cur = best.get(key)
