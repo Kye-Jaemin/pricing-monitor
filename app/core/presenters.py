@@ -114,9 +114,29 @@ def _is_ad_feature(f: str) -> bool:
     return bool(_AD_RE.search(f or ""))
 
 
+# 무료 체험 안내(기능이 아니라 메타 정보) — 'free trial available' 등
+_TRIAL_RE = re.compile(
+    r"\bfree\s+trial\b"                       # free trial (available/included …)
+    r"|\b\d+[-\s]?days?\b.{0,12}\btrial\b"    # 7-day trial / 14 day trial
+    r"|\btrial\b.{0,12}\b(available|included|offered)\b"  # trial available/included
+    r"|무료\s*체험"
+    r"|무료\s*평가판"
+    r"|체험판",
+    re.IGNORECASE,
+)
+
+
+def _is_trial_feature(f: str) -> bool:
+    """'Free trial available' / '무료 체험' 같은 체험 안내인지 판별(기능 아님)."""
+    return bool(_TRIAL_RE.search(f or ""))
+
+
 def _skip_feature(f: str) -> bool:
-    """기능 포지셔닝/분석 집계에서 제외할 노이즈(포함 안내 문구·광고·플랜 이름)."""
-    return _is_inclusion_phrase(f) or _is_ad_feature(f) or _is_plan_name(f)
+    """기능 포지셔닝/분석 집계에서 제외할 노이즈(포함 안내·광고·플랜 이름·체험 안내)."""
+    return (
+        _is_inclusion_phrase(f) or _is_ad_feature(f)
+        or _is_plan_name(f) or _is_trial_feature(f)
+    )
 
 
 CLASSIFY_THRESHOLD_KEY = "classify.cheap_usd"
