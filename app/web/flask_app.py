@@ -275,6 +275,19 @@ def compare_set_category():
     return redirect(_compare_url(names))
 
 
+@app.route("/compare/set-threshold", methods=["POST"])
+def compare_set_threshold():
+    """커머디티/차별화 '저렴' 기준 가격($)을 조정(전역 설정, AI/외부호출 아님)."""
+    names = [n for n in request.form.getlist("company") if n]
+    try:
+        value = float((request.form.get("cheap_usd") or "").strip())
+        if value >= 0:
+            presenters.set_cheap_threshold(value)
+    except (TypeError, ValueError):
+        pass
+    return redirect(_compare_url(names))
+
+
 @app.route("/companies")
 def companies_page():
     return render_template(

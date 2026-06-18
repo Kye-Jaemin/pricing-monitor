@@ -252,11 +252,22 @@
 <details class="card" id="posSection">
   <summary><h2>{{ t('compare.pos_title') }}</h2></summary>
   <p class="muted">{{ t('compare.pos_help') }}</p>
+  {% set usd = '%g'|format(data.cheap_usd if data.cheap_usd is not none else 5) %}
   <ul class="class-criteria">
-    <li><span class="feat-badge badge-commodity">{{ t('compare.class_commodity') }}</span> {{ t('compare.class_commodity_help') }} <span class="muted">— {{ t('compare.class_commodity_rule') }}</span></li>
+    <li><span class="feat-badge badge-commodity">{{ t('compare.class_commodity') }}</span> {{ t('compare.class_commodity_help') }} <span class="muted">— {{ t('compare.class_commodity_rule', usd=usd) }}</span></li>
     <li><span class="feat-badge badge-standard">{{ t('compare.class_standard') }}</span> {{ t('compare.class_standard_help') }} <span class="muted">— {{ t('compare.class_standard_rule') }}</span></li>
-    <li><span class="feat-badge badge-differentiated">{{ t('compare.class_differentiated') }}</span> {{ t('compare.class_differentiated_help') }} <span class="muted">— {{ t('compare.class_differentiated_rule') }}</span></li>
+    <li><span class="feat-badge badge-differentiated">{{ t('compare.class_differentiated') }}</span> {{ t('compare.class_differentiated_help') }} <span class="muted">— {{ t('compare.class_differentiated_rule', usd=usd) }}</span></li>
   </ul>
+  {% if not saved_view %}
+  <form method="post" action="{{ url_for('compare_set_threshold') }}" class="threshold-form">
+    {% for n in data.companies %}<input type="hidden" name="company" value="{{ n }}">{% endfor %}
+    <label>{{ t('compare.threshold_label') }}
+      <input type="number" name="cheap_usd" min="0" step="0.5" value="{{ usd }}" class="sched-num">
+    </label>
+    <button type="submit" class="btn-secondary btn-sm">{{ t('compare.threshold_save') }}</button>
+    <span class="muted">{{ t('compare.threshold_help') }}</span>
+  </form>
+  {% endif %}
   <div class="scatter-wrap" style="height:340px"><canvas id="posScatter"></canvas></div>
   <p class="muted">{{ t('compare.pos_axes') }} · {{ t('compare.pos_click_hint') }}</p>
 

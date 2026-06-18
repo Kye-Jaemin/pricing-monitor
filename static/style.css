@@ -482,6 +482,13 @@ a.btn-primary:hover { text-decoration: none; }
 /* 분류 기준 범례 + 포지셔닝 점 클릭 이동 하이라이트 */
 .class-criteria { margin: 6px 0 10px; padding-left: 18px; }
 .class-criteria li { margin: 4px 0; font-size: .9rem; }
+.threshold-form {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  margin: 6px 0 12px; padding: 8px 10px;
+  background: #f8fafc; border: 1px dashed var(--line); border-radius: 8px;
+}
+.threshold-form label { font-size: .85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+.threshold-form input { width: 80px; }
 .pos-feat.flash { animation: posflash 1.6s ease; }
 @keyframes posflash {
   0%, 100% { background: #fff; }

@@ -54,6 +54,11 @@ SCHEDULE_TIMEZONE: str = _get("SCHEDULE_TIMEZONE", "America/New_York")
 # 스케줄러는 '최근 수집이 이 일수를 넘긴(또는 미수집)' 소스만 수집한다(0 이하면 전체).
 SCHEDULE_STALE_DAYS: int = _get_int("SCHEDULE_STALE_DAYS", 7)
 
+# ── 기능 분류(커머디티/표준/차별화) ─────────────────────────
+# '저렴(무료에 준함)' 판정 가격 임계값(USD). 이 값 이하면 커머디티 쪽,
+# 초과면 유료(차별화 쪽)로 본다. 웹 UI(설정값)로 덮어쓸 수 있다.
+CLASSIFY_CHEAP_USD: float = float(_get("CLASSIFY_CHEAP_USD", "5"))
+
 # ── US / USD 강제 (8장) ──────────────────────────────────────
 LOCALE: str = _get("LOCALE", "en-US")
 TIMEZONE_ID: str = _get("TIMEZONE_ID", "America/New_York")

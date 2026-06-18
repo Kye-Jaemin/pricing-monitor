@@ -10,6 +10,7 @@ import json
 import re
 from urllib.parse import urlparse
 
+from .. import config
 from . import store
 from .models import SOURCE_TYPE_LABELS, SOURCE_TYPES, PricingSnapshot
 
@@ -86,6 +87,24 @@ def _is_ad_feature(f: str) -> bool:
 def _skip_feature(f: str) -> bool:
     """기능 포지셔닝/분석 집계에서 제외할 노이즈(포함 안내 문구·광고 관련)."""
     return _is_inclusion_phrase(f) or _is_ad_feature(f)
+
+
+CLASSIFY_THRESHOLD_KEY = "classify.cheap_usd"
+
+
+def get_cheap_threshold() -> float:
+    """커머디티/차별화 판정의 '저렴' 기준 가격(USD). DB 설정 우선, 없으면 env 기본값."""
+    raw = store.get_setting(CLASSIFY_THRESHOLD_KEY)
+    if raw is not None:
+        try:
+            return float(raw)
+        except (TypeError, ValueError):
+            pass
+    return config.CLASSIFY_CHEAP_USD
+
+
+def set_cheap_threshold(value: float) -> None:
+    store.set_setting(CLASSIFY_THRESHOLD_KEY, str(float(value)))
 
 
 _CONF_RANK = {"low": 0, "medium": 1, "high": 2}
@@ -772,6 +791,7 @@ def compare(names: list[str]) -> dict:
 
     # AI 유사 기능 통합 매핑(있으면 의미상 같은 기능을 한 그룹으로)
     alias_map = store.get_feature_aliases()
+    cheap_usd = get_cheap_threshold()  # '저렴(무료에 준함)' 판정 가격 임계값
 
     def _canon_key(f: str) -> str:
         a = alias_map.get(f)
@@ -809,9 +829,9 @@ def compare(names: list[str]) -> dict:
                     d["price"] = eff if d["price"] is None else min(d["price"], eff)
 
     def _classify(key: str) -> dict:
-        # 분류 기준(보급률 = 제공 업체 수 / 전체 업체 수):
-        #   commodity     : 다수(≥60%)가 제공 + 그중 절반 이상이 무료/$5 이하 → 기본기
-        #   differentiated: 소수(≤⅓)만 제공 + 그중 절반 이상이 유료(무료/$5 초과)
+        # 분류 기준(보급률 = 제공 업체 수 / 전체 업체 수, 저렴 기준가 = cheap_usd):
+        #   commodity     : 다수(≥60%)가 제공 + 그중 절반 이상이 무료/기준가 이하 → 기본기
+        #   differentiated: 소수(≤⅓)만 제공 + 그중 절반 이상이 유료(무료/기준가 초과)
         #                   — 단, 업체가 3곳 이상일 때만(소표본 과대분류 방지)
         #   standard      : 그 외
         a = agg.get(key)
@@ -819,10 +839,10 @@ def compare(names: list[str]) -> dict:
             return {"label": "standard", "providers": 0, "penetration": 0.0}
         providers = len(a["companies"])
         pen = providers / n_co
-        # 제공 업체 중 '무료/$5 이하(저렴)' 비율 — 가격 미공개(비공개)는 유료로 간주
+        # 제공 업체 중 '무료/기준가 이하(저렴)' 비율 — 가격 미공개(비공개)는 유료로 간주
         cheap = sum(
             1 for dd in a["detail"].values()
-            if dd["is_free"] or (dd["price"] is not None and dd["price"] <= 5.0)
+            if dd["is_free"] or (dd["price"] is not None and dd["price"] <= cheap_usd)
         )
         entry = (cheap / providers) if providers else 0.0
         paid_ratio = 1.0 - entry  # 무료/$5 초과(유료)로 제공하는 업체 비율
@@ -975,6 +995,7 @@ def compare(names: list[str]) -> dict:
         "matrix": matrix_rows,
         "ranking": ranking,
         "editable": editable,
+        "cheap_usd": cheap_usd,
         "all_companies": sorted(c["name"] for c in store.list_companies(active_only=True)),
     }
 
@@ -1067,6 +1088,9 @@ def load_comparison_card(card_id: int) -> dict | None:
     for k, v in defaults.items():
         if data.get(k) is None:
             data[k] = v
+    # 범례 표시용 — 저장 카드엔 없을 수 있으니 현재 전역 임계값으로 보강(표시용)
+    if data.get("cheap_usd") is None:
+        data["cheap_usd"] = get_cheap_threshold()
     # 선택 목록(체크박스)은 현재 업체 기준으로 갱신해 새 비교 시작이 가능하도록.
     data["all_companies"] = sorted(
         c["name"] for c in store.list_companies(active_only=True)
