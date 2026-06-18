@@ -55,6 +55,7 @@ _INCLUSION_RE = re.compile(
     r"everything\s+(in|from|plus|else)\b"             # everything in/from Pro …
     r"|includ\w*\s+(all|everything)\b"                # includes all / including everything
     r"|all\b.{0,40}\bfeatures?\b.{0,25}\b(includ\w+|plus)\b"  # All X features included
+    r"|^all\b.{0,40}\bfeatures?\b[\s.)\]]*$"          # 'All Cronometer Gold features' (동사 없는 번들)
     r"|\b(all|everything)\b.{0,30}\b(previous|prior|lower|preceding)\b"  # all previous tier
     r"|모든\s*기능.{0,12}포함"                         # 모든 기능 … 포함
     r"|포함.{0,12}모든\s*기능"                         # … 모든 기능 포함
@@ -67,6 +68,35 @@ def _is_inclusion_phrase(f: str) -> bool:
     """'이전 티어의 모든 기능 포함'처럼 상위 티어가 하위 티어를 포함한다는
     안내 문구인지 판별(기능 포지셔닝/분석에서 제외하기 위함)."""
     return bool(_INCLUSION_RE.search(f or ""))
+
+
+# 플랜/티어 '이름'만으로 이뤄진 항목(실제 기능이 아니라 '그 플랜 통째로 포함'을 뜻함)
+#   예: 'Home Premium', 'Gold', 'Family Plan', 'All Pro features'
+# 토큰이 전부 아래 집합에 속하면 플랜 이름으로 보고 분류에서 제외한다. 설명형 명사가
+# 하나라도 섞이면(예: 'Premium support', 'Team chat') 실제 기능이므로 남긴다.
+_PLAN_NAME_WORDS = {
+    "plan", "plans", "tier", "tiers", "membership", "subscription", "edition",
+    "package", "bundle", "version",
+    "plus", "pro", "premium", "gold", "silver", "bronze", "platinum", "diamond",
+    "basic", "standard", "starter", "essential", "essentials", "lite", "light",
+    "advanced", "ultimate", "elite", "max", "mini", "deluxe",
+    "home", "family", "personal", "individual", "business", "enterprise",
+    "team", "teams", "group", "org", "organization",
+    "free", "paid", "trial", "all", "everything", "included",
+    "feature", "features", "unlimited", "full", "complete",
+    "and", "the", "of", "for", "with", "your",
+    # 한국어
+    "플랜", "요금제", "티어", "멤버십", "구독", "프리미엄", "기본", "무료", "유료",
+    "전체", "모든", "기능", "포함", "패키지",
+}
+
+
+def _is_plan_name(f: str) -> bool:
+    """'Home Premium' / 'Gold' / 'Family Plan'처럼 플랜·티어 이름만으로 된
+    항목인지 판별(실제 기능이 아니라 '그 플랜 포함'을 의미)."""
+    s = re.sub(r"[^a-z0-9가-힣\s]", " ", (f or "").lower())
+    toks = s.split()
+    return bool(toks) and all(t in _PLAN_NAME_WORDS for t in toks)
 
 
 # 광고 관련 기능(유료 혜택일 뿐 차별화 기능이 아님) — 'ad/ads/광고' 단어 경계 매칭
@@ -85,8 +115,8 @@ def _is_ad_feature(f: str) -> bool:
 
 
 def _skip_feature(f: str) -> bool:
-    """기능 포지셔닝/분석 집계에서 제외할 노이즈(포함 안내 문구·광고 관련)."""
-    return _is_inclusion_phrase(f) or _is_ad_feature(f)
+    """기능 포지셔닝/분석 집계에서 제외할 노이즈(포함 안내 문구·광고·플랜 이름)."""
+    return _is_inclusion_phrase(f) or _is_ad_feature(f) or _is_plan_name(f)
 
 
 CLASSIFY_THRESHOLD_KEY = "classify.cheap_usd"
