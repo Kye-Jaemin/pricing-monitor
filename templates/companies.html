@@ -68,7 +68,7 @@
       {% for s in c.sources %}
       <tr>
         <td><span class="tag tag-src-{{ s.source_type }}">{{ s.source_label }}</span></td>
-        <td class="muted"><a href="{{ s.url }}" target="_blank" rel="noopener">{{ s.url }}</a></td>
+        <td class="muted src-url"><a href="{{ s.url }}" target="_blank" rel="noopener">{{ s.url }}</a></td>
         <td class="muted nowrap">{{ s.created_at }}</td>
         <td>
           <form method="post" action="{{ url_for('sources_delete') }}"

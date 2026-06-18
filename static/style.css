@@ -138,6 +138,9 @@ details.card > summary:hover { color: var(--accent); }
 
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+/* 긴 URL이 표를 밀어내 삭제 버튼이 레이아웃을 벗어나는 것 방지 */
+.log-table td.src-url { overflow-wrap: anywhere; word-break: break-all; }
+.log-table td.src-url a { word-break: break-all; }
 th { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
 .price-table .tier-name { font-weight: 600; }
 
