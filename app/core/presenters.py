@@ -801,14 +801,15 @@ def compare(names: list[str]) -> dict:
         return alias_map.get(f) or f
 
     # 0) 기능(canonical) 보급률·해금가 집계 → 커머디티/차별화 분류 (무료 기능 포함)
-    n_co = len(per_company)
     agg: dict[str, dict] = {}
+    contributing: set[str] = set()  # 실제로 기능 데이터를 1개 이상 제공한 업체
     for pc in per_company:
         for g in pc.get("unlock", []):
             eff = g["annual"] if g["annual"] is not None else g["monthly"]
             for f in g["features"]:
                 if _skip_feature(f):
                     continue  # 포함 안내 문구·광고 관련은 실제 기능이 아님
+                contributing.add(pc["company"])
                 key = _canon_key(f)
                 a = agg.get(key)
                 if a is None:
@@ -827,6 +828,9 @@ def compare(names: list[str]) -> dict:
                     d["is_free"] = True
                 if eff is not None:
                     d["price"] = eff if d["price"] is None else min(d["price"], eff)
+
+    # 보급률 분모 = '기능 데이터가 있는 업체 수'(데이터 0건 업체는 제외해 희석 방지)
+    n_co = len(contributing)
 
     def _classify(key: str) -> dict:
         # 분류 기준(보급률 = 제공 업체 수 / 전체 업체 수, 저렴 기준가 = cheap_usd):
