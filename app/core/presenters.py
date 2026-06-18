@@ -864,7 +864,11 @@ def compare(names: list[str]) -> dict:
         }
         feature_positioning.append(entry)
         pos_by_key[key] = entry
-    feature_positioning.sort(key=lambda x: (-x["penetration"], x["unlock_price"]))
+    # 분류(커머디티 → 표준 → 차별화)별로 묶어서 표시(그 안에서는 보급률·해금가 순)
+    _label_rank = {"commodity": 0, "standard": 1, "differentiated": 2}
+    feature_positioning.sort(
+        key=lambda x: (_label_rank.get(x["label"], 9), -x["penetration"], x["unlock_price"])
+    )
 
     # 1) 같은 기능(canonical)이 여러 업체·가격대에 나타나면 '가장 싼' 한 곳만 남긴다
     best: dict[str, dict] = {}
