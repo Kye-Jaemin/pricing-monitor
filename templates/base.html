@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+  <div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
+  <div class="bg-aurora" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
   <header class="topbar">
     <a class="brand" href="{{ url_for('index') }}">💲 Pricing Monitor</a>
     <input type="checkbox" id="navToggle" class="nav-toggle">
@@ -33,5 +35,6 @@
     <span>{{ t('footer.note') }}</span>
   </footer>
   {% block scripts %}{% endblock %}
+  <script src="{{ url_for('static', filename='ux.js') }}" defer></script>
 </body>
 </html>
