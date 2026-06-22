@@ -275,7 +275,9 @@ def run_once(progress_cb=None, source_ids=None, stale_days=None) -> RunResult:
         for source in sources:
             source_type = source["type"]
             report(f"{company} · {SOURCE_TYPE_LABELS.get(source_type, source_type)}")
-            run_id = store.start_run(_utcnow_iso(), company=company)
+            run_id = store.start_run(
+                _utcnow_iso(), company=company, source_type=source_type
+            )
             try:
                 result = _process_source(company, source, multi_source=multi)
                 store.finish_run(

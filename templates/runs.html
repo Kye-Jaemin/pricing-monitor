@@ -131,7 +131,7 @@
 {% else %}
 <table class="log-table">
   <thead>
-    <tr><th>{{ t('col.start') }}</th><th>{{ t('col.end') }}</th><th>{{ t('col.company') }}</th><th>{{ t('col.status') }}</th><th>{{ t('col.message') }}</th><th></th></tr>
+    <tr><th>{{ t('col.start') }}</th><th>{{ t('col.end') }}</th><th>{{ t('col.company') }}</th><th>{{ t('col.category') }}</th><th>{{ t('col.source') }}</th><th>{{ t('col.status') }}</th><th>{{ t('col.message') }}</th><th></th></tr>
   </thead>
   <tbody>
     {% for r in data.runs %}
@@ -139,6 +139,8 @@
       <td class="muted nowrap">{{ r.run_started_at }}</td>
       <td class="muted nowrap">{{ r.run_finished_at or '—' }}</td>
       <td>{{ r.company or '—' }}</td>
+      <td>{% if r.category %}<span class="tag tag-cat">{{ r.category }}</span>{% else %}<span class="muted">{{ t('cat.none') }}</span>{% endif %}</td>
+      <td>{% if r.source_label %}<span class="tag tag-src-{{ r.source_type }}">{{ r.source_label }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
       <td><span class="tag tag-{{ r.status }}">{{ r.status }}</span></td>
       <td class="muted">{{ r.error_message or '' }}</td>
       <td>

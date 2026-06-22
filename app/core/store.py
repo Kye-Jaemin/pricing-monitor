@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS run_logs (
     run_started_at   TEXT NOT NULL,
     run_finished_at  TEXT,
     company          TEXT,
+    source_type      TEXT,
     status           TEXT NOT NULL,
     error_message    TEXT
 );
@@ -158,6 +159,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
     # companies.category_id 컬럼 보강(업체 분류)
     if "category_id" not in _columns(conn, "companies"):
         conn.execute("ALTER TABLE companies ADD COLUMN category_id INTEGER")
+    # run_logs.source_type 컬럼 보강(히스토리에 수집 소스 표시)
+    if "source_type" not in _columns(conn, "run_logs"):
+        conn.execute("ALTER TABLE run_logs ADD COLUMN source_type TEXT")
     # snapshots.raw_text 컬럼 보강(디버그용 원문)
     if "raw_text" not in _columns(conn, "snapshots"):
         conn.execute("ALTER TABLE snapshots ADD COLUMN raw_text TEXT")
@@ -457,11 +461,16 @@ def changes_since(iso_ts: str) -> list[sqlite3.Row]:
 
 
 # ── run_logs ─────────────────────────────────────────────────
-def start_run(run_started_at: str, company: Optional[str] = None) -> int:
+def start_run(
+    run_started_at: str,
+    company: Optional[str] = None,
+    source_type: Optional[str] = None,
+) -> int:
     with connect() as conn:
         cur = conn.execute(
-            "INSERT INTO run_logs (run_started_at, company, status) VALUES (?, ?, ?)",
-            (run_started_at, company, "running"),
+            """INSERT INTO run_logs (run_started_at, company, source_type, status)
+               VALUES (?, ?, ?, ?)""",
+            (run_started_at, company, source_type, "running"),
         )
         return cur.lastrowid
 

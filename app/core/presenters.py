@@ -581,17 +581,23 @@ def changes_view(company: str | None = None, category: str | None = None) -> dic
 # ── 4. 수집 상태 (/runs) ─────────────────────────────────────
 def runs_view() -> dict:
     rows = store.recent_runs(limit=100)
-    items = [
-        {
-            "id": r["id"],
-            "company": r["company"],
-            "run_started_at": r["run_started_at"],
-            "run_finished_at": r["run_finished_at"],
-            "status": r["status"],
-            "error_message": r["error_message"],
-        }
-        for r in rows
-    ]
+    _cat_list, name_to_id, id_to_name = _category_context()
+    items = []
+    for r in rows:
+        stype = r["source_type"] if "source_type" in r.keys() else None
+        items.append(
+            {
+                "id": r["id"],
+                "company": r["company"],
+                "source_type": stype,
+                "source_label": _src_label(stype) if stype else None,
+                "category": id_to_name.get(name_to_id.get(r["company"])),
+                "run_started_at": r["run_started_at"],
+                "run_finished_at": r["run_finished_at"],
+                "status": r["status"],
+                "error_message": r["error_message"],
+            }
+        )
     return {"runs": items}
 
 
