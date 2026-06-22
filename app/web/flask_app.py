@@ -372,6 +372,9 @@ def companies_add():
     store.add_source(company=name, source_type=source_type, url=url)
     if icon:
         store.set_company_icon(name, icon)
+    cid = (request.form.get("category_id") or "").strip()
+    if cid.isdigit():
+        store.set_company_category(name, int(cid))
     return redirect(url_for("companies_page"))
 
 

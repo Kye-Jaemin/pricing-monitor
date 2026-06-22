@@ -27,6 +27,14 @@
         {% endfor %}
       </select>
     </label>
+    <label>{{ t('cat.assign') }}
+      <select name="category_id">
+        <option value="">{{ t('cat.none') }}</option>
+        {% for cat in data.categories %}
+        <option value="{{ cat.id }}">{{ cat.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
     <label>{{ t('companies.field_url') }}
       <input type="url" name="url" placeholder="https://www.notion.so/pricing">
     </label>
