@@ -132,11 +132,30 @@ def _is_trial_feature(f: str) -> bool:
     return bool(_TRIAL_RE.search(f or ""))
 
 
+# 부정/부재 표현 — 'No advanced AI models'처럼 기능을 '제공 안 함'을 뜻하는 항목.
+# 'No-code'(하이픈)는 실제 기능이므로 'no' 뒤 공백만 부정으로 본다.
+_NEGATIVE_RE = re.compile(
+    r"^\s*no\s+"                                   # No advanced AI models / No image generation
+    r"|^\s*without\s+"                             # Without …
+    r"|\bnot\s+(included|available|supported|offered|provided)\b"  # … not available
+    r"|\b(unavailable|unsupported)\b"
+    r"|미지원|미제공|지원하지\s*않|제공하지\s*않|지원\s*안\s*함|제공\s*안\s*함",
+    re.IGNORECASE,
+)
+
+
+def _is_negative_feature(f: str) -> bool:
+    """'No image generation' / '미지원'처럼 기능 '부재'를 뜻하는 항목인지 판별."""
+    return bool(_NEGATIVE_RE.search(f or ""))
+
+
 def _skip_feature(f: str) -> bool:
-    """기능 포지셔닝/분석 집계에서 제외할 노이즈(포함 안내·광고·플랜 이름·체험 안내)."""
+    """기능 포지셔닝/분석 집계에서 제외할 노이즈
+    (포함 안내·광고·플랜 이름·체험 안내·부정/부재 표현)."""
     return (
         _is_inclusion_phrase(f) or _is_ad_feature(f)
         or _is_plan_name(f) or _is_trial_feature(f)
+        or _is_negative_feature(f)
     )
 
 
