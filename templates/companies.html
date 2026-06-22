@@ -67,8 +67,19 @@
   <div class="empty"><p>{{ t('companies.empty') }}</p></div>
 {% endif %}
 
+{% if data.categories and data.companies %}
+<div class="cat-filter" data-target=".company-admin-card" role="tablist" aria-label="{{ t('cat.title') }}">
+  <button type="button" class="cat-chip on" data-cat="all">{{ t('filter.all') }}
+    <span class="cat-count">{{ data.companies|length }}</span></button>
+  {% for cat in data.category_chips %}
+  <button type="button" class="cat-chip" data-cat="{{ cat.id if cat.id else 'none' }}">
+    {{ cat.name or t('cat.none') }} <span class="cat-count">{{ cat.count }}</span></button>
+  {% endfor %}
+</div>
+{% endif %}
+
 {% for c in data.companies %}
-<section class="card">
+<section class="card company-admin-card" data-cat="{{ c.category_id if c.category_id else 'none' }}">
   <div class="card-head">
     <h2>
       {% if c.icon %}<img class="company-icon" src="{{ c.icon }}" alt="" onerror="this.style.display='none'">{% endif %}

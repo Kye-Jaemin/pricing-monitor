@@ -29,22 +29,23 @@
     items.forEach(function (el) { io.observe(el); });
   }
 
-  // 2.5) 현황 — 업체 분류 필터(칩 클릭 시 해당 그룹만 표시)
-  var catFilter = document.querySelector('.cat-filter');
-  if (catFilter) {
+  // 2.5) 업체 분류 필터(칩 클릭 시 해당 분류만 표시).
+  //   대상은 data-target 선택자(현황=.cat-group, 업체관리=.company-admin-card).
+  document.querySelectorAll('.cat-filter').forEach(function (catFilter) {
     var chips = catFilter.querySelectorAll('.cat-chip');
-    var groups = document.querySelectorAll('.cat-group');
+    var targetSel = catFilter.getAttribute('data-target') || '.cat-group';
+    var targets = document.querySelectorAll(targetSel);
     catFilter.addEventListener('click', function (e) {
       var btn = e.target.closest('.cat-chip');
       if (!btn) return;
       var sel = btn.getAttribute('data-cat');
       chips.forEach(function (c) { c.classList.toggle('on', c === btn); });
-      groups.forEach(function (g) {
+      targets.forEach(function (g) {
         var show = sel === 'all' || g.getAttribute('data-cat') === sel;
         g.style.display = show ? '' : 'none';
       });
     });
-  }
+  });
 
   if (reduce) return;
 

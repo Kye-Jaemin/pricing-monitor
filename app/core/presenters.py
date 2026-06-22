@@ -598,7 +598,23 @@ def companies_admin() -> dict:
                 ],
             }
         )
-    return {"companies": companies, "categories": cat_list}
+    # 필터 칩(분류별 개수). 분류는 빈 것도 보이게 전부 노출, 미분류는 있을 때만.
+    category_chips = [
+        {
+            "id": cat["id"],
+            "name": cat["name"],
+            "count": sum(1 for co in companies if co["category_id"] == cat["id"]),
+        }
+        for cat in cat_list
+    ]
+    n_uncat = sum(1 for co in companies if not co["category_id"])
+    if n_uncat:
+        category_chips.append({"id": None, "name": None, "count": n_uncat})
+    return {
+        "companies": companies,
+        "categories": cat_list,
+        "category_chips": category_chips,
+    }
 
 
 def _effective_category(feature: str, cat_map: dict[str, str]) -> str:
