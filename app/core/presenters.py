@@ -553,19 +553,24 @@ def changes_view(company: str | None = None, category: str | None = None) -> dic
         eff_company = None
 
     rows = store.recent_changes(company=eff_company, limit=300)
-    items = [
-        {
-            "company": r["company"],
-            "detected_at": r["detected_at"],
-            "change_type": r["change_type"],
-            "tier_name": r["tier_name"],
-            "old_value": r["old_value"],
-            "new_value": r["new_value"],
-            "summary": r["summary"],
-        }
-        for r in rows
-        if cat_companies is None or r["company"] in cat_companies
-    ]
+    items = []
+    for r in rows:
+        if cat_companies is not None and r["company"] not in cat_companies:
+            continue
+        stype = r["source_type"] if "source_type" in r.keys() else None
+        items.append(
+            {
+                "company": r["company"],
+                "source_type": stype,
+                "source_label": _src_label(stype) if stype else None,
+                "detected_at": r["detected_at"],
+                "change_type": r["change_type"],
+                "tier_name": r["tier_name"],
+                "old_value": r["old_value"],
+                "new_value": r["new_value"],
+                "summary": r["summary"],
+            }
+        )
     all_companies = sorted(r["name"] for r in store.list_companies(active_only=True))
     if cat_companies is not None:
         all_companies = [c for c in all_companies if c in cat_companies]

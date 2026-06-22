@@ -61,6 +61,7 @@ CREATE INDEX IF NOT EXISTS idx_snapshots_source ON snapshots(company, source_url
 CREATE TABLE IF NOT EXISTS changes (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     company      TEXT NOT NULL,
+    source_type  TEXT,
     detected_at  TEXT NOT NULL,
     change_type  TEXT NOT NULL,
     tier_name    TEXT,
@@ -162,6 +163,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
     # run_logs.source_type 컬럼 보강(히스토리에 수집 소스 표시)
     if "source_type" not in _columns(conn, "run_logs"):
         conn.execute("ALTER TABLE run_logs ADD COLUMN source_type TEXT")
+    # changes.source_type 컬럼 보강(변동 로그에 소스 표시)
+    if "source_type" not in _columns(conn, "changes"):
+        conn.execute("ALTER TABLE changes ADD COLUMN source_type TEXT")
     # snapshots.raw_text 컬럼 보강(디버그용 원문)
     if "raw_text" not in _columns(conn, "snapshots"):
         conn.execute("ALTER TABLE snapshots ADD COLUMN raw_text TEXT")
@@ -426,14 +430,15 @@ def insert_change(
     old_value: Optional[str],
     new_value: Optional[str],
     summary: str,
+    source_type: Optional[str] = None,
 ) -> None:
     with connect() as conn:
         conn.execute(
             """INSERT INTO changes
-               (company, detected_at, change_type, tier_name,
+               (company, source_type, detected_at, change_type, tier_name,
                 field, old_value, new_value, summary)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (company, detected_at, change_type, tier_name,
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (company, source_type, detected_at, change_type, tier_name,
              field, old_value, new_value, summary),
         )
 

@@ -170,12 +170,8 @@ def _process_source(
         if prev_row
         else None
     )
-    detected = diff.diff_snapshots(
-        company,
-        prev_snapshot,
-        snapshot,
-        source_label=label if multi_source else "",
-    )
+    # 소스는 별도 컬럼으로 표시하므로 요약 앞 [라벨] 접두는 붙이지 않는다.
+    detected = diff.diff_snapshots(company, prev_snapshot, snapshot)
 
     # 4. 스냅샷 저장 + changes 기록
     store.insert_snapshot(
@@ -193,6 +189,7 @@ def _process_source(
     for ch in detected:
         store.insert_change(
             company=company,
+            source_type=source_type,
             detected_at=collected_at,
             change_type=ch.change_type,
             tier_name=ch.tier_name,

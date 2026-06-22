@@ -30,13 +30,14 @@
 {% else %}
 <table class="log-table">
   <thead>
-    <tr><th>{{ t('col.detected') }}</th><th>{{ t('col.company') }}</th><th>{{ t('col.type') }}</th><th>{{ t('col.tier') }}</th><th>{{ t('col.change') }}</th></tr>
+    <tr><th>{{ t('col.detected') }}</th><th>{{ t('col.company') }}</th><th>{{ t('col.source') }}</th><th>{{ t('col.type') }}</th><th>{{ t('col.tier') }}</th><th>{{ t('col.change') }}</th></tr>
   </thead>
   <tbody>
     {% for c in data.changes %}
     <tr>
       <td class="muted nowrap">{{ c.detected_at }}</td>
       <td><a href="{{ url_for('company', name=c.company) }}">{{ c.company }}</a></td>
+      <td>{% if c.source_label %}<span class="tag tag-src-{{ c.source_type }}">{{ c.source_label }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
       <td><span class="tag tag-{{ c.change_type }}">{{ c.change_type }}</span></td>
       <td>{{ c.tier_name or '—' }}</td>
       <td>
