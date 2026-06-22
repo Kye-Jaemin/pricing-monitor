@@ -14,6 +14,33 @@
 {% endif %}
 
 <section class="card">
+  <h2>{{ t('cat.title') }}</h2>
+  <p class="muted">{{ t('cat.hint') }}</p>
+  {% if data.categories %}
+  <div class="cat-list">
+    {% for cat in data.categories %}
+    <span class="chip cat-chip">
+      {{ cat.name }}
+      <form method="post" action="{{ url_for('categories_delete') }}"
+            onsubmit="return confirm('{{ t('cat.confirm_delete', name=cat.name) }}');">
+        <input type="hidden" name="category_id" value="{{ cat.id }}">
+        <button type="submit" class="btn-x" title="{{ t('btn.delete') }}">✕</button>
+      </form>
+    </span>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted">{{ t('cat.empty') }}</p>
+  {% endif %}
+  <form class="add-form add-form-inline" method="post" action="{{ url_for('categories_add') }}">
+    <label class="grow">{{ t('cat.field_name') }}
+      <input type="text" name="name" placeholder="{{ t('cat.placeholder') }}" required>
+    </label>
+    <button type="submit" class="btn-secondary">{{ t('cat.add') }}</button>
+  </form>
+</section>
+
+<section class="card">
   <h2>{{ t('companies.add') }}</h2>
   <p class="muted">{{ t('companies.add_hint') }}</p>
   <form class="add-form" method="post" action="{{ url_for('companies_add') }}">
@@ -42,33 +69,6 @@
   </form>
   <p class="muted">🔎 {{ t('companies.url_hint') }}</p>
   <p class="muted">{{ t('companies.priority_note') }}</p>
-</section>
-
-<section class="card">
-  <h2>{{ t('cat.title') }}</h2>
-  <p class="muted">{{ t('cat.hint') }}</p>
-  {% if data.categories %}
-  <div class="cat-list">
-    {% for cat in data.categories %}
-    <span class="chip cat-chip">
-      {{ cat.name }}
-      <form method="post" action="{{ url_for('categories_delete') }}"
-            onsubmit="return confirm('{{ t('cat.confirm_delete', name=cat.name) }}');">
-        <input type="hidden" name="category_id" value="{{ cat.id }}">
-        <button type="submit" class="btn-x" title="{{ t('btn.delete') }}">✕</button>
-      </form>
-    </span>
-    {% endfor %}
-  </div>
-  {% else %}
-  <p class="muted">{{ t('cat.empty') }}</p>
-  {% endif %}
-  <form class="add-form add-form-inline" method="post" action="{{ url_for('categories_add') }}">
-    <label class="grow">{{ t('cat.field_name') }}
-      <input type="text" name="name" placeholder="{{ t('cat.placeholder') }}" required>
-    </label>
-    <button type="submit" class="btn-secondary">{{ t('cat.add') }}</button>
-  </form>
 </section>
 
 {% if not data.companies %}
