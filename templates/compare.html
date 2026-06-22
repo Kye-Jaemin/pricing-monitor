@@ -112,7 +112,7 @@
       <button type="button" class="btn-secondary btn-sm" id="zoomFull">⛶ {{ t('compare.zoom_full') }}</button>
     </div>
   </div>
-  <p class="muted zoom-hint">{{ t('compare.zoom_hint') }}</p>
+  <p class="muted zoom-hint">{{ t('compare.zoom_hint') }} · {{ t('compare.legend_hint') }}</p>
   <div id="scatterWrap" class="scatter-wrap">
     <canvas id="scatter"></canvas>
   </div>
@@ -123,6 +123,7 @@
   <summary><h2>{{ t('compare.pos_title') }}</h2></summary>
   <p class="muted">{{ t('compare.pos_help') }}</p>
   {% set usd = '%g'|format(data.cheap_usd if data.cheap_usd is not none else 5) %}
+  <p class="pos-threshold">💲 {{ t('compare.threshold_current', usd=usd) }}</p>
   <ul class="class-criteria">
     <li><span class="feat-badge badge-commodity">{{ t('compare.class_commodity') }}</span> {{ t('compare.class_commodity_help') }} <span class="muted">— {{ t('compare.class_commodity_rule', usd=usd) }}</span></li>
     <li><span class="feat-badge badge-standard">{{ t('compare.class_standard') }}</span> {{ t('compare.class_standard_help') }} <span class="muted">— {{ t('compare.class_standard_rule') }}</span></li>
@@ -409,6 +410,38 @@
     }
     return ds;
   });
+
+  // 같은(또는 매우 가까운) 좌표에 아이콘이 겹쳐 안 보이는 문제 해결 —
+  // 원본 가격(_mx/_my)은 보존하고 표시 좌표만 작은 원형으로 흩어 놓는다(지터).
+  (function jitterScatter() {
+    var all = [];
+    datasets.forEach(function (ds) {
+      (ds.data || []).forEach(function (p) {
+        p._mx = (p.monthly != null ? p.monthly : p.x);
+        p._my = (p.annual != null ? p.annual : p.y);
+        all.push(p);
+      });
+    });
+    if (!all.length) return;
+    var xmax = Math.max.apply(null, all.map(function (p) { return p.x || 0; })) || 1;
+    var ymax = Math.max.apply(null, all.map(function (p) { return p.y || 0; })) || 1;
+    var rx = Math.max(0.4, xmax * 0.022), ry = Math.max(0.4, ymax * 0.022);
+    var buckets = {};
+    all.forEach(function (p) {
+      var k = Math.round(p.x) + ',' + Math.round(p.y);
+      (buckets[k] || (buckets[k] = [])).push(p);
+    });
+    Object.keys(buckets).forEach(function (k) {
+      var arr = buckets[k];
+      if (arr.length < 2) return;
+      arr.forEach(function (p, j) {
+        var ring = Math.floor(j / 8) + 1, ang = (Math.PI * 2 * (j % 8)) / 8;
+        p.x = Math.max(0, p.x + rx * ring * Math.cos(ang));
+        p.y = Math.max(0, p.y + ry * ring * Math.sin(ang));
+      });
+    });
+  })();
+
   scatterChart = new Chart(document.getElementById('scatter'), {
     type: 'scatter',
     data: { datasets: datasets },
@@ -416,10 +449,24 @@
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { labels: { usePointStyle: true, pointStyleWidth: 20, boxHeight: 16 } },
+        legend: {
+          labels: { usePointStyle: true, pointStyleWidth: 20, boxHeight: 16 },
+          // 범례의 업체명을 클릭하면 그 업체만 표시(다시 누르면 전체 복원)
+          onClick: function (e, item, legend) {
+            var ci = legend.chart;
+            var idx = item.datasetIndex;
+            var onlyThis = ci.isDatasetVisible(idx) && ci.data.datasets.every(
+              function (_, i) { return i === idx ? ci.isDatasetVisible(i) : !ci.isDatasetVisible(i); });
+            ci.data.datasets.forEach(function (_, i) {
+              ci.setDatasetVisibility(i, onlyThis ? true : (i === idx));
+            });
+            ci.update();
+          }
+        },
         tooltip: { callbacks: { label: function (ctx) {
           var p = ctx.raw;
-          return ctx.dataset.label + ' · ' + (p.tier || '') + ' (월 $' + p.x + ' / 연환산 $' + p.y + ')';
+          var mx = (p._mx != null ? p._mx : p.x), my = (p._my != null ? p._my : p.y);
+          return ctx.dataset.label + ' · ' + (p.tier || '') + ' (월 $' + mx + ' / 연환산 $' + my + ')';
         } } },
         zoom: {
           pan: { enabled: true, mode: 'xy' },

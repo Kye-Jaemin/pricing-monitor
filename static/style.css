@@ -520,6 +520,11 @@ a.btn-primary:hover { text-decoration: none; }
 }
 
 /* 기능 포지셔닝 — 제공 업체 클릭 목록 */
+.pos-threshold {
+  margin: 6px 0 10px; font-size: .9rem; font-weight: 600; color: var(--accent);
+  background: #eef2ff; border: 1px solid var(--line); border-radius: 8px;
+  padding: 7px 12px; display: inline-block;
+}
 .pos-list { margin-top: 14px; }
 .pos-list-title { font-weight: 600; margin-bottom: 6px; }
 .pos-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 12px; }
