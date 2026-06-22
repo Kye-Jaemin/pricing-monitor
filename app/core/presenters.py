@@ -538,8 +538,21 @@ def company_detail(name: str) -> dict | None:
 
 
 # ── 3. 변동 로그 (/changes) ──────────────────────────────────
-def changes_view(company: str | None = None) -> dict:
-    rows = store.recent_changes(company=company, limit=300)
+def changes_view(company: str | None = None, category: str | None = None) -> dict:
+    cat_list, name_to_id, _id_to_name = _category_context()
+    cat_id = int(category) if category and str(category).isdigit() else None
+    # 선택 분류에 속한 업체명 집합(분류 미선택이면 None=전체)
+    cat_companies = (
+        {n for n, cid in name_to_id.items() if cid == cat_id}
+        if cat_id is not None
+        else None
+    )
+    # 분류와 업체를 함께 선택했는데 그 업체가 분류 밖이면 업체 필터는 무시
+    eff_company = company
+    if cat_companies is not None and company and company not in cat_companies:
+        eff_company = None
+
+    rows = store.recent_changes(company=eff_company, limit=300)
     items = [
         {
             "company": r["company"],
@@ -551,9 +564,18 @@ def changes_view(company: str | None = None) -> dict:
             "summary": r["summary"],
         }
         for r in rows
+        if cat_companies is None or r["company"] in cat_companies
     ]
     all_companies = sorted(r["name"] for r in store.list_companies(active_only=True))
-    return {"changes": items, "companies": all_companies, "selected": company}
+    if cat_companies is not None:
+        all_companies = [c for c in all_companies if c in cat_companies]
+    return {
+        "changes": items,
+        "companies": all_companies,
+        "selected": eff_company,
+        "categories": cat_list,
+        "selected_category": cat_id,
+    }
 
 
 # ── 4. 수집 상태 (/runs) ─────────────────────────────────────
@@ -1095,6 +1117,8 @@ def compare(names: list[str]) -> dict:
         ]
         feature_analysis.append({"category": c, "bands": bands_out})
 
+    all_company_names = sorted(c["name"] for c in store.list_companies(active_only=True))
+    cat_chips, company_cat = _company_category_picker(all_company_names)
     return {
         "companies": chosen,
         "scatter": {"datasets": scatter},
@@ -1106,8 +1130,31 @@ def compare(names: list[str]) -> dict:
         "ranking": ranking,
         "editable": editable,
         "cheap_usd": cheap_usd,
-        "all_companies": sorted(c["name"] for c in store.list_companies(active_only=True)),
+        "all_companies": all_company_names,
+        "category_chips": cat_chips,
+        "company_cat": company_cat,
     }
+
+
+def _company_category_picker(names: list[str]) -> tuple[list[dict], dict[str, int | None]]:
+    """업체 선택 UI용: (분류별 개수 칩, {업체명: category_id}).
+
+    분류는 빈 것도 노출(탭으로 보이게), 미분류는 해당 업체가 있을 때만.
+    """
+    cat_list, name_to_id, _id_to_name = _category_context()
+    company_cat = {n: name_to_id.get(n) for n in names}
+    chips = [
+        {
+            "id": cat["id"],
+            "name": cat["name"],
+            "count": sum(1 for n in names if company_cat.get(n) == cat["id"]),
+        }
+        for cat in cat_list
+    ]
+    n_uncat = sum(1 for n in names if not company_cat.get(n))
+    if n_uncat:
+        chips.append({"id": None, "name": None, "count": n_uncat})
+    return chips, company_cat
 
 
 def distinct_paid_features(names: list[str]) -> list[str]:
@@ -1204,6 +1251,9 @@ def load_comparison_card(card_id: int) -> dict | None:
     # 선택 목록(체크박스)은 현재 업체 기준으로 갱신해 새 비교 시작이 가능하도록.
     data["all_companies"] = sorted(
         c["name"] for c in store.list_companies(active_only=True)
+    )
+    data["category_chips"], data["company_cat"] = _company_category_picker(
+        data["all_companies"]
     )
     return {
         "id": row["id"],

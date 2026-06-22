@@ -4,6 +4,16 @@
 <div class="page-head"><h1>{{ t('changes.title') }}</h1></div>
 
 <form class="filter" method="get">
+  {% if data.categories %}
+  <label>{{ t('cat.assign') }}
+    <select name="category" onchange="this.form.submit()">
+      <option value="">{{ t('changes.all') }}</option>
+      {% for cat in data.categories %}
+      <option value="{{ cat.id }}" {% if cat.id == data.selected_category %}selected{% endif %}>{{ cat.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  {% endif %}
   <label>{{ t('changes.filter') }}
     <select name="company" onchange="this.form.submit()">
       <option value="">{{ t('changes.all') }}</option>

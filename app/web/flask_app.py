@@ -106,7 +106,11 @@ def company(name: str):
 @app.route("/changes")
 def changes():
     company_filter = request.args.get("company") or None
-    return render_template("changes.html", data=presenters.changes_view(company_filter))
+    category_filter = request.args.get("category") or None
+    return render_template(
+        "changes.html",
+        data=presenters.changes_view(company_filter, category_filter),
+    )
 
 
 @app.route("/howto")

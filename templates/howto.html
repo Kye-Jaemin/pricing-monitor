@@ -22,11 +22,11 @@
     <tr><td class="nowrap">Company detail</td>
       <td>Click a company name. Shows a <b>price history chart</b>, per-tier features/limits, and source links.</td></tr>
     <tr><td class="nowrap"><a href="{{ url_for('changes') }}">Changes</a></td>
-      <td>All detected changes (<code>old → new</code>, one-line summary), filterable by company.</td></tr>
+      <td>All detected changes (<code>old → new</code>, one-line summary), filterable by <b>category</b> and company.</td></tr>
     <tr><td class="nowrap"><a href="{{ url_for('runs') }}">Runs</a></td>
-      <td>Recent run times and per-company success/failure/confidence. <b>[Run now]</b> triggers an immediate collection. You can also clear logs / reset all data here.</td></tr>
+      <td>Recent run times and per-company success/failure/confidence. <b>[Run now]</b> triggers an immediate collection; <b>category tabs</b> let you collect just one category (selected sources only). You can also clear logs / reset all data here.</td></tr>
     <tr><td class="nowrap"><a href="{{ url_for('compare_page') }}">Compare Companies</a></td>
-      <td>Pick companies to compare side by side: a price scatter, per-company paid features by category, a category matrix, and a heuristic value score. Optional <b>AI categorization</b> groups features dynamically. Click <b>[Save this comparison]</b> to keep the result as a <b>card</b> frozen at save time — reopen it anytime without re-running.</td></tr>
+      <td>Pick companies to compare side by side (filter the picker by <b>category</b>): a price scatter, per-company paid features by category, a category matrix, and a heuristic value score. Optional <b>AI categorization</b> groups features dynamically. Click <b>[Save this comparison]</b> to keep the result as a <b>card</b> frozen at save time — reopen it anytime without re-running.</td></tr>
   </tbody></table>
 </section>
 
@@ -56,6 +56,28 @@
   <h3>Feature comparison (free vs paid)</h3>
   <p>The <b>Company detail</b> screen shows a per-source <b>feature matrix</b> — features as rows,
     tiers as columns, with ✓/— so free-vs-paid differences are clear (free columns blue, paid green).</p>
+</section>
+
+<section class="card">
+  <h2>Company categories (Health / AI / Image·Video …)</h2>
+  <p>
+    Group companies by industry/domain. On the
+    <a href="{{ url_for('companies_page') }}"><b>Companies</b></a> screen, create a category
+    (e.g. <b>Health</b>, <b>AI</b>, <b>Image/Video</b>), then assign each company to <b>one</b>
+    category — either from its <b>Category</b> dropdown, or right when you <b>add</b> the company.
+    Categories are stored in the DB; deleting a category just moves its companies back to
+    <b>Uncategorized</b>.
+  </p>
+  <ul>
+    <li><b>Overview</b>: companies are <b>grouped by category</b>, with filter tabs at the top
+      (<b>All</b> / each category / Uncategorized, with counts).</li>
+    <li><b>Companies</b> &amp; <b>Runs</b>: <b>category tabs</b> filter the list; on Runs, picking a
+      tab also scopes <b>[Collect selected]</b> to just that category.</li>
+    <li><b>Changes</b>: filter the change log by <b>category</b> (and company).</li>
+    <li><b>Compare</b>: filter the company picker by <b>category</b> (you can still check companies
+      across categories to compare them together).</li>
+    <li>The tab you pick is <b>remembered</b>, so it stays put after adding a source or refreshing.</li>
+  </ul>
 </section>
 
 <section class="card">
@@ -112,15 +134,15 @@
       </tr>
       <tr>
         <td class="nowrap"><a href="{{ url_for('changes') }}">변동 로그</a></td>
-        <td>감지된 모든 변동 이력(<code>old → new</code>, 한 줄 요약). 업체별로 필터할 수 있습니다.</td>
+        <td>감지된 모든 변동 이력(<code>old → new</code>, 한 줄 요약). <b>분류별·업체별</b>로 필터할 수 있습니다.</td>
       </tr>
       <tr>
         <td class="nowrap"><a href="{{ url_for('runs') }}">수집 상태</a></td>
-        <td>최근 실행 시각과 업체별 성공/실패/신뢰도. <b>[지금 수집]</b> 버튼으로 즉시 1회 수집을 돌릴 수 있습니다.</td>
+        <td>최근 실행 시각과 업체별 성공/실패/신뢰도. <b>[지금 수집]</b> 버튼으로 즉시 1회 수집을 돌릴 수 있고, <b>분류 탭</b>으로 특정 분류만 골라 수집할 수 있습니다(선택 수집).</td>
       </tr>
       <tr>
-        <td class="nowrap"><a href="{{ url_for('compare_page') }}">업체 비교</a></td>
-        <td>여러 업체를 골라 나란히 비교합니다: 가격 산점도 · 업체별 유료 기능(카테고리별) · 카테고리 매트릭스 · 가치 점수. <b>AI 카테고리 분류</b>로 기능을 자동 그룹화할 수 있고, <b>[이 비교 저장]</b>을 누르면 결과가 <b>저장 시점 그대로 카드</b>로 보관되어 다시 비교하지 않고 언제든 다시 열어볼 수 있습니다.</td>
+        <td class="nowrap"><a href="{{ url_for('compare_page') }}">가격 분석</a></td>
+        <td>여러 업체를 골라 나란히 비교합니다(업체 선택을 <b>분류별</b>로 필터 가능): 가격 산점도 · 업체별 유료 기능(카테고리별) · 카테고리 매트릭스 · 가치 점수. <b>AI 카테고리 분류</b>로 기능을 자동 그룹화할 수 있고, <b>[이 비교 저장]</b>을 누르면 결과가 <b>저장 시점 그대로 카드</b>로 보관되어 다시 비교하지 않고 언제든 다시 열어볼 수 있습니다.</td>
       </tr>
     </tbody>
   </table>
@@ -167,6 +189,25 @@
     삭제해도 과거 수집 이력(스냅샷·변동 로그)은 보존됩니다. 최초 실행 시
     <code>companies.yaml</code> 의 목록이 DB로 1회 시드된 뒤로는 DB가 기준이 됩니다.
   </p>
+</section>
+
+<section class="card">
+  <h2>업체 분류 (Health / AI / 이미지·영상 …)</h2>
+  <p>
+    업체를 업종·도메인으로 묶는 기능입니다. <a href="{{ url_for('companies_page') }}"><b>업체 관리</b></a>
+    화면에서 분류(예: <b>Health</b>, <b>AI</b>, <b>이미지/영상</b>)를 만들고, 각 업체를 <b>한 분류</b>에
+    배정합니다 — 업체 카드의 <b>분류</b> 드롭다운으로 지정하거나, <b>업체 추가</b> 시 바로 선택할 수
+    있습니다. 분류는 DB에 저장되며, 분류를 삭제하면 소속 업체는 <b>미분류</b>로 되돌아갑니다.
+  </p>
+  <ul>
+    <li><b>현황</b>: 업체가 <b>분류별로 묶여</b> 표시되고, 상단 필터 탭(<b>전체</b> / 분류별 / 미분류,
+      개수 표시)으로 좁혀 볼 수 있습니다.</li>
+    <li><b>업체 관리</b>·<b>수집 상태</b>: <b>분류 탭</b>으로 목록을 거릅니다. 수집 상태에서는 탭을 고르면
+      <b>[선택 수집]</b> 대상도 그 분류만으로 좁혀집니다.</li>
+    <li><b>변동 로그</b>: 변동 이력을 <b>분류</b>(및 업체)로 필터합니다.</li>
+    <li><b>가격 분석</b>: 업체 선택 목록을 <b>분류</b>로 필터합니다(분류가 달라도 함께 체크해 비교 가능).</li>
+    <li>선택한 탭은 <b>기억</b>되어, 소스 추가·새로고침 후에도 같은 탭이 유지됩니다.</li>
+  </ul>
 </section>
 
 <section class="card">

@@ -43,10 +43,20 @@
 
 <section class="card">
   <h2>{{ t('compare.select') }}</h2>
+  {% if data.category_chips %}
+  <div class="cat-filter" data-target=".cmp-pick" role="tablist" aria-label="{{ t('cat.title') }}">
+    <button type="button" class="cat-chip on" data-cat="all">{{ t('filter.all') }}
+      <span class="cat-count">{{ data.all_companies|length }}</span></button>
+    {% for cat in data.category_chips %}
+    <button type="button" class="cat-chip" data-cat="{{ cat.id if cat.id else 'none' }}">
+      {{ cat.name or t('cat.none') }} <span class="cat-count">{{ cat.count }}</span></button>
+    {% endfor %}
+  </div>
+  {% endif %}
   <form method="post" action="{{ url_for('compare_run') }}" id="compareForm">
     <div class="select-list">
       {% for name in data.all_companies %}
-      <label class="src-check">
+      <label class="src-check cmp-pick" data-cat="{{ (data.company_cat or {}).get(name) or 'none' }}">
         <input type="checkbox" name="company" value="{{ name }}" {% if name in data.companies %}checked{% endif %}>
         {{ name }}
       </label>
