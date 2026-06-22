@@ -296,6 +296,17 @@ a.btn-primary:hover { text-decoration: none; }
 /* 업체별 — 티어를 가로 열로 (무료=파랑 / 유료=초록) */
 .cmp-company { padding: 12px 0; border-top: 1px solid var(--line); }
 .cmp-company:first-of-type { border-top: none; padding-top: 4px; }
+/* 업체별 분석 — 업체명 클릭 시 기능 펼치기(접이식) */
+.cmp-company > summary { cursor: pointer; list-style: none; margin-bottom: 0; }
+.cmp-company > summary::-webkit-details-marker { display: none; }
+.cmp-company > summary::before {
+  content: "▸"; color: var(--muted); margin-right: 2px;
+  transition: transform .2s ease; display: inline-block;
+}
+.cmp-company[open] > summary { margin-bottom: 8px; }
+.cmp-company[open] > summary::before { transform: rotate(90deg); }
+.cmp-company > summary:hover { color: var(--accent); }
+.cmp-company > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 .tier-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; }
 .tier-card {
   flex: 0 0 190px; min-width: 190px;
