@@ -515,6 +515,16 @@ a.btn-primary:hover { text-decoration: none; }
 /* 기능 포지셔닝 — 제공 업체 클릭 목록 */
 .pos-list { margin-top: 14px; }
 .pos-list-title { font-weight: 600; margin-bottom: 6px; }
+.pos-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 12px; }
+.pos-tab {
+  cursor: pointer; border: 1px solid transparent; border-radius: 999px;
+  padding: 6px 14px; font-size: .85rem; font-weight: 700; opacity: .5;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: opacity .15s ease, box-shadow .15s ease;
+}
+.pos-tab:hover { opacity: .85; }
+.pos-tab.on { opacity: 1; box-shadow: 0 0 0 2px rgba(0,0,0,.10) inset; }
+.pos-tab .cat-count { background: rgba(0,0,0,.12); border-radius: 999px; padding: 0 7px; font-size: .72rem; }
 .pos-feat { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; margin: 4px 0; background: #fff; }
 .pos-feat > summary { cursor: pointer; font-size: .9rem; }
 .pos-feat > summary:hover { color: var(--accent); }
