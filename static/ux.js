@@ -38,6 +38,8 @@
     var targetSel = catFilter.getAttribute('data-target') || '.cat-group';
     var targets = document.querySelectorAll(targetSel);
     var storeKey = 'catFilter:' + location.pathname + ':' + targetSel;
+    // 숨겨진 대상의 폼 입력을 비활성화할지(예: 수집 대상 선택 — 안 보이면 제출 제외)
+    var disableHidden = catFilter.hasAttribute('data-disable-hidden');
 
     function apply(sel) {
       var has = false;
@@ -49,6 +51,11 @@
       targets.forEach(function (g) {
         var show = sel === 'all' || g.getAttribute('data-cat') === sel;
         g.style.display = show ? '' : 'none';
+        if (disableHidden) {
+          g.querySelectorAll('input, select, textarea, button').forEach(function (el) {
+            el.disabled = !show;
+          });
+        }
       });
     }
 

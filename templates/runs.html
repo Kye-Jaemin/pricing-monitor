@@ -64,10 +64,20 @@
     {% if access_required %}
     <p><input type="password" name="access_code" class="access-input" placeholder="{{ t('runs.access_label') }}" autocomplete="off" required></p>
     {% endif %}
+    {% if category_chips %}
+    <div class="cat-filter" data-target=".select-company" data-disable-hidden="1" role="tablist" aria-label="{{ t('cat.title') }}">
+      <button type="button" class="cat-chip on" data-cat="all">{{ t('filter.all') }}
+        <span class="cat-count">{{ companies|length }}</span></button>
+      {% for cat in category_chips %}
+      <button type="button" class="cat-chip" data-cat="{{ cat.id if cat.id else 'none' }}">
+        {{ cat.name or t('cat.none') }} <span class="cat-count">{{ cat.count }}</span></button>
+      {% endfor %}
+    </div>
+    {% endif %}
     <label class="muted sel-all"><input type="checkbox" id="selAll" {% if not running or running_ids is none %}checked{% endif %}> {{ t('runs.select_all') }}</label>
     <div class="select-list">
       {% for c in companies %}
-      <div class="select-company">
+      <div class="select-company" data-cat="{{ c.category_id if c.category_id else 'none' }}">
         <span class="sc-name">{% if c.icon %}<img class="company-icon" src="{{ c.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ c.name }}</span>
         {% for s in c.sources %}
         <label class="src-check"><input type="checkbox" name="source_ids" value="{{ s.id }}" {% if not running or running_ids is none or s.id in running_ids %}checked{% endif %}> <span class="tag tag-src-{{ s.source_type }}">{{ s.source_label }}</span></label>
@@ -88,7 +98,8 @@
   (function () {
     var all = document.getElementById('selAll');
     if (all) all.addEventListener('change', function (e) {
-      document.querySelectorAll('input[name="source_ids"]').forEach(function (cb) { cb.checked = e.target.checked; });
+      // 분류 탭으로 숨겨진(비활성) 체크박스는 제외 — 보이는 대상만 선택/해제
+      document.querySelectorAll('input[name="source_ids"]:not(:disabled)').forEach(function (cb) { cb.checked = e.target.checked; });
     });
   })();
 </script>
