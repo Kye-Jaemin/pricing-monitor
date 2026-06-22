@@ -279,12 +279,21 @@ def compare_analyze_pricing():
 
 @app.route("/compare/set-category", methods=["POST"])
 def compare_set_category():
-    """기능의 카테고리를 사용자가 직접 지정/추가."""
+    """기능의 카테고리·통합(별칭)을 사용자가 직접 지정/수정.
+
+    같은 통합 대표명을 입력한 기능들은 분류에서 하나로 묶인다(빈 값이면 통합 해제).
+    """
     names = [n for n in request.form.getlist("company") if n]
     feature = (request.form.get("feature") or "").strip()
     category = (request.form.get("category") or "").strip()
     if feature and category:
         store.set_feature_category(feature, category, source="user")
+    if feature:
+        alias = (request.form.get("alias") or "").strip()
+        if alias:
+            store.set_feature_aliases({feature: alias})
+        else:
+            store.delete_feature_alias(feature)
     return redirect(_compare_url(names))
 
 

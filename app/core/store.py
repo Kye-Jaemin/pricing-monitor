@@ -555,6 +555,12 @@ def set_feature_aliases(mapping: dict) -> None:
             )
 
 
+def delete_feature_alias(variant: str) -> None:
+    """수동 통합 해제 — 해당 기능의 별칭 매핑을 제거(원래 이름으로 복귀)."""
+    with connect() as conn:
+        conn.execute("DELETE FROM feature_aliases WHERE variant=?", (str(variant),))
+
+
 def set_feature_category(feature: str, category: str, source: str = "user") -> None:
     with connect() as conn:
         conn.execute(

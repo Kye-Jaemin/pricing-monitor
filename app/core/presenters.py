@@ -958,9 +958,10 @@ def compare(names: list[str]) -> dict:
         key=lambda x: x["score"],
         reverse=True,
     )
+    _alias_for_edit = store.get_feature_aliases()
     editable = [
         {"feature": f, "category": _effective_category(f, cat_map),
-         "assigned": f in cat_map}
+         "assigned": f in cat_map, "alias": _alias_for_edit.get(f, "")}
         for f in sorted(all_features)
     ]
 

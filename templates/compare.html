@@ -372,19 +372,24 @@
 <datalist id="catlist">
   {% for row in data.matrix %}<option value="{{ row.category }}">{% endfor %}
 </datalist>
+<datalist id="aliaslist">
+  {% for e in data.editable %}{% if e.alias %}<option value="{{ e.alias }}">{% endif %}{% endfor %}
+</datalist>
 <details class="card">
   <summary><h2>{{ t('compare.edit_title') }}</h2></summary>
+  <p class="muted">{{ t('compare.merge_help') }}</p>
   <table class="log-table">
-    <thead><tr><th>{{ t('compare.feature') }}</th><th>{{ t('compare.category') }}</th><th></th></tr></thead>
+    <thead><tr><th>{{ t('compare.feature') }}</th><th>{{ t('compare.category') }}</th><th>{{ t('compare.merge_label') }}</th><th></th></tr></thead>
     <tbody>
       {% for e in data.editable %}
       <tr>
         <td>{{ e.feature }}</td>
-        <td colspan="2">
+        <td colspan="3">
           <form method="post" action="{{ url_for('compare_set_category') }}" class="cat-edit">
             {% for n in data.companies %}<input type="hidden" name="company" value="{{ n }}">{% endfor %}
             <input type="hidden" name="feature" value="{{ e.feature }}">
-            <input type="text" name="category" value="{{ e.category }}" list="catlist" {% if e.assigned %}class="assigned"{% endif %}>
+            <input type="text" name="category" value="{{ e.category }}" list="catlist" placeholder="{{ t('compare.category') }}" {% if e.assigned %}class="assigned"{% endif %}>
+            <input type="text" name="alias" value="{{ e.alias }}" list="aliaslist" placeholder="{{ t('compare.merge_ph') }}" {% if e.alias %}class="assigned"{% endif %}>
             <button type="submit" class="btn-secondary btn-sm">{{ t('compare.save') }}</button>
           </form>
         </td>
