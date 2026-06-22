@@ -463,6 +463,7 @@ def runs():
         "runs.html",
         data=presenters.runs_view(),
         companies=admin["companies"],
+        categories=admin["categories"],
         category_chips=admin["category_chips"],
         running=_run_in_progress["value"],
         running_ids=list(running_ids) if running_ids is not None else None,
@@ -477,6 +478,7 @@ def runs():
 def scheduler_save():
     """스케줄러 온/오프·주기·stale 일수 설정 저장 + 즉시 재구성."""
     f = request.form
+    category_ids = [int(x) for x in f.getlist("category_ids") if x.isdigit()]
     sched.save_settings(
         enabled=bool(f.get("enabled")),
         day_of_week=(f.get("day_of_week") or config.SCHEDULE_DAY_OF_WEEK).strip(),
@@ -484,6 +486,7 @@ def scheduler_save():
         minute=max(0, min(59, _safe_int(f.get("minute"), config.SCHEDULE_MINUTE))),
         timezone=(f.get("timezone") or config.SCHEDULE_TIMEZONE).strip(),
         stale_days=max(0, _safe_int(f.get("stale_days"), config.SCHEDULE_STALE_DAYS)),
+        category_ids=category_ids,
     )
     return redirect(url_for("runs"))
 

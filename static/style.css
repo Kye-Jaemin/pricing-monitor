@@ -547,6 +547,10 @@ a.btn-primary:hover { text-decoration: none; }
 .sched-time { display: inline-flex; align-items: center; gap: 4px; }
 .sched-time input { width: 56px; }
 .sched-tz { width: 180px; }
+.sched-cats { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 0 0 12px; }
+.sched-cats legend { font-size: .85rem; font-weight: 600; padding: 0 4px; }
+.sched-cats .muted { margin: 2px 0 8px; }
+.sched-cat-list { display: flex; flex-wrap: wrap; gap: 8px 16px; }
 .sched-num { width: 90px; }
 
 /* 키보드 포커스 표시 (접이식 카드/요약) */

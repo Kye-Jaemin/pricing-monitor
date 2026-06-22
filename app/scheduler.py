@@ -8,6 +8,7 @@ external 모드(로컬 PC)에서는 시작하지 않는다 — OS 스케줄러�
 """
 from __future__ import annotations
 
+import json
 import logging
 
 from . import config
@@ -27,6 +28,17 @@ def _to_int(v, default: int) -> int:
         return default
 
 
+def _get_category_ids() -> list[int]:
+    """자동 수집 대상 분류 id 목록(비어 있으면 전체 분류 대상)."""
+    raw = store.get_setting("sched.category_ids")
+    if not raw:
+        return []
+    try:
+        return [int(x) for x in json.loads(raw)]
+    except (ValueError, TypeError):
+        return []
+
+
 def get_settings() -> dict:
     """현재 스케줄 설정(DB 우선, 없으면 env 기본값)."""
     g = store.get_setting
@@ -38,12 +50,13 @@ def get_settings() -> dict:
         "minute": _to_int(g("sched.minute"), config.SCHEDULE_MINUTE),
         "timezone": g("sched.timezone") or config.SCHEDULE_TIMEZONE,
         "stale_days": _to_int(g("sched.stale_days"), config.SCHEDULE_STALE_DAYS),
+        "category_ids": _get_category_ids(),
     }
 
 
 def save_settings(
     *, enabled: bool, day_of_week: str, hour: int, minute: int,
-    timezone: str, stale_days: int,
+    timezone: str, stale_days: int, category_ids: list[int] | None = None,
 ) -> None:
     store.set_setting("sched.enabled", "1" if enabled else "0")
     store.set_setting("sched.day_of_week", day_of_week)
@@ -51,7 +64,21 @@ def save_settings(
     store.set_setting("sched.minute", str(minute))
     store.set_setting("sched.timezone", timezone)
     store.set_setting("sched.stale_days", str(stale_days))
+    store.set_setting(
+        "sched.category_ids", json.dumps([int(c) for c in (category_ids or [])])
+    )
     reconfigure()
+
+
+def _source_ids_for_categories(cat_ids: list[int]) -> list[int]:
+    """선택 분류에 속한 업체들의 활성 소스 id 목록."""
+    wanted = set(cat_ids)
+    ids: list[int] = []
+    for c in store.list_companies(active_only=True):
+        if c["category_id"] in wanted:
+            for s in store.list_sources(company=c["name"], active_only=True):
+                ids.append(s["id"])
+    return ids
 
 
 def reconfigure() -> None:
@@ -120,10 +147,18 @@ def get_status() -> dict:
 
 
 def _job() -> None:
-    stale = get_settings()["stale_days"]
-    log.info("자동 수집 시작 (stale_days=%s 만 대상)", stale)
+    s = get_settings()
+    stale = s["stale_days"]
+    cat_ids = s["category_ids"]
+    # 분류가 선택돼 있으면 그 분류 업체의 소스만, 아니면 전체
+    source_ids = _source_ids_for_categories(cat_ids) if cat_ids else None
+    if cat_ids and not source_ids:
+        log.info("자동 수집 건너뜀 — 선택 분류(%s)에 해당하는 소스가 없음", cat_ids)
+        return
+    log.info("자동 수집 시작 (stale_days=%s · 분류=%s)",
+             stale, cat_ids or "전체")
     try:
-        result = run_once(stale_days=stale)
+        result = run_once(source_ids=source_ids, stale_days=stale)
         log.info("자동 수집 완료: 대상 %d개 · 성공 %d / 에러 %d",
                  len(result.results), result.ok_count, result.error_count)
     except Exception:  # noqa: BLE001

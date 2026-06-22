@@ -53,6 +53,17 @@
         <input type="number" name="stale_days" min="0" value="{{ sc.stale_days }}" class="sched-num">
       </label>
     </div>
+    {% if categories %}
+    <fieldset class="sched-cats">
+      <legend>{{ t('sched.categories') }}</legend>
+      <p class="muted">{{ t('sched.categories_help') }}</p>
+      <div class="sched-cat-list">
+        {% for cat in categories %}
+        <label class="src-check"><input type="checkbox" name="category_ids" value="{{ cat.id }}" {% if cat.id in sc.category_ids %}checked{% endif %}> {{ cat.name }}</label>
+        {% endfor %}
+      </div>
+    </fieldset>
+    {% endif %}
     <button type="submit" class="btn-primary">{{ t('sched.save') }}</button>
   </form>
 </details>
