@@ -103,6 +103,45 @@ code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; font-size: .9e
 .btn-x:hover { color: #7f1d1d; }
 .src-del { margin-top: 8px; }
 
+/* ── 업체 분류(카테고리) ── */
+.tag-cat { background: #e0e7ff; color: #3730a3; margin-left: 6px; }
+
+/* 현황 상단 필터 칩 */
+.cat-filter { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 18px; }
+.cat-filter .cat-chip {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--card, #fff); color: #374151;
+  padding: 6px 14px; border-radius: 999px; font-size: .88rem; font-weight: 600;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.cat-filter .cat-chip:hover { border-color: var(--accent); color: var(--accent); }
+.cat-filter .cat-chip.on {
+  background: var(--accent); color: var(--accent-ink, #fff); border-color: var(--accent);
+}
+.cat-count {
+  font-size: .72rem; font-weight: 700; background: rgba(0,0,0,.08);
+  border-radius: 999px; padding: 0 7px; line-height: 1.5;
+}
+.cat-filter .cat-chip.on .cat-count { background: rgba(255,255,255,.25); }
+
+/* 분류 그룹 머리글 */
+.cat-group { margin-bottom: 6px; }
+.cat-group-head {
+  margin: 18px 0 10px; font-size: 1.05rem; display: flex; align-items: baseline; gap: 8px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--line);
+}
+.cat-group-head .muted { font-size: .82rem; font-weight: 400; }
+
+/* 업체 관리 — 분류 목록 칩(삭제 포함) + 업체별 배정 셀렉트 */
+.cat-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 12px; }
+.cat-list .cat-chip { display: inline-flex; align-items: center; gap: 2px; }
+.cat-list .cat-chip form { display: inline; }
+.cat-pick { display: inline-flex; align-items: center; }
+.cat-pick select {
+  padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; font-size: .82rem;
+  margin-left: 4px;
+}
+
 /* 접이식 카드 공통 */
 details.card > summary { cursor: pointer; list-style: revert; }
 details.card > summary h2 { display: inline; }

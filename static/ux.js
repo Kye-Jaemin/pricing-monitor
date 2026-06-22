@@ -29,6 +29,23 @@
     items.forEach(function (el) { io.observe(el); });
   }
 
+  // 2.5) 현황 — 업체 분류 필터(칩 클릭 시 해당 그룹만 표시)
+  var catFilter = document.querySelector('.cat-filter');
+  if (catFilter) {
+    var chips = catFilter.querySelectorAll('.cat-chip');
+    var groups = document.querySelectorAll('.cat-group');
+    catFilter.addEventListener('click', function (e) {
+      var btn = e.target.closest('.cat-chip');
+      if (!btn) return;
+      var sel = btn.getAttribute('data-cat');
+      chips.forEach(function (c) { c.classList.toggle('on', c === btn); });
+      groups.forEach(function (g) {
+        var show = sel === 'all' || g.getAttribute('data-cat') === sel;
+        g.style.display = show ? '' : 'none';
+      });
+    });
+  }
+
   if (reduce) return;
 
   // 3) 카드 커서 추적 스포트라이트

@@ -383,6 +383,35 @@ def companies_delete():
     return redirect(url_for("companies_page"))
 
 
+# ── 업체 분류(업종/도메인) ───────────────────────────────────
+@app.route("/categories/add", methods=["POST"])
+def categories_add():
+    """업체 분류 생성(예: Health, AI, 이미지/영상)."""
+    name = (request.form.get("name") or "").strip()
+    if name:
+        store.add_company_category(name)
+    return redirect(url_for("companies_page"))
+
+
+@app.route("/categories/delete", methods=["POST"])
+def categories_delete():
+    """분류 삭제 — 소속 업체는 미분류로 되돌린다."""
+    cid = request.form.get("category_id")
+    if cid and cid.isdigit():
+        store.delete_company_category(int(cid))
+    return redirect(url_for("companies_page"))
+
+
+@app.route("/companies/set-category", methods=["POST"])
+def companies_set_category():
+    """업체를 분류에 배정(빈 값이면 미분류)."""
+    name = (request.form.get("name") or "").strip()
+    cid = (request.form.get("category_id") or "").strip()
+    if name:
+        store.set_company_category(name, int(cid) if cid.isdigit() else None)
+    return redirect(request.referrer or url_for("companies_page"))
+
+
 @app.route("/sources/add", methods=["POST"])
 def sources_add():
     """기존 업체에 소스 추가. 스토어 종류는 URL 없이 자동 탐색."""

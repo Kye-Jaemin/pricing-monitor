@@ -20,8 +20,16 @@ CREATE TABLE IF NOT EXISTS companies (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     name         TEXT NOT NULL UNIQUE,
     icon_url     TEXT,
+    category_id  INTEGER,                       -- company_categories.id (NULL=미분류)
     active       INTEGER NOT NULL DEFAULT 1,
     created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+);
+
+-- 업체 분류(업종/도메인): Health, AI, 이미지/영상 등. 사용자가 만들고 업체를 1개에 배정.
+CREATE TABLE IF NOT EXISTS company_categories (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT NOT NULL UNIQUE,
+    created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
 );
 
 CREATE TABLE IF NOT EXISTS company_sources (
@@ -147,6 +155,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
     # companies.icon_url 컬럼 보강
     if "icon_url" not in _columns(conn, "companies"):
         conn.execute("ALTER TABLE companies ADD COLUMN icon_url TEXT")
+    # companies.category_id 컬럼 보강(업체 분류)
+    if "category_id" not in _columns(conn, "companies"):
+        conn.execute("ALTER TABLE companies ADD COLUMN category_id INTEGER")
     # snapshots.raw_text 컬럼 보강(디버그용 원문)
     if "raw_text" not in _columns(conn, "snapshots"):
         conn.execute("ALTER TABLE snapshots ADD COLUMN raw_text TEXT")
@@ -212,6 +223,53 @@ def delete_company(name: str) -> None:
         conn.execute("DELETE FROM snapshots WHERE company=?", (name,))
         conn.execute("DELETE FROM changes WHERE company=?", (name,))
         conn.execute("DELETE FROM companies WHERE name=?", (name,))
+
+
+# ── company_categories (업체 분류: 업종/도메인) ──────────────
+def list_company_categories() -> list[sqlite3.Row]:
+    """등록된 업체 분류 목록(생성 순)."""
+    with connect() as conn:
+        return conn.execute(
+            "SELECT * FROM company_categories ORDER BY id"
+        ).fetchall()
+
+
+def add_company_category(name: str) -> None:
+    """업체 분류 추가(같은 이름이면 무시)."""
+    name = (name or "").strip()
+    if not name:
+        return
+    with connect() as conn:
+        conn.execute(
+            "INSERT OR IGNORE INTO company_categories (name) VALUES (?)", (name,)
+        )
+
+
+def rename_company_category(cat_id: int, name: str) -> None:
+    name = (name or "").strip()
+    if not name:
+        return
+    with connect() as conn:
+        conn.execute(
+            "UPDATE company_categories SET name=? WHERE id=?", (name, cat_id)
+        )
+
+
+def delete_company_category(cat_id: int) -> None:
+    """분류 삭제 + 소속 업체는 미분류(category_id=NULL)로 되돌린다."""
+    with connect() as conn:
+        conn.execute(
+            "UPDATE companies SET category_id=NULL WHERE category_id=?", (cat_id,)
+        )
+        conn.execute("DELETE FROM company_categories WHERE id=?", (cat_id,))
+
+
+def set_company_category(name: str, category_id: Optional[int]) -> None:
+    """업체를 분류에 배정(category_id=None 이면 미분류로)."""
+    with connect() as conn:
+        conn.execute(
+            "UPDATE companies SET category_id=? WHERE name=?", (category_id, name)
+        )
 
 
 # ── company_sources (업체별 소스 URL) ────────────────────────

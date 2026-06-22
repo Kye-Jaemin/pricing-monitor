@@ -12,7 +12,25 @@
   </div>
 {% endif %}
 
-{% for c in data.companies %}
+{% set has_cats = data.groups|selectattr('id')|list|length > 0 %}
+{% if has_cats %}
+<div class="cat-filter" role="tablist" aria-label="{{ t('cat.title') }}">
+  <button type="button" class="cat-chip on" data-cat="all">{{ t('filter.all') }}
+    <span class="cat-count">{{ data.companies|length }}</span></button>
+  {% for cat in data.categories %}
+  <button type="button" class="cat-chip" data-cat="{{ cat.id if cat.id else 'none' }}">
+    {{ cat.name or t('cat.none') }} <span class="cat-count">{{ cat.count }}</span></button>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% for g in data.groups %}
+<section class="cat-group" data-cat="{{ g.id if g.id else 'none' }}">
+  {% if has_cats %}
+  <h2 class="cat-group-head">{{ g.name or t('cat.none') }}
+    <span class="muted">{{ g.companies|length }}</span></h2>
+  {% endif %}
+  {% for c in g.companies %}
 <details class="card company-card">
   <summary class="company-summary">
     {% if c.icon %}<img class="company-icon" src="{{ c.icon }}" alt="" onerror="this.style.display='none'">{% endif %}
@@ -113,5 +131,7 @@
   </details>
   {% endfor %}
 </details>
+  {% endfor %}
+</section>
 {% endfor %}
 {% endblock %}

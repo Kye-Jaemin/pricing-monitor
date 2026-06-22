@@ -284,6 +284,18 @@ def _feature_matrix(tiers: list) -> dict:
     }
 
 
+# ── 업체 분류(업종/도메인) ───────────────────────────────────
+def _category_context():
+    """(분류 목록, {업체명: category_id}, {category_id: 이름}) 을 한 번에 만든다."""
+    cats = store.list_company_categories()
+    cat_list = [{"id": c["id"], "name": c["name"]} for c in cats]
+    id_to_name = {c["id"]: c["name"] for c in cats}
+    name_to_id = {
+        c["name"]: c["category_id"] for c in store.list_companies(active_only=False)
+    }
+    return cat_list, name_to_id, id_to_name
+
+
 # ── 1. 현황 (/) ──────────────────────────────────────────────
 def overview() -> dict:
     """전체 업체의 대표 출처 최신 가격표.
@@ -407,9 +419,34 @@ def overview() -> dict:
                 "extra_sources": extra_sources,
             }
         )
+    # ── 업체 분류로 그룹화(정의 순서, 미분류는 마지막) + 필터 칩 ──
+    cat_list, name_to_id, id_to_name = _category_context()
+    for co in companies:
+        cid = name_to_id.get(co["company"])
+        co["category_id"] = cid
+        co["category"] = id_to_name.get(cid)
+
+    groups = []
+    for cat in cat_list:
+        members = [co for co in companies if co["category_id"] == cat["id"]]
+        if members:
+            groups.append(
+                {"id": cat["id"], "name": cat["name"], "companies": members}
+            )
+    uncategorized = [co for co in companies if not co.get("category_id")]
+    if uncategorized:
+        groups.append({"id": None, "name": None, "companies": uncategorized})
+
+    category_chips = [
+        {"id": g["id"], "name": g["name"], "count": len(g["companies"])}
+        for g in groups
+    ]
+
     priority = [{"type": t, "label": _src_label(t)} for t in get_priority_order()]
     return {
         "companies": companies,
+        "groups": groups,
+        "categories": category_chips,
         "priority": priority,
     }
 
@@ -538,6 +575,7 @@ def runs_view() -> dict:
 
 # ── 업체 관리 (/companies) ───────────────────────────────────
 def companies_admin() -> dict:
+    cat_list, _name_to_id, id_to_name = _category_context()
     companies = []
     for c in store.list_companies(active_only=True):
         srcs = store.list_sources(company=c["name"], active_only=True)
@@ -546,6 +584,8 @@ def companies_admin() -> dict:
                 "name": c["name"],
                 "created_at": c["created_at"],
                 "icon": _company_icon(c["icon_url"], [s["url"] for s in srcs]),
+                "category_id": c["category_id"],
+                "category": id_to_name.get(c["category_id"]),
                 "sources": [
                     {
                         "id": s["id"],
@@ -558,7 +598,7 @@ def companies_admin() -> dict:
                 ],
             }
         )
-    return {"companies": companies}
+    return {"companies": companies, "categories": cat_list}
 
 
 def _effective_category(feature: str, cat_map: dict[str, str]) -> str:
