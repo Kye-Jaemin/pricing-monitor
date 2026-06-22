@@ -176,6 +176,15 @@ def compare_card_delete(card_id: int):
     return redirect(url_for("compare_page"))
 
 
+@app.route("/compare/card/<int:card_id>/rename", methods=["POST"])
+def compare_card_rename(card_id: int):
+    """저장된 비교 카드의 이름(제목) 변경."""
+    title = (request.form.get("title") or "").strip()
+    if title:
+        store.rename_comparison_card(card_id, title)
+    return redirect(request.referrer or url_for("compare_page"))
+
+
 def _apply_categorize(names: list[str]) -> None:
     """선택 업체 전체 기능을 AI로 카테고리 분류해 저장(사용자 지정은 보존)."""
     feats = presenters.distinct_features(names)

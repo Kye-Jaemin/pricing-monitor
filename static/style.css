@@ -334,6 +334,13 @@ a.btn-primary:hover { text-decoration: none; }
 .saved-card-foot .muted { font-size: .72rem; }
 .saved-card-actions { display: flex; align-items: center; gap: 6px; }
 .saved-card-actions form { margin: 0; }
+.rename-wrap > summary { cursor: pointer; font-size: .76rem; color: var(--muted); list-style: none; }
+.rename-wrap > summary:hover { color: var(--accent); }
+.rename-form { display: flex; gap: 6px; margin: 6px 0 2px; }
+.rename-input {
+  flex: 1; min-width: 0; padding: 5px 8px; border: 1px solid var(--line);
+  border-radius: 6px; font-size: .82rem;
+}
 .saved-badge { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .save-title { padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: .9rem; min-width: 200px; }
 

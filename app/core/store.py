@@ -594,6 +594,17 @@ def delete_comparison_card(card_id: int) -> None:
         conn.execute("DELETE FROM comparison_cards WHERE id=?", (card_id,))
 
 
+def rename_comparison_card(card_id: int, title: str) -> None:
+    """저장된 비교 카드의 제목 변경."""
+    title = (title or "").strip()
+    if not title:
+        return
+    with connect() as conn:
+        conn.execute(
+            "UPDATE comparison_cards SET title=? WHERE id=?", (title, card_id)
+        )
+
+
 # ── feature_canonical (기능→canonical id 매핑) ────────────────
 def get_feature_canonical_map() -> dict[str, str]:
     """feature -> canonical_id (저장된 매핑만; 없으면 호출측에서 결정적 슬러그 사용)."""
