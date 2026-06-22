@@ -523,41 +523,6 @@
   var posCanvas = document.getElementById('posScatter');
   if (posCanvas && pos && pos.length) {
     var COLORS = { commodity: '#2563eb', standard: '#f59e0b', differentiated: '#16a34a' };
-    var cheapUsd = {{ data.cheap_usd if data.cheap_usd is not none else 5 }};
-    var PEN_DIFF = 0.34, PEN_COMMON = 0.6;   // 분류 보급률 경계(presenters 와 동일)
-
-    // 분류 영역 음영 + 경계선 + 가격 기준선 + 코너 라벨을 그리는 플러그인
-    var posZones = {
-      id: 'posZones',
-      beforeDatasetsDraw: function (chart) {
-        var a = chart.chartArea, xs = chart.scales.x, ys = chart.scales.y, ctx = chart.ctx;
-        if (!a) return;
-        var xd = xs.getPixelForValue(PEN_DIFF), xc = xs.getPixelForValue(PEN_COMMON);
-        ctx.save();
-        ctx.fillStyle = 'rgba(22,163,74,0.07)';  ctx.fillRect(a.left, a.top, xd - a.left, a.bottom - a.top);  // 차별화(좌)
-        ctx.fillStyle = 'rgba(245,158,11,0.06)'; ctx.fillRect(xd, a.top, xc - xd, a.bottom - a.top);          // 표준(중)
-        ctx.fillStyle = 'rgba(37,99,235,0.07)';  ctx.fillRect(xc, a.top, a.right - xc, a.bottom - a.top);     // 커머디티(우)
-        // 경계 점선
-        ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(100,116,139,0.45)';
-        [xd, xc].forEach(function (px) { ctx.beginPath(); ctx.moveTo(px, a.top); ctx.lineTo(px, a.bottom); ctx.stroke(); });
-        // 가격 기준선(저렴/유료 경계)
-        var yc = ys.getPixelForValue(cheapUsd);
-        if (yc > a.top && yc < a.bottom) {
-          ctx.strokeStyle = 'rgba(220,38,38,0.40)';
-          ctx.beginPath(); ctx.moveTo(a.left, yc); ctx.lineTo(a.right, yc); ctx.stroke();
-          ctx.setLineDash([]); ctx.fillStyle = 'rgba(220,38,38,0.75)'; ctx.font = '10px sans-serif';
-          ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
-          ctx.fillText('$' + cheapUsd + ' 기준', a.left + 4, yc - 2);
-        }
-        ctx.setLineDash([]);
-        // 코너 영역 라벨
-        ctx.font = '600 11px sans-serif'; ctx.textBaseline = 'top';
-        ctx.fillStyle = 'rgba(22,163,74,0.6)';  ctx.textAlign = 'left';   ctx.fillText('차별화', a.left + 6, a.top + 4);
-        ctx.fillStyle = 'rgba(245,158,11,0.7)'; ctx.textAlign = 'center'; ctx.fillText('표준', (xd + xc) / 2, a.top + 4);
-        ctx.fillStyle = 'rgba(37,99,235,0.6)';  ctx.textAlign = 'right';  ctx.fillText('커머디티', a.right - 6, a.top + 4);
-        ctx.restore();
-      }
-    };
     // 모든 점 평탄화(원본 좌표는 price/pen 으로 보존)
     var pts = pos.map(function (p, idx) {
       return { x: p.penetration, y: p.unlock_price, price: p.unlock_price,
@@ -613,7 +578,6 @@
                  hoverBorderColor: '#fff', hoverBorderWidth: 2,
                  pointRadius: 6, pointHoverRadius: 11 };
       }) },
-      plugins: [posZones],
       options: {
         maintainAspectRatio: false,
         animation: { duration: 800, easing: 'easeOutQuart' },
