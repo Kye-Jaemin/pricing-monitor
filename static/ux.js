@@ -31,20 +31,39 @@
 
   // 2.5) 업체 분류 필터(칩 클릭 시 해당 분류만 표시).
   //   대상은 data-target 선택자(현황=.cat-group, 업체관리=.company-admin-card).
+  //   선택한 탭은 sessionStorage 에 기억해, 소스 추가 등으로 페이지가 새로고침돼도
+  //   같은 탭이 유지되도록 한다(전체로 튀지 않게).
   document.querySelectorAll('.cat-filter').forEach(function (catFilter) {
     var chips = catFilter.querySelectorAll('.cat-chip');
     var targetSel = catFilter.getAttribute('data-target') || '.cat-group';
     var targets = document.querySelectorAll(targetSel);
-    catFilter.addEventListener('click', function (e) {
-      var btn = e.target.closest('.cat-chip');
-      if (!btn) return;
-      var sel = btn.getAttribute('data-cat');
-      chips.forEach(function (c) { c.classList.toggle('on', c === btn); });
+    var storeKey = 'catFilter:' + location.pathname + ':' + targetSel;
+
+    function apply(sel) {
+      var has = false;
+      chips.forEach(function (c) { if (c.getAttribute('data-cat') === sel) has = true; });
+      if (!has) sel = 'all';                 // 저장된 분류가 사라졌으면 전체로 폴백
+      chips.forEach(function (c) {
+        c.classList.toggle('on', c.getAttribute('data-cat') === sel);
+      });
       targets.forEach(function (g) {
         var show = sel === 'all' || g.getAttribute('data-cat') === sel;
         g.style.display = show ? '' : 'none';
       });
+    }
+
+    catFilter.addEventListener('click', function (e) {
+      var btn = e.target.closest('.cat-chip');
+      if (!btn) return;
+      var sel = btn.getAttribute('data-cat');
+      try { sessionStorage.setItem(storeKey, sel); } catch (_) {}
+      apply(sel);
     });
+
+    // 새로고침/리다이렉트 후 직전 선택 탭 복원
+    var saved = null;
+    try { saved = sessionStorage.getItem(storeKey); } catch (_) {}
+    if (saved && saved !== 'all') apply(saved);
   });
 
   if (reduce) return;
