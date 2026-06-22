@@ -49,16 +49,16 @@
   {% endif %}
 </section>
 
-<section class="card">
-  <h2>{{ t('compare.select') }}</h2>
+<details class="card">
+  <summary><h2>{{ t('compare.select') }}</h2></summary>
   {% if data.category_chips %}
   <div class="cat-filter" data-target=".cmp-pick" role="tablist" aria-label="{{ t('cat.title') }}">
-    <button type="button" class="cat-chip on" data-cat="all">{{ t('filter.all') }}
-      <span class="cat-count">{{ data.all_companies|length }}</span></button>
     {% for cat in data.category_chips %}
     <button type="button" class="cat-chip" data-cat="{{ cat.id if cat.id else 'none' }}">
       {{ cat.name or t('cat.none') }} <span class="cat-count">{{ cat.count }}</span></button>
     {% endfor %}
+    <button type="button" class="cat-chip on" data-cat="all">{{ t('filter.all') }}
+      <span class="cat-count">{{ data.all_companies|length }}</span></button>
   </div>
   {% endif %}
   <form method="post" action="{{ url_for('compare_run') }}" id="compareForm">
@@ -84,7 +84,7 @@
     </div>
   </form>
   <p class="muted">{{ t('compare.ai_opts_help') }}</p>
-</section>
+</details>
 
 {% if not data.companies %}
   <div class="empty"><p>{{ t('compare.empty') }}</p></div>
@@ -249,14 +249,26 @@
 </details>
 
 {% if data.price_bands %}
+{% set band = '%g'|format(data.band_usd if data.band_usd is not none else 5) %}
 <details class="card">
   <summary><h2>{{ t('compare.band_title') }}</h2></summary>
-  <p class="muted">{{ t('compare.band_help') }}</p>
+  <p class="muted">{{ t('compare.band_help', usd=band) }}</p>
+  {% if not saved_view %}
+  <form method="post" action="{{ url_for('compare_set_band') }}" class="threshold-form">
+    {% for n in data.companies %}<input type="hidden" name="company" value="{{ n }}">{% endfor %}
+    <label>{{ t('compare.band_label') }}
+      <input type="number" name="band_usd" min="1" step="1" value="{{ band }}" class="sched-num">
+    </label>
+    <button type="submit" class="btn-secondary btn-sm">{{ t('compare.band_save') }}</button>
+    <span class="muted">{{ t('compare.band_set_help') }}</span>
+  </form>
+  {% endif %}
   {% for b in data.price_bands %}
+  {% set lo = b.lower if (b.lower is defined and b.lower is not none) else (b.upper - 5 if b.upper else 0) %}
   <div class="band {{ 'band-free' if b.is_free else 'band-paid' }}">
     <div class="band-head">
       {%- if b.is_free %}{{ t('word.free') }}
-      {%- elif b.label %}{{ b.label }}{% if b.upper %} <span class="muted band-range">({{ t('compare.band_range', lo=(b.upper - 5), hi=b.upper) }})</span>{% endif %}
+      {%- elif b.label %}{{ b.label }}{% if b.upper %} <span class="muted band-range">({{ t('compare.band_range', lo='%g'|format(lo), hi='%g'|format(b.upper)) }})</span>{% endif %}
       {%- else %}{{ t('word.private') }}{% endif %}
     </div>
     {% for cat in b.categories %}
@@ -286,7 +298,7 @@
 {% if data.feature_analysis %}
 <details class="card">
   <summary><h2>{{ t('compare.feat_title') }}</h2></summary>
-  <p class="muted">{{ t('compare.feat_help') }}</p>
+  <p class="muted">{{ t('compare.feat_help', usd='%g'|format(data.band_usd if data.band_usd is not none else 5)) }}</p>
   {% for fc in data.feature_analysis %}
   <div class="feat-cat">
     <div class="feat-cat-name">{{ fc.category }}</div>

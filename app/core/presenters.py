@@ -56,6 +56,7 @@ _INCLUSION_RE = re.compile(
     r"|includ\w*\s+(all|everything)\b"                # includes all / including everything
     r"|all\b.{0,40}\bfeatures?\b.{0,25}\b(includ\w+|plus)\b"  # All X features included
     r"|^all\b.{0,40}\bfeatures?\b[\s.)\]]*$"          # 'All Cronometer Gold features' (동사 없는 번들)
+    r"|\ball\s+features?\b\s*(of|in|from|across)\b"   # 'All features of AI Ultra $100 tier'
     r"|\b(all|everything)\b.{0,30}\b(previous|prior|lower|preceding)\b"  # all previous tier
     r"|모든\s*기능.{0,12}포함"                         # 모든 기능 … 포함
     r"|포함.{0,12}모든\s*기능"                         # … 모든 기능 포함
@@ -155,6 +156,26 @@ def get_cheap_threshold() -> float:
 
 def set_cheap_threshold(value: float) -> None:
     store.set_setting(CLASSIFY_THRESHOLD_KEY, str(float(value)))
+
+
+BAND_WIDTH_KEY = "classify.band_usd"
+
+
+def get_band_width() -> float:
+    """가격대별/기능별 분석의 가격 묶음 단위(USD). DB 설정 우선, 없으면 env 기본값."""
+    raw = store.get_setting(BAND_WIDTH_KEY)
+    if raw is not None:
+        try:
+            v = float(raw)
+            if v >= 1:
+                return v
+        except (TypeError, ValueError):
+            pass
+    return config.CLASSIFY_BAND_USD
+
+
+def set_band_width(value: float) -> None:
+    store.set_setting(BAND_WIDTH_KEY, str(float(value)))
 
 
 _CONF_RANK = {"low": 0, "medium": 1, "high": 2}
@@ -931,6 +952,7 @@ def compare(names: list[str]) -> dict:
     # AI 유사 기능 통합 매핑(있으면 의미상 같은 기능을 한 그룹으로)
     alias_map = store.get_feature_aliases()
     cheap_usd = get_cheap_threshold()  # '저렴(무료에 준함)' 판정 가격 임계값
+    band_usd = get_band_width()        # 가격대별/기능별 분석의 가격 묶음 단위
 
     def _canon_key(f: str) -> str:
         a = alias_map.get(f)
@@ -1057,11 +1079,14 @@ def compare(names: list[str]) -> dict:
     bands: dict = {}
     for e in best.values():
         eff = e["eff"]
+        lower = None
         if e["is_free"]:
             bkey, order, label, ub = "free", (0, 0.0), None, None
         elif eff is not None:
-            ub = max(5, int(math.ceil(eff / 5.0)) * 5)
-            bkey, order, label = f"b{ub}", (1, float(ub)), f"~${ub}"
+            ub = max(band_usd, math.ceil(eff / band_usd) * band_usd)
+            lower = max(0.0, ub - band_usd)
+            ub_disp = "%g" % ub
+            bkey, order, label = f"b{ub_disp}", (1, float(ub)), f"~${ub_disp}"
         else:
             bkey, order, label, ub = "note", (2, 0.0), e["price_note"] or "문의", None
         b = bands.get(bkey)
@@ -1070,6 +1095,7 @@ def compare(names: list[str]) -> dict:
                 "is_free": e["is_free"] and bkey == "free",
                 "label": label,
                 "upper": ub,
+                "lower": lower,
                 "_order": order,
                 "_cats": {},  # category -> {company -> entry}
             }
@@ -1141,6 +1167,7 @@ def compare(names: list[str]) -> dict:
         "ranking": ranking,
         "editable": editable,
         "cheap_usd": cheap_usd,
+        "band_usd": band_usd,
         "all_companies": all_company_names,
         "category_chips": cat_chips,
         "company_cat": company_cat,
@@ -1259,6 +1286,8 @@ def load_comparison_card(card_id: int) -> dict | None:
     # 범례 표시용 — 저장 카드엔 없을 수 있으니 현재 전역 임계값으로 보강(표시용)
     if data.get("cheap_usd") is None:
         data["cheap_usd"] = get_cheap_threshold()
+    if data.get("band_usd") is None:
+        data["band_usd"] = get_band_width()
     # 선택 목록(체크박스)은 현재 업체 기준으로 갱신해 새 비교 시작이 가능하도록.
     data["all_companies"] = sorted(
         c["name"] for c in store.list_companies(active_only=True)

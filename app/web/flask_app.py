@@ -301,6 +301,19 @@ def compare_set_threshold():
     return redirect(_compare_url(names))
 
 
+@app.route("/compare/set-band", methods=["POST"])
+def compare_set_band():
+    """가격대별/기능별 분석의 가격 묶음 단위($)를 조정(전역 설정, AI/외부호출 아님)."""
+    names = [n for n in request.form.getlist("company") if n]
+    try:
+        value = float((request.form.get("band_usd") or "").strip())
+        if value >= 1:
+            presenters.set_band_width(value)
+    except (TypeError, ValueError):
+        pass
+    return redirect(_compare_url(names))
+
+
 @app.route("/companies")
 def companies_page():
     return render_template(

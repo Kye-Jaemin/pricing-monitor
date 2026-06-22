@@ -58,6 +58,8 @@ SCHEDULE_STALE_DAYS: int = _get_int("SCHEDULE_STALE_DAYS", 7)
 # '저렴(무료에 준함)' 판정 가격 임계값(USD). 이 값 이하면 커머디티 쪽,
 # 초과면 유료(차별화 쪽)로 본다. 웹 UI(설정값)로 덮어쓸 수 있다.
 CLASSIFY_CHEAP_USD: float = float(_get("CLASSIFY_CHEAP_USD", "5"))
+# 가격대별/기능별 분석에서 월가격을 묶는 단위(USD). 웹 UI로 덮어쓸 수 있다.
+CLASSIFY_BAND_USD: float = float(_get("CLASSIFY_BAND_USD", "5"))
 
 # ── US / USD 강제 (8장) ──────────────────────────────────────
 LOCALE: str = _get("LOCALE", "en-US")
