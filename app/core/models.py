@@ -70,6 +70,23 @@ class Tier(BaseModel):
             return s
         return _BILLING_UNIT_SYNONYMS.get(s, "unknown")
 
+    @field_validator("limits", mode="before")
+    @classmethod
+    def _coerce_limits(cls, v):
+        """limits 값은 모두 문자열로 흡수. AI가 watermark=true, minimum_seats=2
+        처럼 bool/숫자로 주는 경우가 있어 그대로 두면 검증이 실패한다."""
+        if not isinstance(v, dict):
+            return {}
+        out: dict[str, str] = {}
+        for key, val in v.items():
+            if val is None:
+                continue
+            if isinstance(val, bool):
+                out[str(key)] = "true" if val else "false"
+            else:
+                out[str(key)] = str(val)
+        return out
+
 
 class PricingSnapshot(BaseModel):
     """한 업체의 한 회차 수집 결과."""
