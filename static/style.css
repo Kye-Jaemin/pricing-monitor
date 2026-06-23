@@ -602,6 +602,11 @@ a.btn-primary:hover { text-decoration: none; }
   background: var(--accent); border: 2px solid #fff; transform: translate(-50%, -50%);
   box-shadow: 0 1px 3px rgba(0,0,0,.25);
 }
+.bundle-pt-icon {
+  position: absolute; top: 50%; width: 20px; height: 20px; border-radius: 5px;
+  transform: translate(-50%, -50%); border: 2px solid #fff; object-fit: cover;
+  box-shadow: 0 1px 4px rgba(0,0,0,.3); background: #fff; cursor: help;
+}
 .bundle-strip-min, .bundle-strip-max { position: absolute; bottom: -16px; font-size: .72rem; color: var(--muted); }
 .bundle-strip-min { left: 0; } .bundle-strip-max { right: 0; }
 .bundle-cats { margin: 8px 0 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }

@@ -823,6 +823,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 "band_map": {},
             }
         anchor = g["anchor"]
+        co_icon = _company_icon(icon_map.get(name), src_map.get(name, []))
         co_prices = []
         co_plans = []
         for p in plans:
@@ -832,7 +833,10 @@ def bundle_view(names: list[str] | None = None) -> dict:
             eff = m_usd if m_usd is not None else a_usd   # 분포·집계는 USD 기준
             if eff is not None:
                 co_prices.append(eff)
-                g["prices"].append(eff)
+                g["prices"].append({
+                    "usd": eff, "company": name,
+                    "plan": p.get("name"), "icon": co_icon,
+                })
             # 연계 카테고리(앵커 제외) 집계 + 조합. 택1(choice) 서비스 표시.
             partner_cats = []
             svcs = []
@@ -904,7 +908,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
             })
         g["companies"].append({
             "name": name,
-            "icon": _company_icon(icon_map.get(name), src_map.get(name, [])),
+            "icon": co_icon,
             "plans": co_plans,
             "price_min": min(co_prices) if co_prices else None,
             "price_max": max(co_prices) if co_prices else None,
@@ -916,11 +920,11 @@ def bundle_view(names: list[str] | None = None) -> dict:
 
     groups = []
     for g in groups_map.values():
-        prices = sorted(g.pop("prices"))
+        prices = sorted(g.pop("prices"), key=lambda x: x["usd"])
         cat_count = g.pop("cat_count")
         combos = g.pop("combos")
-        g["price_min"] = prices[0] if prices else None
-        g["price_max"] = prices[-1] if prices else None
+        g["price_min"] = prices[0]["usd"] if prices else None
+        g["price_max"] = prices[-1]["usd"] if prices else None
         g["price_points"] = prices
         g["plan_total"] = sum(co["plan_count"] for co in g["companies"])
         g["service_categories"] = sorted(
@@ -1014,7 +1018,37 @@ def run_bundle_extraction(names: list[str] | None = None) -> int:
         result = extract.extract_bundles_ai(name, rt, anchor)
         store.set_bundle_analysis(name, json.dumps(result, ensure_ascii=False), sig)
         n += 1
+        # 추출된 포함 서비스를 원가 수집용 구성요소로 자동 등록(같은 번들 분류에)
+        svc_names = {
+            (s.get("name") or "").strip()
+            for p in result.get("plans", [])
+            for s in p.get("services", [])
+        }
+        _auto_register_components(svc_names, exclude_name=name, category_id=c["category_id"])
     return n
+
+
+def _auto_register_components(names, exclude_name: str, category_id) -> None:
+    """추출된 포함 서비스를 '번들 구성요소'(원가 수집용)로 자동 등록한다.
+
+    새로 만든 서비스만 구성요소로 표시 + 같은 번들 분류 + 구글 검색 소스 부여.
+    이미 존재하는 업체는 건드리지 않는다.
+    """
+    from .fetch import build_google_search_url
+
+    existing = {c["name"].lower() for c in store.list_companies(active_only=False)}
+    for nm in names:
+        nm = (nm or "").strip()
+        if not nm or nm.lower() == (exclude_name or "").lower() or nm.lower() in existing:
+            continue
+        store.add_company(nm)
+        store.set_company_component(nm, True)
+        if category_id:
+            store.set_company_category(nm, category_id)
+        store.add_source(
+            company=nm, source_type="google_search", url=build_google_search_url(nm)
+        )
+        existing.add(nm.lower())
 
 
 def _effective_category(feature: str, cat_map: dict[str, str]) -> str:

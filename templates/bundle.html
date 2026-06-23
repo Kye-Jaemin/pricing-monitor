@@ -123,7 +123,11 @@
   {% set gmin = g.price_min %}{% set gspan = (g.price_max - g.price_min) or 1 %}
   <div class="bundle-strip" title="{{ t('bundle.price_dist') }}">
     {% for p in g.price_points %}
-    <span class="bundle-dot" style="left: {{ ((p - gmin) / gspan * 100)|round(1) }}%" title="${{ '%g'|format(p) }}"></span>
+    {% set pv = p.usd if p.usd is defined else p %}
+    {% set plabel = (p.company ~ ' · ' ~ p.plan ~ ' · ') if p.company is defined else '' %}
+    {% set posx = ((pv - gmin) / gspan * 100)|round(1) %}
+    {% if p.icon %}<img class="bundle-pt-icon" src="{{ p.icon }}" style="left: {{ posx }}%" title="{{ plabel }}${{ '%g'|format(pv) }}" alt="" onerror="this.outerHTML='<span class=\'bundle-dot\' style=\'left:{{ posx }}%\'></span>'">
+    {% else %}<span class="bundle-dot" style="left: {{ posx }}%" title="{{ plabel }}${{ '%g'|format(pv) }}"></span>{% endif %}
     {% endfor %}
     <span class="bundle-strip-min">${{ '%g'|format(g.price_min) }}</span>
     <span class="bundle-strip-max">${{ '%g'|format(g.price_max) }}</span>

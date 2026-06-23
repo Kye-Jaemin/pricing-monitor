@@ -515,24 +515,6 @@ def _resolve_source_url(company: str, source_type: str, url: str,
     return None, None, "소스 URL은 필수입니다(공식 홈페이지/기타)."
 
 
-def _ensure_service_company(svc: str) -> None:
-    """개별 서비스를 일반(비번들) 업체로 등록(원가 수집용). 이미 있으면 보존.
-
-    소스가 하나도 없으면 구글 검색 소스를 자동으로 붙여 수집 대상이 되게 한다.
-    """
-    svc = (svc or "").strip()
-    if not svc:
-        return
-    existing = {c["name"].lower() for c in store.list_companies(active_only=False)}
-    if svc.lower() not in existing:
-        store.add_company(svc)
-        store.set_company_component(svc, True)  # 새로 만든 개별 서비스만 구성요소로 표시
-    if not store.list_sources(company=svc):
-        store.add_source(
-            company=svc, source_type="google_search", url=build_google_search_url(svc)
-        )
-
-
 @app.route("/companies/add", methods=["POST"])
 def companies_add():
     """업체 + 첫 소스를 함께 등록.
@@ -571,20 +553,25 @@ def companies_add():
         store.set_company_icon(name, icon)
     if is_bundle:
         store.set_company_bundle(name, True)
-        # 개별 서비스(앵커 + 입력 목록)를 일반 업체로 등록 → 원가 수집 대상
-        svc_raw = (request.form.get("services") or "").replace("\n", ",")
-        seen = set()
-        for sv in ([anchor] + svc_raw.split(",")):
-            sv = sv.strip()
-            if sv and sv.lower() != name.lower() and sv.lower() not in seen:
-                seen.add(sv.lower())
-                _ensure_service_company(sv)
         if anchor:  # 분류 '번들-{앵커}' 자동 생성·배정
             cat_name = f"번들-{anchor}"
             store.add_company_category(cat_name)
-            match = next((c for c in store.list_company_categories() if c["name"] == cat_name), None)
-            if match:
-                store.set_company_category(name, match["id"])
+            cat_id = next((c["id"] for c in store.list_company_categories()
+                           if c["name"] == cat_name), None)
+            if cat_id:
+                store.set_company_category(name, cat_id)
+            # 앵커(대상 서비스)는 원가 수집용 구성요소로 자동 등록(같은 번들 분류).
+            # 나머지 포함 서비스는 번들 분석(추출) 시 자동 등록된다.
+            a = anchor.strip()
+            if a and a.lower() != name.lower() and not any(
+                c["name"].lower() == a.lower() for c in store.list_companies(active_only=False)
+            ):
+                store.add_company(a)
+                store.set_company_component(a, True)
+                if cat_id:
+                    store.set_company_category(a, cat_id)
+                store.add_source(company=a, source_type="google_search",
+                                 url=build_google_search_url(a))
             return redirect(url_for("companies_page"))
     cid = (request.form.get("category_id") or "").strip()
     if cid.isdigit():
