@@ -741,10 +741,12 @@ def _bundle_anchor(cat_name: str | None) -> str | None:
     return None
 
 
-def bundle_view() -> dict:
+def bundle_view(names: list[str] | None = None) -> dict:
     """가격 분석(번들): is_bundle 업체를 분류(예: 번들-Netflix)별로 묶고,
     AI 구조화 추출(bundle_analysis) 결과로 가격 분포·연계 서비스 카테고리·
     조합을 분석한다. 앵커(예: Netflix)는 분류명에서 인식해 연계 집계에서 제외.
+
+    names 가 주어지면 그 번들 업체만 분석(없으면 전체 번들 업체).
     """
     import math
 
@@ -755,7 +757,13 @@ def bundle_view() -> dict:
         src_map.setdefault(s["company_name"], []).append(s["url"])
     band_usd = get_band_width()
 
-    bundle_companies = [c for c in store.list_companies(active_only=True) if c["is_bundle"]]
+    all_bundle = [c for c in store.list_companies(active_only=True) if c["is_bundle"]]
+    all_names = sorted(c["name"] for c in all_bundle)
+    name_set = set(all_names)
+    sel = [n for n in (names or []) if n in name_set]
+    active = set(sel) if sel else name_set
+    bundle_companies = [c for c in all_bundle if c["name"] in active]
+    cat_chips, company_cat = _company_category_picker(all_names)
     groups_map: dict = {}
     needs_analysis: list[str] = []
     for c in bundle_companies:
@@ -892,15 +900,19 @@ def bundle_view() -> dict:
     groups.sort(key=lambda x: (x["id"] is None, (x["name"] or "").lower()))
     return {
         "groups": groups,
-        "count": len(bundle_companies),
+        "count": len(all_bundle),
         "needs_analysis": needs_analysis,
         "access_required": bool(config.ACCESS_CODE),
+        "all_companies": all_names,
+        "category_chips": cat_chips,
+        "company_cat": company_cat,
+        "selected": sorted(active),
     }
 
 
-def save_bundle_card(title: str = "") -> int | None:
-    """현재 번들 분석 결과를 저장 시점 그대로 카드로 저장. 그룹이 없으면 None."""
-    data = bundle_view()
+def save_bundle_card(title: str = "", names: list[str] | None = None) -> int | None:
+    """현재(선택) 번들 분석 결과를 저장 시점 그대로 카드로 저장. 그룹이 없으면 None."""
+    data = bundle_view(names)
     if not data.get("groups"):
         return None
     if not title:
@@ -929,17 +941,21 @@ def load_bundle_card(card_id: int) -> dict | None:
     return {"id": row["id"], "title": row["title"], "created_at": row["created_at"], "data": data}
 
 
-def run_bundle_extraction() -> int:
-    """모든 번들 업체의 대표 출처 원문에서 번들 요금제를 AI로 구조화 추출·저장.
+def run_bundle_extraction(names: list[str] | None = None) -> int:
+    """번들 업체의 대표 출처 원문에서 번들 요금제를 AI로 구조화 추출·저장.
 
+    names 가 주어지면 그 업체만(없으면 전체 번들 업체).
     반환: 추출을 시도한 업체 수. (라우트에서 액세스 코드 확인 후 호출)
     """
     from . import extract
 
     _cl, _n2i, id_to_name = _category_context()
+    want = set(names) if names else None
     n = 0
     for c in store.list_companies(active_only=True):
         if not c["is_bundle"]:
+            continue
+        if want is not None and c["name"] not in want:
             continue
         name = c["name"]
         rt, sig = _primary_raw_text(name)
@@ -1436,7 +1452,10 @@ def compare(names: list[str]) -> dict:
         ]
         feature_analysis.append({"category": c, "bands": bands_out})
 
-    all_company_names = sorted(c["name"] for c in store.list_companies(active_only=True))
+    # 번들 업체는 가격 분석(번들)에서 다루므로 일반 비교 선택에서는 제외
+    all_company_names = sorted(
+        c["name"] for c in store.list_companies(active_only=True) if not c["is_bundle"]
+    )
     cat_chips, company_cat = _company_category_picker(all_company_names)
     return {
         "companies": chosen,
@@ -1463,14 +1482,11 @@ def _company_category_picker(names: list[str]) -> tuple[list[dict], dict[str, in
     """
     cat_list, name_to_id, _id_to_name = _category_context()
     company_cat = {n: name_to_id.get(n) for n in names}
-    chips = [
-        {
-            "id": cat["id"],
-            "name": cat["name"],
-            "count": sum(1 for n in names if company_cat.get(n) == cat["id"]),
-        }
-        for cat in cat_list
-    ]
+    chips = []
+    for cat in cat_list:
+        cnt = sum(1 for n in names if company_cat.get(n) == cat["id"])
+        if cnt:  # 해당 목록에 속한 업체가 있는 분류만 노출(번들 전용 분류 등 제외)
+            chips.append({"id": cat["id"], "name": cat["name"], "count": cnt})
     n_uncat = sum(1 for n in names if not company_cat.get(n))
     if n_uncat:
         chips.append({"id": None, "name": None, "count": n_uncat})
@@ -1572,7 +1588,7 @@ def load_comparison_card(card_id: int) -> dict | None:
         data["band_usd"] = get_band_width()
     # 선택 목록(체크박스)은 현재 업체 기준으로 갱신해 새 비교 시작이 가능하도록.
     data["all_companies"] = sorted(
-        c["name"] for c in store.list_companies(active_only=True)
+        c["name"] for c in store.list_companies(active_only=True) if not c["is_bundle"]
     )
     data["category_chips"], data["company_cat"] = _company_category_picker(
         data["all_companies"]

@@ -115,10 +115,11 @@ def changes():
 
 @app.route("/bundle")
 def bundle_page():
-    """가격 분석(번들): 번들 상품 업체를 분류별로 묶어 분석."""
+    """가격 분석(번들): 번들 상품 업체를 분류별로 묶어 분석(선택 업체만)."""
+    names = [n for n in request.args.getlist("company") if n]
     return render_template(
         "bundle.html",
-        data=presenters.bundle_view(),
+        data=presenters.bundle_view(names or None),
         saved_cards=presenters.saved_bundle_cards(),
         access_required=bool(config.ACCESS_CODE),
         contact=config.ACCESS_CONTACT,
@@ -129,9 +130,10 @@ def bundle_page():
 
 @app.route("/bundle/save", methods=["POST"])
 def bundle_save():
-    """현재 번들 분석을 저장 시점 그대로 카드로 저장."""
+    """현재(선택) 번들 분석을 저장 시점 그대로 카드로 저장."""
     title = (request.form.get("title") or "").strip()
-    card_id = presenters.save_bundle_card(title)
+    names = [n for n in request.form.getlist("company") if n]
+    card_id = presenters.save_bundle_card(title, names or None)
     if card_id is None:
         return redirect(url_for("bundle_page", error="no_data"))
     return redirect(url_for("bundle_page", notice="saved"))
@@ -175,8 +177,9 @@ def bundle_analyze():
     """번들 업체 원문을 AI로 구조화 추출(번들 요금제·포함 서비스). 코드 필요."""
     if config.ACCESS_CODE and (request.form.get("access_code") or "").strip() != config.ACCESS_CODE:
         return redirect(url_for("bundle_page", error="bad_code"))
+    names = [n for n in request.form.getlist("company") if n]
     try:
-        n = presenters.run_bundle_extraction()
+        n = presenters.run_bundle_extraction(names or None)
     except Exception:  # noqa: BLE001
         log.exception("[bundle] AI 번들 추출 실패")
         return redirect(url_for("bundle_page", error="ai_failed"))
