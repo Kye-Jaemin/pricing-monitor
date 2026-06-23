@@ -586,6 +586,11 @@ a.btn-primary:hover { text-decoration: none; }
 .bundle-toggle { display: inline; }
 .bundle-toggle label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
 .bundle-check { flex: 0 0 auto !important; flex-direction: row !important; align-items: center; gap: 6px; }
+/* 업체 추가 폼: 번들 체크 시 앵커 표시 / 분류·우선순위 안내 숨김 */
+#addCompanySection .bundle-only { display: none; }
+#addCompanySection.is-bundle .bundle-only { display: flex; }
+#addCompanySection.is-bundle .non-bundle { display: none; }
+.bundle-hint { font-weight: 400; font-size: .8rem; }
 .bundle-strip {
   position: relative; height: 28px; margin: 8px 0 18px;
   background: linear-gradient(90deg, #ecfdf5, #eff6ff); border: 1px solid var(--line);

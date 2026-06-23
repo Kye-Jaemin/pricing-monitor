@@ -425,11 +425,12 @@ def _norm_type(value: str) -> str:
     return value if value in SOURCE_TYPES else "other"
 
 
-def _resolve_source_url(company: str, source_type: str, url: str):
+def _resolve_source_url(company: str, source_type: str, url: str,
+                        is_bundle: bool = False, anchor: str = ""):
     """소스 URL 을 결정한다. 비어 있으면 종류별로 자동 생성/탐색.
 
     반환: (url, icon, error). url 이 None 이면 추가 불가(error 사유 포함).
-      - google_search: 업체명으로 검색 URL 자동 생성
+      - google_search: 업체명으로 검색 URL 자동 생성(번들이면 번들 전용 검색어)
       - apple / google_play: 스토어에서 앱 자동 탐색(자동 찾기와 동일)
       - web / other: URL 필수
     """
@@ -437,6 +438,9 @@ def _resolve_source_url(company: str, source_type: str, url: str):
     if url:
         return url, None, None
     if source_type == "google_search":
+        if is_bundle:
+            from ..core.fetch import build_bundle_search_url
+            return build_bundle_search_url(company, anchor or None), None, None
         return build_google_search_url(company), None, None
     if source_type == "apple":
         found = discover.find_apple_app(company)
@@ -453,24 +457,43 @@ def _resolve_source_url(company: str, source_type: str, url: str):
 
 @app.route("/companies/add", methods=["POST"])
 def companies_add():
-    """업체 + 첫 소스를 함께 등록. 스토어 종류는 URL 없이 자동 탐색."""
+    """업체 + 첫 소스를 함께 등록.
+
+    번들 상품이면: 주체=업체명, 대상(앵커)=anchor. 소스는 웹/구글 검색만(스토어
+    제외), 구글 검색어는 번들 전용. 앵커가 있으면 분류 '번들-{앵커}'에 자동 배정.
+    """
     name = (request.form.get("name") or "").strip()
     source_type = _norm_type(request.form.get("source_type"))
+    is_bundle = bool(request.form.get("is_bundle"))
+    anchor = (request.form.get("anchor") or "").strip()
     if not name:
         return redirect(url_for("companies_page", error="업체명은 필수입니다."))
 
-    url, icon, error = _resolve_source_url(name, source_type, request.form.get("url"))
+    # 번들은 스토어로 제공되지 않으므로 웹/구글 검색만 허용(스토어 선택 시 웹으로)
+    if is_bundle and source_type in ("apple", "google_play"):
+        source_type = "web"
+
+    url, icon, error = _resolve_source_url(
+        name, source_type, request.form.get("url"), is_bundle=is_bundle, anchor=anchor
+    )
     if error:
         return redirect(url_for("companies_page", error=error))
 
     store.add_source(company=name, source_type=source_type, url=url)
     if icon:
         store.set_company_icon(name, icon)
+    if is_bundle:
+        store.set_company_bundle(name, True)
+        if anchor:  # 분류 '번들-{앵커}' 자동 생성·배정
+            cat_name = f"번들-{anchor}"
+            store.add_company_category(cat_name)
+            match = next((c for c in store.list_company_categories() if c["name"] == cat_name), None)
+            if match:
+                store.set_company_category(name, match["id"])
+            return redirect(url_for("companies_page"))
     cid = (request.form.get("category_id") or "").strip()
     if cid.isdigit():
         store.set_company_category(name, int(cid))
-    if request.form.get("is_bundle"):
-        store.set_company_bundle(name, True)
     return redirect(url_for("companies_page"))
 
 

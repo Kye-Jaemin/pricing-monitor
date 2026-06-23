@@ -35,6 +35,22 @@ def build_google_search_url(company: str) -> str:
     return f"https://www.google.com/search?q={q}&hl=en&gl=us"
 
 
+def build_bundle_search_url(provider: str, anchor: str | None = None) -> str:
+    """번들 제공자(통신사/애그리게이터)의 번들 요금제 검색 URL.
+
+    '{provider} {anchor} bundle plans price and included services' 형태로,
+    묶음 상품·포함 서비스·가격이 스니펫에 잡히게 한다.
+    """
+    from urllib.parse import quote_plus
+
+    target = f" {anchor}" if anchor else ""
+    q = quote_plus(
+        f"{provider}{target} bundle plans price, which services are included, "
+        f"and what each bundle costs per month"
+    )
+    return f"https://www.google.com/search?q={q}&hl=en&gl=us"
+
+
 def _serpapi_get(params: dict) -> dict:
     """SerpAPI search.json 호출 → JSON dict. (호출 1건 = 검색 1건 과금)"""
     import json
