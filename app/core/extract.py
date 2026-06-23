@@ -345,16 +345,21 @@ def extract_bundles_ai(company: str, raw_text: str, anchor: str | None = None) -
         "You extract BUNDLE plans from a provider's page (a carrier or aggregator that "
         "bundles multiple subscription services together, e.g. mobile plan + streaming). "
         + anchor_line +
-        "For EACH bundle plan return: name, provider (who sells the bundle), monthly "
-        "(USD number or null), annual (USD per month or null), price_note (string or "
-        "null), and services = the included services, each as {name, category}. category "
-        "is a short service category such as 'Streaming Video', 'Music', 'Mobile/Telecom', "
+        "For EACH bundle plan return: name, provider (who sells the bundle), currency "
+        "(ISO code of the listed price, e.g. USD, KRW, JPY — infer from ₩/원→KRW, $→USD), "
+        "monthly (number in that currency or null), annual (number per month or null), "
+        "choose (if the bundle lets you PICK some of the listed services, e.g. '택1' / "
+        "'choose 1 of', set how many you pick; otherwise null = all included), "
+        "price_note (string or null), and services = the listed services, each as "
+        "{name, category, choice} where choice=true if it is one of the selectable "
+        "alternatives (part of a 'pick N' set), false if always included. category is a "
+        "short service category such as 'Streaming Video', 'Music', 'Mobile/Telecom', "
         "'Cloud Storage', 'Gaming', 'News', 'Productivity', 'Fitness'. Use ONLY info "
-        "present in the text — do not invent plans, prices, or services. If there are no "
-        "bundles, return an empty list.\n"
-        "Return ONLY JSON: {\"plans\":[{\"name\":...,\"provider\":...,\"monthly\":...,"
-        "\"annual\":...,\"price_note\":...,\"services\":[{\"name\":...,\"category\":...}]}]}. "
-        "No prose, no code fences.\n\n"
+        "present in the text — do not invent plans, prices, or services. Keep prices in "
+        "their ORIGINAL currency (do not convert). If there are no bundles, return [].\n"
+        "Return ONLY JSON: {\"plans\":[{\"name\":...,\"provider\":...,\"currency\":...,"
+        "\"monthly\":...,\"annual\":...,\"choose\":...,\"price_note\":...,\"services\":"
+        "[{\"name\":...,\"category\":...,\"choice\":false}]}]}. No prose, no code fences.\n\n"
         f"PAGE TEXT:\n{text}\n"
     )
     resp = client.messages.create(
@@ -369,20 +374,34 @@ def extract_bundles_ai(company: str, raw_text: str, anchor: str | None = None) -
         raise ExtractError(f"번들 추출 JSON 파싱 실패: {exc}") from exc
     if not isinstance(data, dict):
         raise ExtractError("번들 추출 응답이 객체(JSON object)가 아닙니다.")
+    def _int(v):
+        try:
+            n = int(v)
+            return n if n > 0 else None
+        except (TypeError, ValueError):
+            return None
+
     plans = []
     for p in data.get("plans", []) or []:
         services = []
         for s in (p.get("services") or []):
             nm = str(s.get("name") or "").strip()
             if nm:
-                services.append({"name": nm, "category": str(s.get("category") or "기타").strip()})
+                services.append({
+                    "name": nm,
+                    "category": str(s.get("category") or "기타").strip(),
+                    "choice": bool(s.get("choice")),
+                })
         if not services and not p.get("name"):
             continue
+        cur = str(p.get("currency") or "USD").strip().upper() or "USD"
         plans.append({
             "name": str(p.get("name") or "Bundle"),
             "provider": str(p.get("provider") or company),
+            "currency": cur,
             "monthly": _num(p.get("monthly")),
             "annual": _num(p.get("annual")),
+            "choose": _int(p.get("choose")),
             "price_note": (str(p.get("price_note")).strip() if p.get("price_note") else None),
             "services": services,
         })

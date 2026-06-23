@@ -702,6 +702,33 @@ def _primary_raw_text(name: str) -> tuple[str | None, str]:
     return rt, sig
 
 
+def _to_usd(amount, currency: str):
+    """비-USD 금액을 근사 환율로 USD 환산. USD면 그대로, 환율 없으면 None."""
+    if amount is None:
+        return None
+    cur = (currency or "USD").upper()
+    if cur == "USD":
+        return round(float(amount), 2)
+    rate = config.FX_PER_USD.get(cur)
+    if not rate:
+        return None
+    return round(float(amount) / rate, 2)
+
+
+_CUR_SYMBOL = {"KRW": "₩", "JPY": "¥", "EUR": "€", "GBP": "£", "USD": "$"}
+
+
+def _fmt_money(amount, currency: str) -> str | None:
+    """원 통화 표기. KRW/JPY는 정수+천단위 콤마, 그 외는 기호+값."""
+    if amount is None:
+        return None
+    cur = (currency or "USD").upper()
+    sym = _CUR_SYMBOL.get(cur, cur + " ")
+    if cur in ("KRW", "JPY"):
+        return f"{sym}{int(round(float(amount))):,}"
+    return f"{sym}{float(amount):g}"
+
+
 def _bundle_anchor(cat_name: str | None) -> str | None:
     """분류명에서 앵커 서비스 추출. '번들-Netflix'/'Bundle: Netflix' → 'Netflix'."""
     if not cat_name:
@@ -756,16 +783,25 @@ def bundle_view() -> dict:
         co_prices = []
         co_plans = []
         for p in plans:
-            eff = p.get("monthly") if p.get("monthly") is not None else p.get("annual")
+            cur = (p.get("currency") or "USD").upper()
+            m_usd = _to_usd(p.get("monthly"), cur)
+            a_usd = _to_usd(p.get("annual"), cur)
+            eff = m_usd if m_usd is not None else a_usd   # 분포·집계는 USD 기준
             if eff is not None:
                 co_prices.append(eff)
                 g["prices"].append(eff)
-            # 연계 카테고리(앵커 제외) 집계 + 조합
+            # 연계 카테고리(앵커 제외) 집계 + 조합. 택1(choice) 서비스 표시.
             partner_cats = []
+            svcs = []
             for s in p.get("services", []):
                 sname = (s.get("name") or "")
-                if anchor and anchor.lower() in sname.lower():
-                    continue  # 앵커 자신은 제외
+                is_anchor = bool(anchor and anchor.lower() in sname.lower())
+                svcs.append({
+                    "name": sname, "category": s.get("category") or "기타",
+                    "is_anchor": is_anchor, "choice": bool(s.get("choice")),
+                })
+                if is_anchor:
+                    continue  # 앵커 자신은 연계 집계에서 제외
                 cat = s.get("category") or "기타"
                 g["cat_count"][cat] = g["cat_count"].get(cat, 0) + 1
                 if cat not in partner_cats:
@@ -773,7 +809,17 @@ def bundle_view() -> dict:
             if partner_cats:
                 key = " + ".join(sorted(partner_cats))
                 g["combos"][key] = g["combos"].get(key, 0) + 1
-            co_plans.append(p)
+            co_plans.append({
+                "name": p.get("name"), "provider": p.get("provider"),
+                "currency": cur,
+                "monthly": p.get("monthly"), "annual": p.get("annual"),
+                "monthly_usd": m_usd, "annual_usd": a_usd,
+                "monthly_orig": _fmt_money(p.get("monthly"), cur) if cur != "USD" else None,
+                "annual_orig": _fmt_money(p.get("annual"), cur) if cur != "USD" else None,
+                "choose": p.get("choose"),
+                "price_note": p.get("price_note"),
+                "services": svcs,
+            })
         g["companies"].append({
             "name": name,
             "icon": _company_icon(icon_map.get(name), src_map.get(name, [])),

@@ -61,6 +61,15 @@ CLASSIFY_CHEAP_USD: float = float(_get("CLASSIFY_CHEAP_USD", "5"))
 # 가격대별/기능별 분석에서 월가격을 묶는 단위(USD). 웹 UI로 덮어쓸 수 있다.
 CLASSIFY_BAND_USD: float = float(_get("CLASSIFY_BAND_USD", "5"))
 
+# 번들 분석에서 비-USD(예: 원화)를 USD로 환산할 때 쓰는 환율(1 USD = N 통화).
+# 라이브 환율 API가 없어 근사값. env(KRW_PER_USD 등)로 덮어쓸 수 있다.
+FX_PER_USD: dict[str, float] = {
+    "KRW": float(_get("KRW_PER_USD", "1350")),
+    "JPY": float(_get("JPY_PER_USD", "155")),
+    "EUR": float(_get("EUR_PER_USD", "0.92")),
+    "GBP": float(_get("GBP_PER_USD", "0.79")),
+}
+
 # ── US / USD 강제 (8장) ──────────────────────────────────────
 LOCALE: str = _get("LOCALE", "en-US")
 TIMEZONE_ID: str = _get("TIMEZONE_ID", "America/New_York")

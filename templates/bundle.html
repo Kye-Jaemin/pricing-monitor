@@ -3,6 +3,7 @@
 {% block content %}
 <div class="page-head"><h1>{{ t('bundle.title') }}</h1></div>
 <p class="muted">{{ t('bundle.intro') }}</p>
+<p class="muted">{{ t('bundle.fx_note') }}</p>
 
 {% if error == 'bad_code' %}<div class="alert">{{ t('runs.bad_code', contact=contact) }}</div>{% endif %}
 {% if error == 'ai_failed' %}<div class="alert">{{ t('compare.ai_failed') }}</div>{% endif %}
@@ -84,12 +85,12 @@
         <tbody>
           {% for pl in co.plans %}
           <tr>
-            <td class="tier-name">{{ pl.name }}</td>
+            <td class="tier-name">{{ pl.name }}{% if pl.choose %} <span class="tag tag-choose">{{ t('bundle.choose', n=pl.choose) }}</span>{% endif %}</td>
             <td class="muted nowrap">{{ pl.provider }}</td>
-            <td class="nowrap">{% if pl.monthly is not none %}${{ '%g'|format(pl.monthly) }}{% else %}<span class="muted">—</span>{% endif %}</td>
-            <td class="nowrap">{% if pl.annual is not none %}${{ '%g'|format(pl.annual) }}{% else %}<span class="muted">—</span>{% endif %}</td>
+            <td class="nowrap">{% if pl.monthly_usd is not none %}${{ '%g'|format(pl.monthly_usd) }}{% if pl.monthly_orig %} <span class="muted">({{ pl.monthly_orig }})</span>{% endif %}{% elif pl.monthly_orig %}<span class="muted">{{ pl.monthly_orig }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+            <td class="nowrap">{% if pl.annual_usd is not none %}${{ '%g'|format(pl.annual_usd) }}{% if pl.annual_orig %} <span class="muted">({{ pl.annual_orig }})</span>{% endif %}{% elif pl.annual_orig %}<span class="muted">{{ pl.annual_orig }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
             <td>
-              {%- if pl.services %}{% for s in pl.services %}<span class="bundle-svc{% if g.anchor and g.anchor|lower in s.name|lower %} bundle-svc-anchor{% endif %}"><span class="bundle-item-cat">{{ s.category }}</span>{{ s.name }}</span> {% endfor %}
+              {%- if pl.services %}{% for s in pl.services %}<span class="bundle-svc{% if s.is_anchor %} bundle-svc-anchor{% endif %}{% if s.choice %} bundle-svc-choice{% endif %}"><span class="bundle-item-cat">{{ s.category }}</span>{{ s.name }}{% if s.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}</span> {% endfor %}
               {%- else %}<span class="muted">{{ pl.price_note or '—' }}</span>{% endif %}
             </td>
           </tr>

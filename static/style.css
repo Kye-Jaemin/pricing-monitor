@@ -616,6 +616,12 @@ a.btn-primary:hover { text-decoration: none; }
 .bundle-svc { display: inline-block; margin: 2px 8px 2px 0; font-size: .85rem; white-space: nowrap; }
 .bundle-svc-anchor { font-weight: 700; }
 .bundle-svc-anchor .bundle-item-cat { background: #fae8ff; color: #86198f; }
+.bundle-svc-choice { font-style: italic; }
+.tag-choose { background: #fef3c7; color: #92400e; }
+.choose-mark {
+  display: inline-block; font-size: .66rem; font-weight: 700; color: #92400e;
+  background: #fef3c7; border-radius: 4px; padding: 0 4px; margin-left: 2px;
+}
 .pos-feat { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; margin: 4px 0; background: #fff; }
 .pos-feat > summary { cursor: pointer; font-size: .9rem; }
 .pos-feat > summary:hover { color: var(--accent); }
