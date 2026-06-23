@@ -425,6 +425,19 @@ def _norm_type(value: str) -> str:
     return value if value in SOURCE_TYPES else "other"
 
 
+def _company_bundle_anchor(name: str) -> tuple[bool, str]:
+    """업체가 번들이면 (True, 분류명에서 뽑은 앵커), 아니면 (False, '')."""
+    from ..core.presenters import _bundle_anchor
+
+    row = next((c for c in store.list_companies(active_only=False) if c["name"] == name), None)
+    if not row or not row["is_bundle"]:
+        return False, ""
+    if row["category_id"]:
+        cats = {c["id"]: c["name"] for c in store.list_company_categories()}
+        return True, (_bundle_anchor(cats.get(row["category_id"])) or "")
+    return True, ""
+
+
 def _resolve_source_url(company: str, source_type: str, url: str,
                         is_bundle: bool = False, anchor: str = ""):
     """소스 URL 을 결정한다. 비어 있으면 종류별로 자동 생성/탐색.
@@ -472,6 +485,15 @@ def companies_add():
     # 번들은 스토어로 제공되지 않으므로 웹/구글 검색만 허용(스토어 선택 시 웹으로)
     if is_bundle and source_type in ("apple", "google_play"):
         source_type = "web"
+
+    # 앵커 칸이 비었지만 '번들-X' 분류를 골랐다면 거기서 앵커를 보강(검색어에 포함)
+    if is_bundle and not anchor:
+        cid_sel = (request.form.get("category_id") or "").strip()
+        if cid_sel.isdigit():
+            from ..core.presenters import _bundle_anchor
+            cname = next((c["name"] for c in store.list_company_categories()
+                          if c["id"] == int(cid_sel)), None)
+            anchor = _bundle_anchor(cname) or ""
 
     url, icon, error = _resolve_source_url(
         name, source_type, request.form.get("url"), is_bundle=is_bundle, anchor=anchor
@@ -551,7 +573,14 @@ def sources_add():
     if not company:
         return redirect(url_for("companies_page", error="업체가 필요합니다."))
 
-    url, icon, error = _resolve_source_url(company, source_type, request.form.get("url"))
+    # 번들 업체면 스토어 소스 제외(web 보정) + 구글 검색어에 앵커 포함
+    is_bundle, anchor = _company_bundle_anchor(company)
+    if is_bundle and source_type in ("apple", "google_play"):
+        source_type = "web"
+
+    url, icon, error = _resolve_source_url(
+        company, source_type, request.form.get("url"), is_bundle=is_bundle, anchor=anchor
+    )
     if error:
         return redirect(url_for("companies_page", error=error))
 

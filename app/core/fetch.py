@@ -43,11 +43,16 @@ def build_bundle_search_url(provider: str, anchor: str | None = None) -> str:
     """
     from urllib.parse import quote_plus
 
-    target = f" {anchor}" if anchor else ""
-    q = quote_plus(
-        f"{provider}{target} bundle plans price, which services are included, "
-        f"and what each bundle costs per month"
-    )
+    if anchor:
+        q = quote_plus(
+            f"{provider} bundle plans that include {anchor}: monthly price and "
+            f"which other services are bundled with {anchor}"
+        )
+    else:
+        q = quote_plus(
+            f"{provider} bundle plans price, which services are included, "
+            f"and what each bundle costs per month"
+        )
     return f"https://www.google.com/search?q={q}&hl=en&gl=us"
 
 
