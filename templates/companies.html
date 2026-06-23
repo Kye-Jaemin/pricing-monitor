@@ -127,11 +127,16 @@
       <span class="muted">· {{ t('companies.source_count', n=c.sources|length) }}</span>
       {% if c.category %}<span class="tag tag-cat">{{ c.category }}</span>{% endif %}
       {% if c.is_bundle %}<span class="tag tag-bundle">📦 {{ t('companies.bundle_tag') }}</span>{% endif %}
+      {% if c.is_component %}<span class="tag tag-component">🧩 {{ t('companies.component_tag') }}</span>{% endif %}
     </h2>
     <div class="actions">
       <form class="bundle-toggle" method="post" action="{{ url_for('companies_set_bundle') }}">
         <input type="hidden" name="name" value="{{ c.name }}">
         <label class="muted"><input type="checkbox" name="is_bundle" value="1" {% if c.is_bundle %}checked{% endif %} onchange="this.form.submit()"> 📦 {{ t('companies.field_bundle') }}</label>
+      </form>
+      <form class="bundle-toggle" method="post" action="{{ url_for('companies_set_component') }}">
+        <input type="hidden" name="name" value="{{ c.name }}">
+        <label class="muted"><input type="checkbox" name="is_component" value="1" {% if c.is_component %}checked{% endif %} onchange="this.form.submit()"> 🧩 {{ t('companies.field_component') }}</label>
       </form>
       <form class="cat-pick" method="post" action="{{ url_for('companies_set_category') }}">
         <input type="hidden" name="name" value="{{ c.name }}">

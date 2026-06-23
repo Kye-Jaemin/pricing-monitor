@@ -582,6 +582,7 @@ a.btn-primary:hover { text-decoration: none; }
 
 /* 번들 분석 */
 .tag-bundle { background: #fae8ff; color: #86198f; }
+.tag-component { background: #e0f2fe; color: #075985; }
 .tag-cat { background: #e0e7ff; color: #3730a3; }
 .bundle-toggle { display: inline; }
 .bundle-toggle label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }

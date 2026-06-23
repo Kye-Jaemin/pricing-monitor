@@ -526,6 +526,7 @@ def _ensure_service_company(svc: str) -> None:
     existing = {c["name"].lower() for c in store.list_companies(active_only=False)}
     if svc.lower() not in existing:
         store.add_company(svc)
+        store.set_company_component(svc, True)  # 새로 만든 개별 서비스만 구성요소로 표시
     if not store.list_sources(company=svc):
         store.add_source(
             company=svc, source_type="google_search", url=build_google_search_url(svc)
@@ -597,6 +598,15 @@ def companies_set_bundle():
     name = (request.form.get("name") or "").strip()
     if name:
         store.set_company_bundle(name, bool(request.form.get("is_bundle")))
+    return redirect(request.referrer or url_for("companies_page"))
+
+
+@app.route("/companies/set-component", methods=["POST"])
+def companies_set_component():
+    """업체의 번들 구성요소(원가 수집용) 여부 토글. 일반 비교 목록에서 숨겨진다."""
+    name = (request.form.get("name") or "").strip()
+    if name:
+        store.set_company_component(name, bool(request.form.get("is_component")))
     return redirect(request.referrer or url_for("companies_page"))
 
 

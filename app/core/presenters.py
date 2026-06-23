@@ -660,6 +660,7 @@ def companies_admin() -> dict:
                 "category_id": c["category_id"],
                 "category": id_to_name.get(c["category_id"]),
                 "is_bundle": bool(c["is_bundle"]),
+                "is_component": bool(c["is_component"]),
                 "sources": [
                     {
                         "id": s["id"],
@@ -1500,9 +1501,10 @@ def compare(names: list[str]) -> dict:
         ]
         feature_analysis.append({"category": c, "bands": bands_out})
 
-    # 번들 업체는 가격 분석(번들)에서 다루므로 일반 비교 선택에서는 제외
+    # 번들 업체·번들 구성요소(원가 수집용)는 일반 비교 선택에서 제외
     all_company_names = sorted(
-        c["name"] for c in store.list_companies(active_only=True) if not c["is_bundle"]
+        c["name"] for c in store.list_companies(active_only=True)
+        if not c["is_bundle"] and not c["is_component"]
     )
     cat_chips, company_cat = _company_category_picker(all_company_names)
     return {
@@ -1636,7 +1638,8 @@ def load_comparison_card(card_id: int) -> dict | None:
         data["band_usd"] = get_band_width()
     # 선택 목록(체크박스)은 현재 업체 기준으로 갱신해 새 비교 시작이 가능하도록.
     data["all_companies"] = sorted(
-        c["name"] for c in store.list_companies(active_only=True) if not c["is_bundle"]
+        c["name"] for c in store.list_companies(active_only=True)
+        if not c["is_bundle"] and not c["is_component"]
     )
     data["category_chips"], data["company_cat"] = _company_category_picker(
         data["all_companies"]
