@@ -119,11 +119,55 @@ def bundle_page():
     return render_template(
         "bundle.html",
         data=presenters.bundle_view(),
+        saved_cards=presenters.saved_bundle_cards(),
         access_required=bool(config.ACCESS_CODE),
         contact=config.ACCESS_CONTACT,
         error=request.args.get("error"),
         notice=request.args.get("notice"),
     )
+
+
+@app.route("/bundle/save", methods=["POST"])
+def bundle_save():
+    """현재 번들 분석을 저장 시점 그대로 카드로 저장."""
+    title = (request.form.get("title") or "").strip()
+    card_id = presenters.save_bundle_card(title)
+    if card_id is None:
+        return redirect(url_for("bundle_page", error="no_data"))
+    return redirect(url_for("bundle_page", notice="saved"))
+
+
+@app.route("/bundle/card/<int:card_id>")
+def bundle_card(card_id: int):
+    """저장된 번들 분석 카드를 고정 스냅샷 그대로 표시."""
+    card = presenters.load_bundle_card(card_id)
+    if card is None:
+        return redirect(url_for("bundle_page"))
+    return render_template(
+        "bundle.html",
+        data=card["data"],
+        saved_cards=presenters.saved_bundle_cards(),
+        saved_view=True,
+        card=card,
+        access_required=bool(config.ACCESS_CODE),
+        contact=config.ACCESS_CONTACT,
+        error=request.args.get("error"),
+        notice=request.args.get("notice"),
+    )
+
+
+@app.route("/bundle/card/<int:card_id>/delete", methods=["POST"])
+def bundle_card_delete(card_id: int):
+    store.delete_bundle_card(card_id)
+    return redirect(url_for("bundle_page"))
+
+
+@app.route("/bundle/card/<int:card_id>/rename", methods=["POST"])
+def bundle_card_rename(card_id: int):
+    title = (request.form.get("title") or "").strip()
+    if title:
+        store.rename_bundle_card(card_id, title)
+    return redirect(request.referrer or url_for("bundle_page"))
 
 
 @app.route("/bundle/analyze", methods=["POST"])

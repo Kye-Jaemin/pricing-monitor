@@ -7,10 +7,51 @@
 
 {% if error == 'bad_code' %}<div class="alert">{{ t('runs.bad_code', contact=contact) }}</div>{% endif %}
 {% if error == 'ai_failed' %}<div class="alert">{{ t('compare.ai_failed') }}</div>{% endif %}
+{% if error == 'no_data' %}<div class="alert">{{ t('bundle.no_data') }}</div>{% endif %}
 {% if notice == 'analyzed' %}<div class="notice">{{ t('bundle.analyzed_notice') }}</div>{% endif %}
 {% if notice == 'no_raw' %}<div class="notice">{{ t('bundle.no_raw') }}</div>{% endif %}
+{% if notice == 'saved' %}<div class="notice">{{ t('bundle.saved_notice') }}</div>{% endif %}
 
-{% if data.count %}
+{% if saved_view %}
+<div class="notice saved-badge">
+  <span>📌 {{ t('compare.saved_badge', at=card.created_at) }}</span>
+  <a href="{{ url_for('bundle_page') }}">{{ t('bundle.new_analysis') }}</a>
+</div>
+{% endif %}
+
+<section class="card">
+  <h2>{{ t('bundle.saved_title') }}</h2>
+  {% if saved_cards %}
+  <div class="saved-grid">
+    {% for c in saved_cards %}
+    <div class="saved-card{% if saved_view and c.id == card.id %} current{% endif %}">
+      <a class="saved-card-title" href="{{ url_for('bundle_card', card_id=c.id) }}">{{ c.title }}</a>
+      <details class="rename-wrap">
+        <summary>✎ {{ t('compare.rename_card') }}</summary>
+        <form method="post" action="{{ url_for('bundle_card_rename', card_id=c.id) }}" class="rename-form">
+          <input type="text" name="title" value="{{ c.title }}" class="rename-input" required>
+          <button type="submit" class="btn-secondary btn-sm">{{ t('compare.save') }}</button>
+        </form>
+      </details>
+      <div class="saved-card-foot">
+        <span class="muted">{{ c.created_at }}</span>
+        <span class="saved-card-actions">
+          <a class="btn-secondary btn-sm" href="{{ url_for('bundle_card', card_id=c.id) }}">{{ t('compare.open_card') }}</a>
+          <form method="post" action="{{ url_for('bundle_card_delete', card_id=c.id) }}"
+                onsubmit="return confirm('{{ t('compare.confirm_delete_card') }}')">
+            <button type="submit" class="btn-danger btn-sm">{{ t('compare.delete_card') }}</button>
+          </form>
+        </span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted">{{ t('bundle.saved_empty') }}</p>
+  {% endif %}
+</section>
+
+{% if data.count and not saved_view %}
 <section class="card">
   <form method="post" action="{{ url_for('bundle_analyze') }}" class="run-form">
     {% if access_required %}<input type="password" name="access_code" class="access-input" placeholder="{{ t('runs.access_label') }}" autocomplete="off">{% endif %}
@@ -18,6 +59,19 @@
     {% if data.needs_analysis %}<span class="badge badge-low">{{ t('bundle.needs_analysis', n=data.needs_analysis|length) }}</span>{% endif %}
   </form>
   <p class="muted">{{ t('bundle.analyze_help') }}</p>
+</section>
+{% endif %}
+
+{% if data.groups and not saved_view %}
+<section class="card">
+  <div class="card-head">
+    <h2>{{ t('bundle.save_card') }}</h2>
+    <form method="post" action="{{ url_for('bundle_save') }}" class="run-form">
+      <input type="text" name="title" class="save-title" placeholder="{{ t('bundle.save_ph') }}" autocomplete="off">
+      <button type="submit" class="btn-primary">💾 {{ t('bundle.save_card') }}</button>
+    </form>
+  </div>
+  <p class="muted">{{ t('bundle.save_help') }}</p>
 </section>
 {% endif %}
 
@@ -63,6 +117,23 @@
     <span class="muted">{{ t('bundle.combos_title') }}:</span>
     {% for cb in g.combos %}
     <span class="chip">{{ cb.cats }} <span class="cat-count">{{ cb.count }}</span></span>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if g.bands %}
+  <div class="bundle-bands">
+    <div class="bundle-bands-title">{{ t('bundle.bands_title') }}</div>
+    {% for b in g.bands %}
+    <div class="band band-paid">
+      <div class="band-head">{{ b.label }} <span class="band-range muted">({{ t('bundle.band_range', lo='%g'|format(b.lower), hi='%g'|format(b.upper)) }})</span>
+        <span class="muted">· {{ t('bundle.plan_count', n=b.plan_count) }}</span></div>
+      <div class="band-svc-list">
+        {% for s in b.services %}
+        <span class="bundle-svc{% if s.is_anchor %} bundle-svc-anchor{% endif %}{% if s.choice %} bundle-svc-choice{% endif %}"><span class="bundle-item-cat">{{ s.category }}</span>{{ s.name }}{% if s.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}</span>
+        {% endfor %}
+      </div>
+    </div>
     {% endfor %}
   </div>
   {% endif %}

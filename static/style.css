@@ -622,6 +622,9 @@ a.btn-primary:hover { text-decoration: none; }
   display: inline-block; font-size: .66rem; font-weight: 700; color: #92400e;
   background: #fef3c7; border-radius: 4px; padding: 0 4px; margin-left: 2px;
 }
+.bundle-bands { margin: 8px 0 12px; }
+.bundle-bands-title { font-weight: 600; font-size: .9rem; margin-bottom: 6px; }
+.band-svc-list { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 4px; }
 .pos-feat { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; margin: 4px 0; background: #fff; }
 .pos-feat > summary { cursor: pointer; font-size: .9rem; }
 .pos-feat > summary:hover { color: var(--accent); }

@@ -122,6 +122,13 @@ CREATE TABLE IF NOT EXISTS comparison_cards (
     created_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
 );
 
+CREATE TABLE IF NOT EXISTS bundle_cards (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    title        TEXT NOT NULL,
+    payload_json TEXT NOT NULL,   -- presenters.bundle_view() 결과 스냅샷(저장 시점 고정)
+    created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+);
+
 CREATE TABLE IF NOT EXISTS feature_aliases (
     variant    TEXT PRIMARY KEY,   -- 원본 기능 문자열
     canonical  TEXT NOT NULL       -- AI가 묶은 대표(통합) 기능명
@@ -635,6 +642,43 @@ def rename_comparison_card(card_id: int, title: str) -> None:
         conn.execute(
             "UPDATE comparison_cards SET title=? WHERE id=?", (title, card_id)
         )
+
+
+# ── bundle_cards (저장된 번들 분석 카드) ──────────────────────
+def save_bundle_card(title: str, payload_json: str) -> int:
+    with connect() as conn:
+        cur = conn.execute(
+            "INSERT INTO bundle_cards (title, payload_json) VALUES (?, ?)",
+            (title, payload_json),
+        )
+        return int(cur.lastrowid)
+
+
+def list_bundle_cards() -> list[sqlite3.Row]:
+    with connect() as conn:
+        return conn.execute(
+            "SELECT id, title, created_at FROM bundle_cards ORDER BY id DESC"
+        ).fetchall()
+
+
+def get_bundle_card(card_id: int) -> Optional[sqlite3.Row]:
+    with connect() as conn:
+        return conn.execute(
+            "SELECT * FROM bundle_cards WHERE id=?", (card_id,)
+        ).fetchone()
+
+
+def delete_bundle_card(card_id: int) -> None:
+    with connect() as conn:
+        conn.execute("DELETE FROM bundle_cards WHERE id=?", (card_id,))
+
+
+def rename_bundle_card(card_id: int, title: str) -> None:
+    title = (title or "").strip()
+    if not title:
+        return
+    with connect() as conn:
+        conn.execute("UPDATE bundle_cards SET title=? WHERE id=?", (title, card_id))
 
 
 # ── feature_canonical (기능→canonical id 매핑) ────────────────

@@ -746,11 +746,14 @@ def bundle_view() -> dict:
     AI 구조화 추출(bundle_analysis) 결과로 가격 분포·연계 서비스 카테고리·
     조합을 분석한다. 앵커(예: Netflix)는 분류명에서 인식해 연계 집계에서 제외.
     """
+    import math
+
     _cat_list, _name_to_id, id_to_name = _category_context()
     icon_map = {c["name"]: c["icon_url"] for c in store.list_companies(active_only=False)}
     src_map: dict[str, list[str]] = {}
     for s in store.list_sources(active_only=True):
         src_map.setdefault(s["company_name"], []).append(s["url"])
+    band_usd = get_band_width()
 
     bundle_companies = [c for c in store.list_companies(active_only=True) if c["is_bundle"]]
     groups_map: dict = {}
@@ -778,6 +781,7 @@ def bundle_view() -> dict:
                 "id": cid, "name": id_to_name.get(cid),
                 "anchor": _bundle_anchor(id_to_name.get(cid)),
                 "companies": [], "prices": [], "cat_count": {}, "combos": {},
+                "band_map": {},
             }
         anchor = g["anchor"]
         co_prices = []
@@ -809,6 +813,27 @@ def bundle_view() -> dict:
             if partner_cats:
                 key = " + ".join(sorted(partner_cats))
                 g["combos"][key] = g["combos"].get(key, 0) + 1
+            # 가격대(밴드)별 포함 서비스 집계
+            if eff is not None:
+                ub = max(band_usd, math.ceil(eff / band_usd) * band_usd)
+                bkey = round(ub, 2)
+                b = g["band_map"].get(bkey)
+                if b is None:
+                    b = g["band_map"][bkey] = {
+                        "upper": ub, "lower": max(0.0, ub - band_usd),
+                        "svc": {}, "plans": [],
+                    }
+                b["plans"].append({
+                    "company": name, "name": p.get("name"),
+                    "monthly_usd": m_usd, "monthly_orig": (_fmt_money(p.get("monthly"), cur) if cur != "USD" else None),
+                })
+                for sv in svcs:
+                    e = b["svc"].get(sv["name"])
+                    if e is None:
+                        b["svc"][sv["name"]] = dict(sv)
+                    else:
+                        e["is_anchor"] = e["is_anchor"] or sv["is_anchor"]
+                        e["choice"] = e["choice"] or sv["choice"]
             co_plans.append({
                 "name": p.get("name"), "provider": p.get("provider"),
                 "currency": cur,
@@ -849,6 +874,20 @@ def bundle_view() -> dict:
             ({"cats": k, "count": v} for k, v in combos.items()),
             key=lambda x: -x["count"],
         )[:6]
+        # 가격대(밴드)별 포함 서비스 — 카테고리 가중치순 정렬
+        band_map = g.pop("band_map")
+        g["bands"] = []
+        for b in sorted(band_map.values(), key=lambda x: x["lower"]):
+            svcs = sorted(
+                b["svc"].values(),
+                key=lambda s: (not s["is_anchor"], s["choice"], s["name"].lower()),
+            )
+            g["bands"].append({
+                "label": "~$%g" % b["upper"],
+                "lower": b["lower"], "upper": b["upper"],
+                "plan_count": len(b["plans"]),
+                "services": svcs,
+            })
         groups.append(g)
     groups.sort(key=lambda x: (x["id"] is None, (x["name"] or "").lower()))
     return {
@@ -857,6 +896,37 @@ def bundle_view() -> dict:
         "needs_analysis": needs_analysis,
         "access_required": bool(config.ACCESS_CODE),
     }
+
+
+def save_bundle_card(title: str = "") -> int | None:
+    """현재 번들 분석 결과를 저장 시점 그대로 카드로 저장. 그룹이 없으면 None."""
+    data = bundle_view()
+    if not data.get("groups"):
+        return None
+    if not title:
+        names = [g["name"] or "미분류" for g in data["groups"]]
+        title = " · ".join(names[:3]) or "번들 분석"
+    return store.save_bundle_card(title, json.dumps(data, ensure_ascii=False))
+
+
+def saved_bundle_cards() -> list[dict]:
+    return [
+        {"id": r["id"], "title": r["title"], "created_at": r["created_at"]}
+        for r in store.list_bundle_cards()
+    ]
+
+
+def load_bundle_card(card_id: int) -> dict | None:
+    row = store.get_bundle_card(card_id)
+    if row is None:
+        return None
+    try:
+        data = json.loads(row["payload_json"])
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    return {"id": row["id"], "title": row["title"], "created_at": row["created_at"], "data": data}
 
 
 def run_bundle_extraction() -> int:
