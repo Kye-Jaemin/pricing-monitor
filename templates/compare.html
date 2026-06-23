@@ -147,6 +147,12 @@
       <input type="text" id="posFind" placeholder="{{ t('compare.pos_find_ph') }}" autocomplete="off">
     </label>
     <div id="posFindResult" class="pos-finder-result"></div>
+    <div class="pos-find-ai">
+      <button type="button" id="posAiBtn" class="btn-secondary btn-sm">🤖 {{ t('compare.pos_find_ai') }}</button>
+      {% if access_required %}<input type="password" id="posAiCode" class="access-input" placeholder="{{ t('runs.access_label') }}" autocomplete="off">{% endif %}
+      <span class="muted">{{ t('compare.pos_find_ai_help') }}</span>
+      <div id="posAiResult" class="pos-finder-result"></div>
+    </div>
   </div>
 
   <div class="pos-list">
@@ -543,6 +549,14 @@
       differentiated: {{ t('compare.class_differentiated') | tojson }}
     };
     var FIND_NONE = {{ t('compare.pos_find_none') | tojson }};
+    var POS_FORMULA = {{ t('compare.pos_formula') | tojson }};
+    var POS_LEAN = {{ t('compare.pos_lean') | tojson }};
+    var POS_AI_RUNNING = {{ t('compare.pos_find_ai_running') | tojson }};
+    var POS_AI_NONE = {{ t('compare.pos_find_ai_none') | tojson }};
+    var POS_AI_ERR = {{ t('compare.ai_failed') | tojson }};
+    var POS_AI_BADCODE = {{ t('runs.bad_code', contact=contact) | tojson }};
+    var POS_COMPANIES = {{ data.companies | tojson }};
+    var POS_FIND_URL = {{ url_for('compare_find_feature') | tojson }};
 
     // 점 위에 마우스 올리면 축까지 점선 가이드를 그려 좌표를 읽기 쉽게
     var posCrosshair = {
@@ -670,11 +684,17 @@
       var priceScore = price <= cheapUsd ? 1 : Math.max(0, cheapUsd / price);
       return Math.max(0, Math.min(1, 0.6 * penScore + 0.4 * priceScore));
     }
+    function fmt(s, o) { return s.replace(/\{(\w+)\}/g, function (_, k) { return o[k] != null ? o[k] : ''; }); }
     function gaugeHTML(p) {
-      var idx = commodityIndex(p);
+      var penScore = Math.max(0, Math.min(1, p.penetration));
+      var price = p.unlock_price || 0;
+      var priceScore = price <= cheapUsd ? 1 : Math.max(0, cheapUsd / price);
+      var idx = Math.max(0, Math.min(1, 0.6 * penScore + 0.4 * priceScore));
       var pct = Math.round(idx * 100);
       var lean = idx >= 0.6 ? KLABEL.commodity : (idx <= 0.34 ? KLABEL.differentiated : KLABEL.standard);
       var leanCls = idx >= 0.6 ? 'commodity' : (idx <= 0.34 ? 'differentiated' : 'standard');
+      var formula = fmt(POS_FORMULA, { idx: pct, pen: Math.round(penScore * 100), price: Math.round(priceScore * 100) });
+      var verdict = fmt(POS_LEAN, { label: '<strong class="badge-' + leanCls + '" style="padding:1px 6px;border-radius:6px">' + lean + '</strong>' });
       return '<div class="pf-item">'
         + '<div class="pf-head"><span class="feat-badge badge-' + p.label + '">' + (KLABEL[p.label] || p.label) + '</span> '
         + '<strong>' + p.feature + '</strong> '
@@ -682,7 +702,8 @@
         + '<div class="pf-gauge"><span class="pf-axis pf-axis-l">' + KLABEL.differentiated + '</span>'
         + '<span class="pf-track"><span class="pf-marker" style="left:' + pct + '%"></span></span>'
         + '<span class="pf-axis pf-axis-r">' + KLABEL.commodity + '</span></div>'
-        + '<div class="pf-verdict">→ <strong class="badge-' + leanCls + '" style="padding:1px 6px;border-radius:6px">' + lean + '</strong> 쪽에 가까움 <span class="muted">(커머디티 지수 ' + pct + '%)</span></div>'
+        + '<div class="pf-verdict">' + verdict + '</div>'
+        + '<div class="pf-formula muted">' + formula + '</div>'
         + '</div>';
     }
     var posFind = document.getElementById('posFind');
@@ -695,6 +716,51 @@
         posFindResult.innerHTML = hits.length
           ? hits.map(gaugeHTML).join('')
           : '<p class="muted">' + FIND_NONE + '</p>';
+      });
+    }
+
+    // AI 유사 기능 검색 → 카테고리별 표
+    var posAiBtn = document.getElementById('posAiBtn');
+    var posAiResult = document.getElementById('posAiResult');
+    function aiTableHTML(g) {
+      var rows = g.features.map(function (p) {
+        var penScore = Math.max(0, Math.min(1, p.penetration));
+        var price = p.unlock_price || 0;
+        var priceScore = price <= cheapUsd ? 1 : Math.max(0, cheapUsd / price);
+        var pct = Math.round(Math.max(0, Math.min(1, 0.6 * penScore + 0.4 * priceScore)) * 100);
+        return '<tr><td>' + p.feature + '</td>'
+          + '<td><span class="feat-badge badge-' + p.label + '">' + (KLABEL[p.label] || p.label) + '</span></td>'
+          + '<td class="nowrap">' + p.providers + '/' + p.total + '</td>'
+          + '<td class="nowrap">$' + p.unlock_price + '</td>'
+          + '<td><span class="pf-track pf-track-sm"><span class="pf-marker" style="left:' + pct + '%"></span></span> ' + pct + '%</td></tr>';
+      }).join('');
+      return '<div class="pf-group"><div class="feat-cat-name">' + g.category + '</div>'
+        + '<table class="log-table pf-table"><thead><tr><th>' + {{ t('compare.feature') | tojson }}
+        + '</th><th>' + KLABEL.commodity + '/' + KLABEL.differentiated
+        + '</th><th>' + {{ t('compare.pos_providers_short') | tojson }} + '</th><th>$/mo</th><th>' + {{ t('compare.pos_index') | tojson }} + '</th></tr></thead><tbody>'
+        + rows + '</tbody></table></div>';
+    }
+    if (posAiBtn && posAiResult) {
+      posAiBtn.addEventListener('click', function () {
+        var q = (posFind ? posFind.value.trim() : '');
+        if (!q) { posFind && posFind.focus(); return; }
+        var codeEl = document.getElementById('posAiCode');
+        var body = new URLSearchParams();
+        body.append('q', q);
+        POS_COMPANIES.forEach(function (n) { body.append('company', n); });
+        if (codeEl) body.append('access_code', codeEl.value);
+        posAiResult.innerHTML = '<p class="muted">' + POS_AI_RUNNING + '</p>';
+        posAiBtn.disabled = true;
+        fetch(POS_FIND_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            posAiBtn.disabled = false;
+            if (d.error === 'bad_code') { posAiResult.innerHTML = '<p class="alert">' + POS_AI_BADCODE + '</p>'; return; }
+            if (d.error) { posAiResult.innerHTML = '<p class="alert">' + POS_AI_ERR + '</p>'; return; }
+            var gs = d.groups || [];
+            posAiResult.innerHTML = gs.length ? gs.map(aiTableHTML).join('') : '<p class="muted">' + POS_AI_NONE + '</p>';
+          })
+          .catch(function () { posAiBtn.disabled = false; posAiResult.innerHTML = '<p class="alert">' + POS_AI_ERR + '</p>'; });
       });
     }
   }

@@ -268,6 +268,54 @@ def dedupe_features_ai(features: list[str]) -> dict:
     return result
 
 
+def find_similar_features_ai(query: str, candidates: list[str]) -> dict:
+    """주어진 후보 기능 목록에서 query 와 의미상 가장 유사한 기능들을 골라
+    카테고리별로 묶어 돌려준다.
+
+    반환: {"groups": [{"category": str, "features": [<후보에 있던 이름 그대로>]}]}
+    후보에 없는 이름은 만들지 않는다(환각 방지).
+    """
+    if not config.ANTHROPIC_API_KEY:
+        raise ExtractError("ANTHROPIC_API_KEY 가 설정되지 않았습니다 (.env 확인).")
+    if not query or not candidates:
+        return {"groups": []}
+
+    from anthropic import Anthropic
+
+    client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
+    payload = json.dumps({"query": query, "features": candidates}, ensure_ascii=False)
+    prompt = (
+        "From a fixed FEATURES list, find the ones semantically similar or related to "
+        "QUERY (same capability, or adjacent/sibling capability). Group the picked "
+        "features under short category names. Order groups from most to least relevant. "
+        "Use ONLY feature strings that appear VERBATIM in FEATURES (do not invent or "
+        "rephrase). Pick at most ~15 features total; if nothing is related, return empty "
+        "groups. Match the dominant language of the features for category names.\n"
+        "Return ONLY JSON: {\"groups\":[{\"category\":\"...\",\"features\":[\"...\"]}]}. "
+        "No prose, no code fences.\n\n"
+        f"INPUT:\n{payload}\n"
+    )
+    resp = client.messages.create(
+        model=config.ANTHROPIC_MODEL,
+        max_tokens=4096,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    raw = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
+    try:
+        data = _loads_loose(raw)
+    except json.JSONDecodeError as exc:
+        raise ExtractError(f"유사 기능 검색 JSON 파싱 실패: {exc}") from exc
+    if not isinstance(data, dict):
+        raise ExtractError("유사 기능 검색 응답이 객체(JSON object)가 아닙니다.")
+    allowed = set(candidates)
+    groups = []
+    for g in data.get("groups", []) or []:
+        feats = [str(f) for f in (g.get("features") or []) if str(f) in allowed]
+        if feats:
+            groups.append({"category": str(g.get("category") or "기타"), "features": feats})
+    return {"groups": groups}
+
+
 def analyze_pricing_ai(company: str, groups: list[dict]) -> list[dict]:
     """가격대별 '처음 풀리는 기능'(결정적 증분)을 AI가 분석해 테마·요약을 붙인다.
 

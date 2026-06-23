@@ -323,6 +323,39 @@ def compare_set_band():
     return redirect(_compare_url(names))
 
 
+@app.route("/compare/find-feature", methods=["POST"])
+def compare_find_feature():
+    """입력한 기능과 유사한 기능들을 AI가 골라 카테고리별로 묶어 반환(JSON).
+
+    정확히 일치하는 기능이 없을 때 클라이언트가 호출. 분석된 기능 집합 안에서만
+    고르므로 각 기능의 보급률·해금가·분류 지표를 그대로 붙여 돌려준다.
+    """
+    names = [n for n in request.form.getlist("company") if n]
+    query = (request.form.get("q") or "").strip()
+    if config.ACCESS_CODE and (request.form.get("access_code") or "").strip() != config.ACCESS_CODE:
+        return jsonify({"error": "bad_code"})
+    if not query or not names:
+        return jsonify({"groups": []})
+
+    from ..core import extract
+
+    data = presenters.compare(names)
+    pos = data.get("feature_positioning", [])
+    by_name = {p["feature"]: p for p in pos}
+    try:
+        result = extract.find_similar_features_ai(query, list(by_name.keys()))
+    except Exception:  # noqa: BLE001
+        log.exception("[compare] AI 유사 기능 검색 실패")
+        return jsonify({"error": "ai_failed"})
+
+    groups = []
+    for g in result.get("groups", []):
+        feats = [by_name[f] for f in g.get("features", []) if f in by_name]
+        if feats:
+            groups.append({"category": g.get("category") or "기타", "features": feats})
+    return jsonify({"groups": groups})
+
+
 @app.route("/companies")
 def companies_page():
     return render_template(

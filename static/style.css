@@ -572,6 +572,13 @@ a.btn-primary:hover { text-decoration: none; }
   box-shadow: 0 1px 4px rgba(0,0,0,.3); transition: left .4s cubic-bezier(.22,.61,.36,1);
 }
 .pf-verdict { font-size: .85rem; margin-top: 6px; }
+.pf-formula { font-size: .78rem; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.pos-find-ai { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pos-find-ai .access-input { width: 130px; }
+.pos-find-ai #posAiResult { flex-basis: 100%; margin-top: 6px; }
+.pf-group { margin: 10px 0; }
+.pf-table th, .pf-table td { padding: 6px 8px; font-size: .84rem; vertical-align: middle; }
+.pf-track-sm { display: inline-block; width: 70px; height: 8px; vertical-align: middle; }
 .pos-feat { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; margin: 4px 0; background: #fff; }
 .pos-feat > summary { cursor: pointer; font-size: .9rem; }
 .pos-feat > summary:hover { color: var(--accent); }
