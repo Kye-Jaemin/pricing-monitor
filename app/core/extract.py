@@ -316,6 +316,79 @@ def find_similar_features_ai(query: str, candidates: list[str]) -> dict:
     return {"groups": groups}
 
 
+def extract_bundles_ai(company: str, raw_text: str, anchor: str | None = None) -> dict:
+    """번들 제공자(통신사/애그리게이터) 페이지 원문에서 번들 요금제를 구조화 추출.
+
+    반환: {"anchor": str, "plans": [{name, provider, monthly, annual, price_note,
+            services: [{name, category}]}]}
+    텍스트에 있는 내용만 사용(환각 방지). 가격은 USD 숫자 또는 null.
+    """
+    if not config.ANTHROPIC_API_KEY:
+        raise ExtractError("ANTHROPIC_API_KEY 가 설정되지 않았습니다 (.env 확인).")
+    if not raw_text:
+        return {"anchor": anchor or "", "plans": []}
+
+    from anthropic import Anthropic
+
+    def _num(v):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
+    text = raw_text[:18000]
+    anchor_line = (
+        f"Focus on bundle plans that include '{anchor}'. " if anchor else ""
+    )
+    prompt = (
+        "You extract BUNDLE plans from a provider's page (a carrier or aggregator that "
+        "bundles multiple subscription services together, e.g. mobile plan + streaming). "
+        + anchor_line +
+        "For EACH bundle plan return: name, provider (who sells the bundle), monthly "
+        "(USD number or null), annual (USD per month or null), price_note (string or "
+        "null), and services = the included services, each as {name, category}. category "
+        "is a short service category such as 'Streaming Video', 'Music', 'Mobile/Telecom', "
+        "'Cloud Storage', 'Gaming', 'News', 'Productivity', 'Fitness'. Use ONLY info "
+        "present in the text — do not invent plans, prices, or services. If there are no "
+        "bundles, return an empty list.\n"
+        "Return ONLY JSON: {\"plans\":[{\"name\":...,\"provider\":...,\"monthly\":...,"
+        "\"annual\":...,\"price_note\":...,\"services\":[{\"name\":...,\"category\":...}]}]}. "
+        "No prose, no code fences.\n\n"
+        f"PAGE TEXT:\n{text}\n"
+    )
+    resp = client.messages.create(
+        model=config.ANTHROPIC_MODEL,
+        max_tokens=8192,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    raw = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
+    try:
+        data = _loads_loose(raw)
+    except json.JSONDecodeError as exc:
+        raise ExtractError(f"번들 추출 JSON 파싱 실패: {exc}") from exc
+    if not isinstance(data, dict):
+        raise ExtractError("번들 추출 응답이 객체(JSON object)가 아닙니다.")
+    plans = []
+    for p in data.get("plans", []) or []:
+        services = []
+        for s in (p.get("services") or []):
+            nm = str(s.get("name") or "").strip()
+            if nm:
+                services.append({"name": nm, "category": str(s.get("category") or "기타").strip()})
+        if not services and not p.get("name"):
+            continue
+        plans.append({
+            "name": str(p.get("name") or "Bundle"),
+            "provider": str(p.get("provider") or company),
+            "monthly": _num(p.get("monthly")),
+            "annual": _num(p.get("annual")),
+            "price_note": (str(p.get("price_note")).strip() if p.get("price_note") else None),
+            "services": services,
+        })
+    return {"anchor": anchor or "", "plans": plans}
+
+
 def analyze_pricing_ai(company: str, groups: list[dict]) -> list[dict]:
     """가격대별 '처음 풀리는 기능'(결정적 증분)을 AI가 분석해 테마·요약을 붙인다.
 

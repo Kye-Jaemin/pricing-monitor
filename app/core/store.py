@@ -97,6 +97,13 @@ CREATE TABLE IF NOT EXISTS pricing_analysis (
     updated_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
 );
 
+CREATE TABLE IF NOT EXISTS bundle_analysis (
+    company      TEXT PRIMARY KEY,
+    payload_json TEXT NOT NULL,   -- AI 번들 구조화 추출 결과({anchor, plans:[...]})
+    signature    TEXT NOT NULL DEFAULT '',  -- 추출 당시 원문 해시(스테일 감지)
+    updated_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+);
+
 CREATE TABLE IF NOT EXISTS run_logs (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     run_started_at   TEXT NOT NULL,
@@ -243,6 +250,7 @@ def delete_company(name: str) -> None:
         conn.execute("DELETE FROM company_sources WHERE company_name=?", (name,))
         conn.execute("DELETE FROM snapshots WHERE company=?", (name,))
         conn.execute("DELETE FROM changes WHERE company=?", (name,))
+        conn.execute("DELETE FROM bundle_analysis WHERE company=?", (name,))
         conn.execute("DELETE FROM companies WHERE name=?", (name,))
 
 
@@ -670,6 +678,27 @@ def get_pricing_analysis(company: str) -> Optional[sqlite3.Row]:
     with connect() as conn:
         return conn.execute(
             "SELECT * FROM pricing_analysis WHERE company=?", (company,)
+        ).fetchone()
+
+
+# ── bundle_analysis (AI 번들 구조화 추출 결과) ────────────────
+def set_bundle_analysis(company: str, payload_json: str, signature: str = "") -> None:
+    with connect() as conn:
+        conn.execute(
+            """INSERT INTO bundle_analysis (company, payload_json, signature, updated_at)
+               VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+               ON CONFLICT(company) DO UPDATE SET
+                   payload_json=excluded.payload_json,
+                   signature=excluded.signature,
+                   updated_at=excluded.updated_at""",
+            (company, payload_json, signature),
+        )
+
+
+def get_bundle_analysis(company: str) -> Optional[sqlite3.Row]:
+    with connect() as conn:
+        return conn.execute(
+            "SELECT * FROM bundle_analysis WHERE company=?", (company,)
         ).fetchone()
 
 

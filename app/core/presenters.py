@@ -691,13 +691,34 @@ def companies_admin() -> dict:
     }
 
 
-def bundle_view() -> dict:
-    """가격 분석(번들): is_bundle 업체를 분류(예: 번들-Netflix)별로 묶어
-    번들 요금제(가격·포함 서비스)와 연계 서비스 카테고리 분포를 정리한다.
+def _primary_raw_text(name: str) -> tuple[str | None, str]:
+    """업체 대표 출처의 수집 원문과 그 해시(스테일 감지용)."""
+    rows = store.latest_snapshots_for_company(name)
+    if not rows:
+        return None, ""
+    primary = _pick_primary(rows, _priority_map(name))
+    rt = primary["raw_text"] if "raw_text" in primary.keys() else None
+    sig = hashlib.sha1((rt or "").encode("utf-8")).hexdigest() if rt else ""
+    return rt, sig
 
-    번들 플랜 ≈ 티어, 포함 서비스 ≈ 그 티어의 features 로 본다(기존 추출 재사용).
+
+def _bundle_anchor(cat_name: str | None) -> str | None:
+    """분류명에서 앵커 서비스 추출. '번들-Netflix'/'Bundle: Netflix' → 'Netflix'."""
+    if not cat_name:
+        return None
+    for sep in ("-", "—", ":", "·"):
+        if sep in cat_name:
+            a = cat_name.split(sep, 1)[1].strip()
+            if a:
+                return a
+    return None
+
+
+def bundle_view() -> dict:
+    """가격 분석(번들): is_bundle 업체를 분류(예: 번들-Netflix)별로 묶고,
+    AI 구조화 추출(bundle_analysis) 결과로 가격 분포·연계 서비스 카테고리·
+    조합을 분석한다. 앵커(예: Netflix)는 분류명에서 인식해 연계 집계에서 제외.
     """
-    cat_map = store.get_feature_categories()
     _cat_list, _name_to_id, id_to_name = _category_context()
     icon_map = {c["name"]: c["icon_url"] for c in store.list_companies(active_only=False)}
     src_map: dict[str, list[str]] = {}
@@ -706,49 +727,70 @@ def bundle_view() -> dict:
 
     bundle_companies = [c for c in store.list_companies(active_only=True) if c["is_bundle"]]
     groups_map: dict = {}
+    needs_analysis: list[str] = []
     for c in bundle_companies:
         name = c["name"]
-        tiers = _company_plan_tiers(name, cat_map) if store.latest_snapshots_for_company(name) else []
-        plans, prices = [], []
-        for tr in tiers:
-            items: list[str] = []
-            for cat in tr["categories"]:
-                items.extend(cat["features"])
-            eff = tr["monthly"] if tr["monthly"] is not None else tr["annual"]
-            if eff is not None and not tr["is_free"]:
-                prices.append(eff)
-            plans.append({
-                "name": tr["name"], "is_free": tr["is_free"],
-                "monthly": tr["monthly"], "annual": tr["annual"],
-                "price_note": tr["price_note"],
-                "categories": tr["categories"], "items": items,
-            })
+        _rt, cur_sig = _primary_raw_text(name)
+        row = store.get_bundle_analysis(name)
+        analyzed = row is not None
+        stale = analyzed and cur_sig and row["signature"] != cur_sig
+        plans = []
+        if analyzed:
+            try:
+                payload = json.loads(row["payload_json"]) or {}
+                plans = payload.get("plans", []) or []
+            except (ValueError, TypeError):
+                plans = []
+        if not analyzed or stale:
+            needs_analysis.append(name)
+
         cid = c["category_id"]
         g = groups_map.get(cid)
         if g is None:
             g = groups_map[cid] = {
                 "id": cid, "name": id_to_name.get(cid),
-                "companies": [], "prices": [], "cat_count": {},
+                "anchor": _bundle_anchor(id_to_name.get(cid)),
+                "companies": [], "prices": [], "cat_count": {}, "combos": {},
             }
+        anchor = g["anchor"]
+        co_prices = []
+        co_plans = []
+        for p in plans:
+            eff = p.get("monthly") if p.get("monthly") is not None else p.get("annual")
+            if eff is not None:
+                co_prices.append(eff)
+                g["prices"].append(eff)
+            # 연계 카테고리(앵커 제외) 집계 + 조합
+            partner_cats = []
+            for s in p.get("services", []):
+                sname = (s.get("name") or "")
+                if anchor and anchor.lower() in sname.lower():
+                    continue  # 앵커 자신은 제외
+                cat = s.get("category") or "기타"
+                g["cat_count"][cat] = g["cat_count"].get(cat, 0) + 1
+                if cat not in partner_cats:
+                    partner_cats.append(cat)
+            if partner_cats:
+                key = " + ".join(sorted(partner_cats))
+                g["combos"][key] = g["combos"].get(key, 0) + 1
+            co_plans.append(p)
         g["companies"].append({
             "name": name,
             "icon": _company_icon(icon_map.get(name), src_map.get(name, [])),
-            "plans": plans,
-            "price_min": min(prices) if prices else None,
-            "price_max": max(prices) if prices else None,
-            "plan_count": len(plans),
+            "plans": co_plans,
+            "price_min": min(co_prices) if co_prices else None,
+            "price_max": max(co_prices) if co_prices else None,
+            "plan_count": len(co_plans),
+            "analyzed": analyzed,
+            "stale": bool(stale),
+            "anchor": anchor,
         })
-        g["prices"].extend(prices)
-        for pl in plans:
-            for cat in pl["categories"]:
-                g["cat_count"][cat["category"]] = (
-                    g["cat_count"].get(cat["category"], 0) + len(cat["features"])
-                )
 
     groups = []
     for g in groups_map.values():
         prices = sorted(g.pop("prices"))
         cat_count = g.pop("cat_count")
+        combos = g.pop("combos")
         g["price_min"] = prices[0] if prices else None
         g["price_max"] = prices[-1] if prices else None
         g["price_points"] = prices
@@ -757,9 +799,41 @@ def bundle_view() -> dict:
             ({"category": k, "count": v} for k, v in cat_count.items()),
             key=lambda x: -x["count"],
         )
+        g["combos"] = sorted(
+            ({"cats": k, "count": v} for k, v in combos.items()),
+            key=lambda x: -x["count"],
+        )[:6]
         groups.append(g)
     groups.sort(key=lambda x: (x["id"] is None, (x["name"] or "").lower()))
-    return {"groups": groups, "count": len(bundle_companies)}
+    return {
+        "groups": groups,
+        "count": len(bundle_companies),
+        "needs_analysis": needs_analysis,
+        "access_required": bool(config.ACCESS_CODE),
+    }
+
+
+def run_bundle_extraction() -> int:
+    """모든 번들 업체의 대표 출처 원문에서 번들 요금제를 AI로 구조화 추출·저장.
+
+    반환: 추출을 시도한 업체 수. (라우트에서 액세스 코드 확인 후 호출)
+    """
+    from . import extract
+
+    _cl, _n2i, id_to_name = _category_context()
+    n = 0
+    for c in store.list_companies(active_only=True):
+        if not c["is_bundle"]:
+            continue
+        name = c["name"]
+        rt, sig = _primary_raw_text(name)
+        if not rt:
+            continue
+        anchor = _bundle_anchor(id_to_name.get(c["category_id"]))
+        result = extract.extract_bundles_ai(name, rt, anchor)
+        store.set_bundle_analysis(name, json.dumps(result, ensure_ascii=False), sig)
+        n += 1
+    return n
 
 
 def _effective_category(feature: str, cat_map: dict[str, str]) -> str:

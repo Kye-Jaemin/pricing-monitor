@@ -116,7 +116,27 @@ def changes():
 @app.route("/bundle")
 def bundle_page():
     """가격 분석(번들): 번들 상품 업체를 분류별로 묶어 분석."""
-    return render_template("bundle.html", data=presenters.bundle_view())
+    return render_template(
+        "bundle.html",
+        data=presenters.bundle_view(),
+        access_required=bool(config.ACCESS_CODE),
+        contact=config.ACCESS_CONTACT,
+        error=request.args.get("error"),
+        notice=request.args.get("notice"),
+    )
+
+
+@app.route("/bundle/analyze", methods=["POST"])
+def bundle_analyze():
+    """번들 업체 원문을 AI로 구조화 추출(번들 요금제·포함 서비스). 코드 필요."""
+    if config.ACCESS_CODE and (request.form.get("access_code") or "").strip() != config.ACCESS_CODE:
+        return redirect(url_for("bundle_page", error="bad_code"))
+    try:
+        n = presenters.run_bundle_extraction()
+    except Exception:  # noqa: BLE001
+        log.exception("[bundle] AI 번들 추출 실패")
+        return redirect(url_for("bundle_page", error="ai_failed"))
+    return redirect(url_for("bundle_page", notice=("analyzed" if n else "no_raw")))
 
 
 @app.route("/howto")

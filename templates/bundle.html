@@ -4,6 +4,22 @@
 <div class="page-head"><h1>{{ t('bundle.title') }}</h1></div>
 <p class="muted">{{ t('bundle.intro') }}</p>
 
+{% if error == 'bad_code' %}<div class="alert">{{ t('runs.bad_code', contact=contact) }}</div>{% endif %}
+{% if error == 'ai_failed' %}<div class="alert">{{ t('compare.ai_failed') }}</div>{% endif %}
+{% if notice == 'analyzed' %}<div class="notice">{{ t('bundle.analyzed_notice') }}</div>{% endif %}
+{% if notice == 'no_raw' %}<div class="notice">{{ t('bundle.no_raw') }}</div>{% endif %}
+
+{% if data.count %}
+<section class="card">
+  <form method="post" action="{{ url_for('bundle_analyze') }}" class="run-form">
+    {% if access_required %}<input type="password" name="access_code" class="access-input" placeholder="{{ t('runs.access_label') }}" autocomplete="off">{% endif %}
+    <button type="submit" class="btn-primary">🤖 {{ t('bundle.analyze') }}</button>
+    {% if data.needs_analysis %}<span class="badge badge-low">{{ t('bundle.needs_analysis', n=data.needs_analysis|length) }}</span>{% endif %}
+  </form>
+  <p class="muted">{{ t('bundle.analyze_help') }}</p>
+</section>
+{% endif %}
+
 {% if not data.groups %}
   <div class="empty">
     <p>{{ t('bundle.empty') }}</p>
@@ -14,13 +30,13 @@
 {% for g in data.groups %}
 <section class="card">
   <div class="card-head">
-    <h2>📦 {{ g.name or t('bundle.uncategorized') }}</h2>
+    <h2>📦 {{ g.name or t('bundle.uncategorized') }}
+      {% if g.anchor %}<span class="tag tag-bundle">{{ t('bundle.anchor') }}: {{ g.anchor }}</span>{% endif %}</h2>
     <span class="muted">
       {%- if g.price_min is not none %}{{ t('bundle.price_range', lo='%g'|format(g.price_min), hi='%g'|format(g.price_max)) }} · {% endif %}
       {{ t('bundle.plan_count', n=g.plan_total) }}</span>
   </div>
 
-  {# 가격 분포 스트립 #}
   {% if g.price_points %}
   {% set gmin = g.price_min %}{% set gspan = (g.price_max - g.price_min) or 1 %}
   <div class="bundle-strip" title="{{ t('bundle.price_dist') }}">
@@ -32,17 +48,24 @@
   </div>
   {% endif %}
 
-  {# 연계 서비스 카테고리 #}
   {% if g.service_categories %}
   <div class="bundle-cats">
-    <span class="muted">{{ t('bundle.services_title') }}:</span>
+    <span class="muted">{{ t('bundle.services_title') }}{% if g.anchor %} ({{ t('bundle.excl_anchor') }}){% endif %}:</span>
     {% for sc in g.service_categories %}
     <span class="chip band-cat-chip">{{ sc.category }} <span class="cat-count">{{ sc.count }}</span></span>
     {% endfor %}
   </div>
   {% endif %}
 
-  {# 업체별 번들 플랜 #}
+  {% if g.combos %}
+  <div class="bundle-cats">
+    <span class="muted">{{ t('bundle.combos_title') }}:</span>
+    {% for cb in g.combos %}
+    <span class="chip">{{ cb.cats }} <span class="cat-count">{{ cb.count }}</span></span>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   <div class="bundle-companies">
     {% for co in g.companies %}
     <details class="bundle-co">
@@ -52,18 +75,21 @@
         <span class="muted">
           {%- if co.price_min is not none %} · ${{ '%g'|format(co.price_min) }}{% if co.price_max != co.price_min %}~${{ '%g'|format(co.price_max) }}{% endif %}{% endif %}
           · {{ t('bundle.plan_count', n=co.plan_count) }}</span>
+        {% if not co.analyzed %}<span class="badge badge-low">{{ t('bundle.not_analyzed') }}</span>
+        {% elif co.stale %}<span class="badge badge-low">{{ t('bundle.stale') }}</span>{% endif %}
       </summary>
       {% if co.plans %}
       <table class="log-table bundle-table">
-        <thead><tr><th>{{ t('bundle.plan') }}</th><th>{{ t('col.monthly') }}</th><th>{{ t('col.annual') }}</th><th>{{ t('bundle.included') }}</th></tr></thead>
+        <thead><tr><th>{{ t('bundle.plan') }}</th><th>{{ t('bundle.provider') }}</th><th>{{ t('col.monthly') }}</th><th>{{ t('col.annual') }}</th><th>{{ t('bundle.included') }}</th></tr></thead>
         <tbody>
           {% for pl in co.plans %}
           <tr>
-            <td class="tier-name">{{ pl.name }}{% if pl.is_free %} <span class="tag tag-free-mini">{{ t('word.free') }}</span>{% endif %}</td>
+            <td class="tier-name">{{ pl.name }}</td>
+            <td class="muted nowrap">{{ pl.provider }}</td>
             <td class="nowrap">{% if pl.monthly is not none %}${{ '%g'|format(pl.monthly) }}{% else %}<span class="muted">—</span>{% endif %}</td>
             <td class="nowrap">{% if pl.annual is not none %}${{ '%g'|format(pl.annual) }}{% else %}<span class="muted">—</span>{% endif %}</td>
             <td>
-              {%- if pl.items %}{% for cat in pl.categories %}<span class="bundle-item-cat">{{ cat.category }}</span> {{ cat.features|join(', ') }}{% if not loop.last %} · {% endif %}{% endfor %}
+              {%- if pl.services %}{% for s in pl.services %}<span class="bundle-svc{% if g.anchor and g.anchor|lower in s.name|lower %} bundle-svc-anchor{% endif %}"><span class="bundle-item-cat">{{ s.category }}</span>{{ s.name }}</span> {% endfor %}
               {%- else %}<span class="muted">{{ pl.price_note or '—' }}</span>{% endif %}
             </td>
           </tr>
