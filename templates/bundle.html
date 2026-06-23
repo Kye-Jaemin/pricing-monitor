@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}{{ t('bundle.title') }} · Pricing Monitor{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{{ t('bundle.title') }}</h1></div>
+<p class="muted">{{ t('bundle.intro') }}</p>
+
+{% if not data.groups %}
+  <div class="empty">
+    <p>{{ t('bundle.empty') }}</p>
+    <p class="muted">{{ t('bundle.empty_hint') }}</p>
+  </div>
+{% endif %}
+
+{% for g in data.groups %}
+<section class="card">
+  <div class="card-head">
+    <h2>📦 {{ g.name or t('bundle.uncategorized') }}</h2>
+    <span class="muted">
+      {%- if g.price_min is not none %}{{ t('bundle.price_range', lo='%g'|format(g.price_min), hi='%g'|format(g.price_max)) }} · {% endif %}
+      {{ t('bundle.plan_count', n=g.plan_total) }}</span>
+  </div>
+
+  {# 가격 분포 스트립 #}
+  {% if g.price_points %}
+  {% set gmin = g.price_min %}{% set gspan = (g.price_max - g.price_min) or 1 %}
+  <div class="bundle-strip" title="{{ t('bundle.price_dist') }}">
+    {% for p in g.price_points %}
+    <span class="bundle-dot" style="left: {{ ((p - gmin) / gspan * 100)|round(1) }}%" title="${{ '%g'|format(p) }}"></span>
+    {% endfor %}
+    <span class="bundle-strip-min">${{ '%g'|format(g.price_min) }}</span>
+    <span class="bundle-strip-max">${{ '%g'|format(g.price_max) }}</span>
+  </div>
+  {% endif %}
+
+  {# 연계 서비스 카테고리 #}
+  {% if g.service_categories %}
+  <div class="bundle-cats">
+    <span class="muted">{{ t('bundle.services_title') }}:</span>
+    {% for sc in g.service_categories %}
+    <span class="chip band-cat-chip">{{ sc.category }} <span class="cat-count">{{ sc.count }}</span></span>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# 업체별 번들 플랜 #}
+  <div class="bundle-companies">
+    {% for co in g.companies %}
+    <details class="bundle-co">
+      <summary>
+        {% if co.icon %}<img class="company-icon" src="{{ co.icon }}" alt="" onerror="this.style.display='none'">{% endif %}
+        <strong>{{ co.name }}</strong>
+        <span class="muted">
+          {%- if co.price_min is not none %} · ${{ '%g'|format(co.price_min) }}{% if co.price_max != co.price_min %}~${{ '%g'|format(co.price_max) }}{% endif %}{% endif %}
+          · {{ t('bundle.plan_count', n=co.plan_count) }}</span>
+      </summary>
+      {% if co.plans %}
+      <table class="log-table bundle-table">
+        <thead><tr><th>{{ t('bundle.plan') }}</th><th>{{ t('col.monthly') }}</th><th>{{ t('col.annual') }}</th><th>{{ t('bundle.included') }}</th></tr></thead>
+        <tbody>
+          {% for pl in co.plans %}
+          <tr>
+            <td class="tier-name">{{ pl.name }}{% if pl.is_free %} <span class="tag tag-free-mini">{{ t('word.free') }}</span>{% endif %}</td>
+            <td class="nowrap">{% if pl.monthly is not none %}${{ '%g'|format(pl.monthly) }}{% else %}<span class="muted">—</span>{% endif %}</td>
+            <td class="nowrap">{% if pl.annual is not none %}${{ '%g'|format(pl.annual) }}{% else %}<span class="muted">—</span>{% endif %}</td>
+            <td>
+              {%- if pl.items %}{% for cat in pl.categories %}<span class="bundle-item-cat">{{ cat.category }}</span> {{ cat.features|join(', ') }}{% if not loop.last %} · {% endif %}{% endfor %}
+              {%- else %}<span class="muted">{{ pl.price_note or '—' }}</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="muted">{{ t('bundle.no_plans') }}</p>
+      {% endif %}
+    </details>
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}
+{% endblock %}

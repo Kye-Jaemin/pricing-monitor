@@ -659,6 +659,7 @@ def companies_admin() -> dict:
                 "icon": _company_icon(c["icon_url"], [s["url"] for s in srcs]),
                 "category_id": c["category_id"],
                 "category": id_to_name.get(c["category_id"]),
+                "is_bundle": bool(c["is_bundle"]),
                 "sources": [
                     {
                         "id": s["id"],
@@ -688,6 +689,77 @@ def companies_admin() -> dict:
         "categories": cat_list,
         "category_chips": category_chips,
     }
+
+
+def bundle_view() -> dict:
+    """가격 분석(번들): is_bundle 업체를 분류(예: 번들-Netflix)별로 묶어
+    번들 요금제(가격·포함 서비스)와 연계 서비스 카테고리 분포를 정리한다.
+
+    번들 플랜 ≈ 티어, 포함 서비스 ≈ 그 티어의 features 로 본다(기존 추출 재사용).
+    """
+    cat_map = store.get_feature_categories()
+    _cat_list, _name_to_id, id_to_name = _category_context()
+    icon_map = {c["name"]: c["icon_url"] for c in store.list_companies(active_only=False)}
+    src_map: dict[str, list[str]] = {}
+    for s in store.list_sources(active_only=True):
+        src_map.setdefault(s["company_name"], []).append(s["url"])
+
+    bundle_companies = [c for c in store.list_companies(active_only=True) if c["is_bundle"]]
+    groups_map: dict = {}
+    for c in bundle_companies:
+        name = c["name"]
+        tiers = _company_plan_tiers(name, cat_map) if store.latest_snapshots_for_company(name) else []
+        plans, prices = [], []
+        for tr in tiers:
+            items: list[str] = []
+            for cat in tr["categories"]:
+                items.extend(cat["features"])
+            eff = tr["monthly"] if tr["monthly"] is not None else tr["annual"]
+            if eff is not None and not tr["is_free"]:
+                prices.append(eff)
+            plans.append({
+                "name": tr["name"], "is_free": tr["is_free"],
+                "monthly": tr["monthly"], "annual": tr["annual"],
+                "price_note": tr["price_note"],
+                "categories": tr["categories"], "items": items,
+            })
+        cid = c["category_id"]
+        g = groups_map.get(cid)
+        if g is None:
+            g = groups_map[cid] = {
+                "id": cid, "name": id_to_name.get(cid),
+                "companies": [], "prices": [], "cat_count": {},
+            }
+        g["companies"].append({
+            "name": name,
+            "icon": _company_icon(icon_map.get(name), src_map.get(name, [])),
+            "plans": plans,
+            "price_min": min(prices) if prices else None,
+            "price_max": max(prices) if prices else None,
+            "plan_count": len(plans),
+        })
+        g["prices"].extend(prices)
+        for pl in plans:
+            for cat in pl["categories"]:
+                g["cat_count"][cat["category"]] = (
+                    g["cat_count"].get(cat["category"], 0) + len(cat["features"])
+                )
+
+    groups = []
+    for g in groups_map.values():
+        prices = sorted(g.pop("prices"))
+        cat_count = g.pop("cat_count")
+        g["price_min"] = prices[0] if prices else None
+        g["price_max"] = prices[-1] if prices else None
+        g["price_points"] = prices
+        g["plan_total"] = sum(co["plan_count"] for co in g["companies"])
+        g["service_categories"] = sorted(
+            ({"category": k, "count": v} for k, v in cat_count.items()),
+            key=lambda x: -x["count"],
+        )
+        groups.append(g)
+    groups.sort(key=lambda x: (x["id"] is None, (x["name"] or "").lower()))
+    return {"groups": groups, "count": len(bundle_companies)}
 
 
 def _effective_category(feature: str, cat_map: dict[str, str]) -> str:

@@ -17,6 +17,7 @@
     <nav>
       <a href="{{ url_for('index') }}" class="{{ 'on' if ep == 'index' }}"{% if ep == 'index' %} aria-current="page"{% endif %}>{{ t('nav.overview') }}</a>
       <a href="{{ url_for('compare_page') }}" class="{{ 'on' if ep == 'compare_page' }}"{% if ep == 'compare_page' %} aria-current="page"{% endif %}>{{ t('nav.compare') }}</a>
+      <a href="{{ url_for('bundle_page') }}" class="{{ 'on' if ep == 'bundle_page' }}"{% if ep == 'bundle_page' %} aria-current="page"{% endif %}>{{ t('nav.bundle') }}</a>
       <a href="{{ url_for('changes') }}" class="{{ 'on' if ep == 'changes' }}"{% if ep == 'changes' %} aria-current="page"{% endif %}>{{ t('nav.changes') }}</a>
       <a href="{{ url_for('companies_page') }}" class="{{ 'on' if ep == 'companies_page' }}"{% if ep == 'companies_page' %} aria-current="page"{% endif %}>{{ t('nav.companies') }}</a>
       <a href="{{ url_for('runs') }}" class="{{ 'on' if ep == 'runs' }}"{% if ep == 'runs' %} aria-current="page"{% endif %}>{{ t('nav.runs') }}</a>

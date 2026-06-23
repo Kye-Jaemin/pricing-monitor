@@ -113,6 +113,12 @@ def changes():
     )
 
 
+@app.route("/bundle")
+def bundle_page():
+    """가격 분석(번들): 번들 상품 업체를 분류별로 묶어 분석."""
+    return render_template("bundle.html", data=presenters.bundle_view())
+
+
 @app.route("/howto")
 def howto():
     return render_template("howto.html")
@@ -443,7 +449,18 @@ def companies_add():
     cid = (request.form.get("category_id") or "").strip()
     if cid.isdigit():
         store.set_company_category(name, int(cid))
+    if request.form.get("is_bundle"):
+        store.set_company_bundle(name, True)
     return redirect(url_for("companies_page"))
+
+
+@app.route("/companies/set-bundle", methods=["POST"])
+def companies_set_bundle():
+    """업체의 번들 상품 여부 토글."""
+    name = (request.form.get("name") or "").strip()
+    if name:
+        store.set_company_bundle(name, bool(request.form.get("is_bundle")))
+    return redirect(request.referrer or url_for("companies_page"))
 
 
 @app.route("/companies/delete", methods=["POST"])

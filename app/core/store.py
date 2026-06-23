@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS companies (
     name         TEXT NOT NULL UNIQUE,
     icon_url     TEXT,
     category_id  INTEGER,                       -- company_categories.id (NULL=미분류)
+    is_bundle    INTEGER NOT NULL DEFAULT 0,    -- 번들(묶음) 상품 제공 업체 여부
     active       INTEGER NOT NULL DEFAULT 1,
     created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
 );
@@ -160,6 +161,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
     # companies.category_id 컬럼 보강(업체 분류)
     if "category_id" not in _columns(conn, "companies"):
         conn.execute("ALTER TABLE companies ADD COLUMN category_id INTEGER")
+    # companies.is_bundle 컬럼 보강(번들 상품 구분)
+    if "is_bundle" not in _columns(conn, "companies"):
+        conn.execute("ALTER TABLE companies ADD COLUMN is_bundle INTEGER NOT NULL DEFAULT 0")
     # run_logs.source_type 컬럼 보강(히스토리에 수집 소스 표시)
     if "source_type" not in _columns(conn, "run_logs"):
         conn.execute("ALTER TABLE run_logs ADD COLUMN source_type TEXT")
@@ -221,6 +225,15 @@ def set_company_icon(name: str, icon_url: str) -> None:
     with connect() as conn:
         conn.execute(
             "UPDATE companies SET icon_url=? WHERE name=?", (icon_url, name)
+        )
+
+
+def set_company_bundle(name: str, is_bundle: bool) -> None:
+    """업체를 번들(묶음) 상품으로 표시/해제."""
+    with connect() as conn:
+        conn.execute(
+            "UPDATE companies SET is_bundle=? WHERE name=?",
+            (1 if is_bundle else 0, name),
         )
 
 

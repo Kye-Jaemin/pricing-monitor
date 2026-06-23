@@ -65,6 +65,7 @@
     <label>{{ t('companies.field_url') }}
       <input type="url" name="url" placeholder="https://www.notion.so/pricing">
     </label>
+    <label class="bundle-check"><input type="checkbox" name="is_bundle" value="1"> 📦 {{ t('companies.field_bundle') }}</label>
     <button type="submit" class="btn-primary">{{ t('btn.add') }}</button>
   </form>
   <p class="muted">🔎 {{ t('companies.url_hint') }}</p>
@@ -94,8 +95,13 @@
       <a href="{{ url_for('company', name=c.name) }}">{{ c.name }}</a>
       <span class="muted">· {{ t('companies.source_count', n=c.sources|length) }}</span>
       {% if c.category %}<span class="tag tag-cat">{{ c.category }}</span>{% endif %}
+      {% if c.is_bundle %}<span class="tag tag-bundle">📦 {{ t('companies.bundle_tag') }}</span>{% endif %}
     </h2>
     <div class="actions">
+      <form class="bundle-toggle" method="post" action="{{ url_for('companies_set_bundle') }}">
+        <input type="hidden" name="name" value="{{ c.name }}">
+        <label class="muted"><input type="checkbox" name="is_bundle" value="1" {% if c.is_bundle %}checked{% endif %} onchange="this.form.submit()"> 📦 {{ t('companies.field_bundle') }}</label>
+      </form>
       <form class="cat-pick" method="post" action="{{ url_for('companies_set_category') }}">
         <input type="hidden" name="name" value="{{ c.name }}">
         <label class="muted">{{ t('cat.assign') }}
