@@ -351,15 +351,17 @@ def extract_bundles_ai(company: str, raw_text: str, anchor: str | None = None) -
         "choose (if the bundle lets you PICK some of the listed services, e.g. '택1' / "
         "'choose 1 of', set how many you pick; otherwise null = all included), "
         "price_note (string or null), and services = the listed services, each as "
-        "{name, category, choice} where choice=true if it is one of the selectable "
-        "alternatives (part of a 'pick N' set), false if always included. category is a "
+        "{name, category, choice, list_price} where choice=true if it is one of the "
+        "selectable alternatives (part of a 'pick N' set), false if always included; and "
+        "list_price = that service's standalone/regular monthly price IF the page states "
+        "it (number in the same currency), else null. category is a "
         "short service category such as 'Streaming Video', 'Music', 'Mobile/Telecom', "
         "'Cloud Storage', 'Gaming', 'News', 'Productivity', 'Fitness'. Use ONLY info "
         "present in the text — do not invent plans, prices, or services. Keep prices in "
         "their ORIGINAL currency (do not convert). If there are no bundles, return [].\n"
         "Return ONLY JSON: {\"plans\":[{\"name\":...,\"provider\":...,\"currency\":...,"
         "\"monthly\":...,\"annual\":...,\"choose\":...,\"price_note\":...,\"services\":"
-        "[{\"name\":...,\"category\":...,\"choice\":false}]}]}. No prose, no code fences.\n\n"
+        "[{\"name\":...,\"category\":...,\"choice\":false,\"list_price\":null}]}]}. No prose, no code fences.\n\n"
         f"PAGE TEXT:\n{text}\n"
     )
     resp = client.messages.create(
@@ -391,6 +393,7 @@ def extract_bundles_ai(company: str, raw_text: str, anchor: str | None = None) -
                     "name": nm,
                     "category": str(s.get("category") or "기타").strip(),
                     "choice": bool(s.get("choice")),
+                    "list_price": _num(s.get("list_price")),
                 })
         if not services and not p.get("name"):
             continue

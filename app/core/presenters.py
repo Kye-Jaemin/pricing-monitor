@@ -729,6 +729,35 @@ def _fmt_money(amount, currency: str) -> str | None:
     return f"{sym}{float(amount):g}"
 
 
+def _standalone_usd_map() -> dict:
+    """비번들 업체로 수집된 서비스의 '대표 정가'(최저 유료 월가, USD) 맵.
+    번들 포함 서비스의 원가 매칭에 사용. {업체명(소문자): usd}."""
+    out: dict[str, float] = {}
+    for c in store.list_companies(active_only=True):
+        if c["is_bundle"] or not store.latest_snapshots_for_company(c["name"]):
+            continue
+        prices = []
+        for tr in _company_plan_tiers(c["name"]):
+            if tr.get("is_free"):
+                continue
+            eff = tr["monthly"] if tr["monthly"] is not None else tr["annual"]
+            if eff is not None:
+                prices.append(eff)
+        if prices:
+            out[c["name"].lower()] = min(prices)
+    return out
+
+
+def _match_standalone(service_name: str, smap: dict):
+    """서비스 이름과 가장 잘 맞는(가장 긴 업체명 포함) 수집 정가를 찾는다."""
+    s = (service_name or "").lower()
+    best_name, best_price = "", None
+    for cname, price in smap.items():
+        if len(cname) >= 3 and (cname in s or s in cname) and len(cname) > len(best_name):
+            best_name, best_price = cname, price
+    return best_price
+
+
 def _bundle_anchor(cat_name: str | None) -> str | None:
     """분류명에서 앵커 서비스 추출. '번들-Netflix'/'Bundle: Netflix' → 'Netflix'."""
     if not cat_name:
@@ -756,6 +785,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
     for s in store.list_sources(active_only=True):
         src_map.setdefault(s["company_name"], []).append(s["url"])
     band_usd = get_band_width()
+    smap = _standalone_usd_map()   # 비번들 수집 서비스의 정가(원가 매칭용)
 
     all_bundle = [c for c in store.list_companies(active_only=True) if c["is_bundle"]]
     all_names = sorted(c["name"] for c in all_bundle)
@@ -805,19 +835,35 @@ def bundle_view(names: list[str] | None = None) -> dict:
             # 연계 카테고리(앵커 제외) 집계 + 조합. 택1(choice) 서비스 표시.
             partner_cats = []
             svcs = []
+            fixed_list = []     # 상시 포함 서비스 정가(USD)
+            choice_list = []    # 택1 대상 서비스 정가(USD)
             for s in p.get("services", []):
                 sname = (s.get("name") or "")
                 is_anchor = bool(anchor and anchor.lower() in sname.lower())
+                # 원가(정가): AI가 잡은 list_price(통화 환산) 우선, 없으면 수집 정가 매칭
+                lp = _to_usd(s.get("list_price"), cur)
+                if lp is None:
+                    lp = _match_standalone(sname, smap)
                 svcs.append({
                     "name": sname, "category": s.get("category") or "기타",
                     "is_anchor": is_anchor, "choice": bool(s.get("choice")),
+                    "list_usd": lp,
                 })
+                if lp is not None:
+                    (choice_list if s.get("choice") else fixed_list).append(lp)
                 if is_anchor:
                     continue  # 앵커 자신은 연계 집계에서 제외
                 cat = s.get("category") or "기타"
                 g["cat_count"][cat] = g["cat_count"].get(cat, 0) + 1
                 if cat not in partner_cats:
                     partner_cats.append(cat)
+            # 정가 합계: 상시 포함 전부 + 택1은 상위 choose개만(과대계상 방지)
+            k = p.get("choose") or 1
+            standalone = sum(fixed_list) + sum(sorted(choice_list, reverse=True)[:k])
+            standalone = round(standalone, 2) if (fixed_list or choice_list) else None
+            savings_pct = None
+            if standalone and eff is not None and standalone > 0:
+                savings_pct = round((standalone - eff) / standalone * 100)
             if partner_cats:
                 key = " + ".join(sorted(partner_cats))
                 g["combos"][key] = g["combos"].get(key, 0) + 1
@@ -852,6 +898,8 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 "choose": p.get("choose"),
                 "price_note": p.get("price_note"),
                 "services": svcs,
+                "standalone_usd": standalone,
+                "savings_pct": savings_pct,
             })
         g["companies"].append({
             "name": name,

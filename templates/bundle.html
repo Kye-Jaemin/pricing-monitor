@@ -179,7 +179,7 @@
       </summary>
       {% if co.plans %}
       <table class="log-table bundle-table">
-        <thead><tr><th>{{ t('bundle.plan') }}</th><th>{{ t('bundle.provider') }}</th><th>{{ t('col.monthly') }}</th><th>{{ t('col.annual') }}</th><th>{{ t('bundle.included') }}</th></tr></thead>
+        <thead><tr><th>{{ t('bundle.plan') }}</th><th>{{ t('bundle.provider') }}</th><th>{{ t('col.monthly') }}</th><th>{{ t('col.annual') }}</th><th>{{ t('bundle.standalone_col') }}</th><th>{{ t('bundle.included') }}</th></tr></thead>
         <tbody>
           {% for pl in co.plans %}
           <tr>
@@ -187,6 +187,12 @@
             <td class="muted nowrap">{{ pl.provider }}</td>
             <td class="nowrap">{% if pl.monthly_usd is not none %}${{ '%g'|format(pl.monthly_usd) }}{% if pl.monthly_orig %} <span class="muted">({{ pl.monthly_orig }})</span>{% endif %}{% elif pl.monthly_orig %}<span class="muted">{{ pl.monthly_orig }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
             <td class="nowrap">{% if pl.annual_usd is not none %}${{ '%g'|format(pl.annual_usd) }}{% if pl.annual_orig %} <span class="muted">({{ pl.annual_orig }})</span>{% endif %}{% elif pl.annual_orig %}<span class="muted">{{ pl.annual_orig }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+            <td class="nowrap">
+              {%- if pl.standalone_usd %}<span class="muted">{{ t('bundle.standalone') }} ${{ '%g'|format(pl.standalone_usd) }}</span>
+                {% if pl.savings_pct is not none and pl.savings_pct > 0 %}<span class="save-badge">−{{ pl.savings_pct }}%</span>{% endif %}
+                {% if pl.monthly_usd is not none %}<span class="save-bar" title="{{ t('bundle.standalone') }} ${{ '%g'|format(pl.standalone_usd) }} → ${{ '%g'|format(pl.monthly_usd) }}"><span class="save-bar-fill" style="width: {{ ([pl.monthly_usd / pl.standalone_usd * 100, 100]|min)|round }}%"></span></span>{% endif %}
+              {%- else %}<span class="muted">—</span>{% endif %}
+            </td>
             <td>
               {%- if pl.services %}{% for s in pl.services %}<span class="bundle-svc{% if s.is_anchor %} bundle-svc-anchor{% endif %}{% if s.choice %} bundle-svc-choice{% endif %}"><span class="bundle-item-cat">{{ s.category }}</span>{{ s.name }}{% if s.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}</span> {% endfor %}
               {%- else %}<span class="muted">{{ pl.price_note or '—' }}</span>{% endif %}
