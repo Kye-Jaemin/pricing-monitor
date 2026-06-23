@@ -548,6 +548,30 @@ a.btn-primary:hover { text-decoration: none; }
 .pos-tab:hover { opacity: .85; }
 .pos-tab.on { opacity: 1; box-shadow: 0 0 0 2px rgba(0,0,0,.10) inset; }
 .pos-tab .cat-count { background: rgba(0,0,0,.12); border-radius: 999px; padding: 0 7px; font-size: .72rem; }
+.pos-tab-all { background: #eef2ff; color: var(--accent); }
+
+/* 기능 검색 → 커머디티/차별화 게이지 */
+.pos-finder { margin: 4px 0 12px; padding: 10px 12px; background: #f8fafc; border: 1px dashed var(--line); border-radius: 10px; }
+.pos-finder-label { font-size: .88rem; font-weight: 600; display: flex; flex-direction: column; gap: 6px; }
+.pos-finder-label input { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: .9rem; font-weight: 400; }
+.pos-finder-result { margin-top: 8px; }
+.pf-item { padding: 8px 0; border-top: 1px dashed var(--line); }
+.pf-item:first-child { border-top: none; }
+.pf-head { font-size: .9rem; margin-bottom: 8px; }
+.pf-gauge { display: flex; align-items: center; gap: 8px; }
+.pf-axis { font-size: .72rem; font-weight: 700; }
+.pf-axis-l { color: #16a34a; }
+.pf-axis-r { color: #2563eb; }
+.pf-track {
+  position: relative; flex: 1; height: 10px; border-radius: 999px;
+  background: linear-gradient(90deg, #16a34a, #f59e0b, #2563eb);
+}
+.pf-marker {
+  position: absolute; top: 50%; width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; border: 3px solid var(--ink); transform: translate(-50%, -50%);
+  box-shadow: 0 1px 4px rgba(0,0,0,.3); transition: left .4s cubic-bezier(.22,.61,.36,1);
+}
+.pf-verdict { font-size: .85rem; margin-top: 6px; }
 .pos-feat { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; margin: 4px 0; background: #fff; }
 .pos-feat > summary { cursor: pointer; font-size: .9rem; }
 .pos-feat > summary:hover { color: var(--accent); }
