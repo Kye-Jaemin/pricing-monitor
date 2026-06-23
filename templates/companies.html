@@ -51,6 +51,10 @@
     <label class="bundle-only">{{ t('companies.field_anchor') }}
       <input type="text" name="anchor" id="addAnchor" placeholder="Netflix">
     </label>
+    <label class="bundle-only grow">{{ t('companies.field_services') }}
+      <input type="text" name="services" placeholder="Max, Disney+, Tving">
+      <span class="muted bundle-hint">{{ t('companies.field_services_hint') }}</span>
+    </label>
     <label>{{ t('companies.field_type') }}
       <select name="source_type" id="addSrcType">
         {% for key, label in source_types.items() %}

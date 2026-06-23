@@ -515,6 +515,23 @@ def _resolve_source_url(company: str, source_type: str, url: str,
     return None, None, "소스 URL은 필수입니다(공식 홈페이지/기타)."
 
 
+def _ensure_service_company(svc: str) -> None:
+    """개별 서비스를 일반(비번들) 업체로 등록(원가 수집용). 이미 있으면 보존.
+
+    소스가 하나도 없으면 구글 검색 소스를 자동으로 붙여 수집 대상이 되게 한다.
+    """
+    svc = (svc or "").strip()
+    if not svc:
+        return
+    existing = {c["name"].lower() for c in store.list_companies(active_only=False)}
+    if svc.lower() not in existing:
+        store.add_company(svc)
+    if not store.list_sources(company=svc):
+        store.add_source(
+            company=svc, source_type="google_search", url=build_google_search_url(svc)
+        )
+
+
 @app.route("/companies/add", methods=["POST"])
 def companies_add():
     """업체 + 첫 소스를 함께 등록.
@@ -553,6 +570,14 @@ def companies_add():
         store.set_company_icon(name, icon)
     if is_bundle:
         store.set_company_bundle(name, True)
+        # 개별 서비스(앵커 + 입력 목록)를 일반 업체로 등록 → 원가 수집 대상
+        svc_raw = (request.form.get("services") or "").replace("\n", ",")
+        seen = set()
+        for sv in ([anchor] + svc_raw.split(",")):
+            sv = sv.strip()
+            if sv and sv.lower() != name.lower() and sv.lower() not in seen:
+                seen.add(sv.lower())
+                _ensure_service_company(sv)
         if anchor:  # 분류 '번들-{앵커}' 자동 생성·배정
             cat_name = f"번들-{anchor}"
             store.add_company_category(cat_name)
