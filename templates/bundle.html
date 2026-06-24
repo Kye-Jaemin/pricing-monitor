@@ -119,6 +119,7 @@
   {% set dmax = g.dmax or 1 %}
   <div class="dumbbell">
     <div class="db-legend"><span class="db-dot db-bundle"></span>{{ t('bundle.db_bundle') }}<span class="db-dot db-list"></span>{{ t('bundle.db_list') }}</div>
+    <div class="db-rows">
     {% for d in g.dumbbell %}
     {% set bp = (d.bundle / dmax * 100)|round(1) %}
     <div class="dumbbell-row">
@@ -132,9 +133,22 @@
         {% endif %}
         <span class="db-dot db-bundle" style="left: {{ bp }}%" title="{{ t('bundle.db_bundle') }} ${{ '%g'|format(d.bundle) }}"></span>
       </span>
-      <span class="db-val">${{ '%g'|format(d.bundle) }}{% if d.list is not none %} <span class="muted">/ ${{ '%g'|format(d.list) }}</span>{% endif %}</span>
+      <span class="db-val">${{ '%g'|format(d.bundle) }}{% if d.list is not none %} <span class="muted">/ ${{ '%g'|format(d.list) }}</span>
+        {% set sv = ((d.list - d.bundle) / d.list * 100)|round %}
+        {% if sv > 0 %}<span class="save-badge">−{{ sv }}%</span>{% endif %}{% endif %}</span>
     </div>
     {% endfor %}
+    </div>
+    <div class="db-axis">
+      <span class="db-label"></span>
+      <span class="db-track">
+        {% for f in [0, 0.25, 0.5, 0.75, 1.0] %}
+        {% set tx = '0' if f == 0 else ('-100%' if f == 1.0 else '-50%') %}
+        <span class="db-tick" style="left: {{ (f * 100)|round }}%; transform: translateX({{ tx }})">${{ '%g'|format((dmax * f)|round(2)) }}</span>
+        {% endfor %}
+      </span>
+      <span class="db-val"></span>
+    </div>
   </div>
   {% elif g.price_points %}
   {% set gmin = g.price_min %}{% set gspan = (g.price_max - g.price_min) or 1 %}
