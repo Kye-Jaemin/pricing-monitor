@@ -767,6 +767,29 @@ def _standalone_usd_map() -> dict:
     return out
 
 
+_CAT_BUCKETS = [
+    ("video", ["stream", "video", " tv", "tv ", "ott", "넷플", "영상", "콘텐츠", "movie", "vod", "watch"]),
+    ("music", ["music", "음악", "spotify", "멜론", "audio", "podcast", "팟캐스트"]),
+    ("cloud", ["cloud", "storage", "클라우드", "저장", "drive"]),
+    ("game", ["game", "gaming", "게임"]),
+    ("news", ["news", "뉴스", "magazine", "신문", "매거진"]),
+    ("books", ["book", "webtoon", "웹툰", "도서", "ebook", "comic", "만화", "novel", "웹소설"]),
+    ("shopping", ["shop", "commerce", "delivery", "쇼핑", "배송", "커머스", "배달"]),
+    ("points", ["point", "reward", "포인트", "적립", "cashback", "캐시", "멤버십 포인트"]),
+    ("fitness", ["fitness", "health", "운동", "헬스"]),
+]
+
+
+def _cat_bucket(category: str, name: str = "") -> str:
+    """정가 합계에서 '같은 종류'를 묶기 위한 거친 카테고리 버킷.
+    'Streaming Video'·'Streaming'·'OTT' 등이 한 버킷('video')으로 묶인다."""
+    s = ((category or "") + " " + (name or "")).lower()
+    for bucket, kws in _CAT_BUCKETS:
+        if any(k in s for k in kws):
+            return bucket
+    return (category or "기타").strip().lower()
+
+
 def _match_standalone(service_name: str, smap: dict):
     """서비스 이름과 맞는 수집 정가를 찾는다. 정규화 키 동일 → 우선, 없으면
     정규화 부분일치(가장 긴 키)로 매칭(예: 'Max' ↔ 'HBO Max')."""
@@ -843,7 +866,9 @@ def bundle_view(names: list[str] | None = None) -> dict:
     needs_analysis: list[str] = []
     for c in bundle_companies:
         name = c["name"]
-        pickone = store.get_setting("bundle.pickone:" + name) == "1"
+        # 기본: 같은 카테고리 서비스는 정가에서 하나만(앵커 우선). 둘 다 포함인
+        # 번들만 sum_all 토글을 켜서 전부 합산.
+        sum_all = store.get_setting("bundle.sumall:" + name) == "1"
         _rt, cur_sig = _primary_raw_text(name)
         row = store.get_bundle_analysis(name)
         analyzed = row is not None
@@ -882,12 +907,9 @@ def bundle_view(names: list[str] | None = None) -> dict:
                     "usd": eff, "company": name,
                     "plan": p.get("name"), "icon": co_icon,
                 })
-            # 연계 카테고리(앵커 제외) 집계 + 조합. 택1(choice) 서비스 표시.
+            # 연계 카테고리(앵커 제외) 집계 + 조합.
             partner_cats = []
             svcs = []
-            fixed_parts = []     # [(이름, 정가USD)] 상시 포함
-            choice_parts = []    # [(이름, 정가USD)] 택1 대상
-            unpriced = []        # 정가를 모르는 서비스(합계에서 빠짐)
             for s in p.get("services", []):
                 sname = (s.get("name") or "")
                 is_anchor = bool(anchor and anchor.lower() in sname.lower())
@@ -898,41 +920,51 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 svcs.append({
                     "name": sname, "category": s.get("category") or "기타",
                     "is_anchor": is_anchor, "choice": bool(s.get("choice")),
-                    "list_usd": lp, "icon": _service_icon(sname, comp_icons),
+                    "list_usd": lp, "bucket": _cat_bucket(s.get("category") or "", sname),
+                    "icon": _service_icon(sname, comp_icons),
                 })
-                if lp is not None:
-                    if s.get("choice"):
-                        choice_parts.append((sname, lp, is_anchor))
-                    else:
-                        fixed_parts.append((sname, lp, is_anchor))
-                elif sname and not s.get("choice"):
-                    # 상시 포함인데 가격 미상만 '미확인'(택1 옵션은 하나만 고르므로 제외)
-                    unpriced.append(sname)
                 if is_anchor:
                     continue  # 앵커 자신은 연계 집계에서 제외
                 cat = s.get("category") or "기타"
                 g["cat_count"][cat] = g["cat_count"].get(cat, 0) + 1
                 if cat not in partner_cats:
                     partner_cats.append(cat)
-            # 정가 합계: 상시 포함 전부 + 택1은 choose개만(앵커 우선, 그다음 고가).
-            #   택1을 모두 더하지 않음(과대계상 방지). 앵커가 옵션이면 그 값을 사용.
-            k = p.get("choose") or 1
-            if pickone:
-                # 사용자가 '택1'로 지정한 번들: 가격 있는 서비스 전체를 택1 풀로 보고
-                # k개만(앵커 우선) 반영 → Netflix+TVing 합산 방지.
-                pool = fixed_parts + choice_parts
-                chosen = sorted(pool, key=lambda x: (not x[2], -x[1]))[:k]
-                parts = [{"name": n, "usd": round(u, 2), "choice": True,
-                          "icon": _service_icon(n, comp_icons)} for n, u, _a in chosen]
+            # ── 정가 합계 (단순·견고) ──────────────────────────────
+            # 기본: 같은 카테고리(버킷)에서는 하나만 센다(앵커 우선, 그다음 고가).
+            #   → 'Netflix or TVing' 같은 같은-종류 옵션을 합산하지 않음(과대계상 방지).
+            # sum_all 토글: 정말로 둘 다 포함인 번들(Verizon 등)은 전부 합산.
+            priced = [s for s in svcs if s["list_usd"] is not None]
+            bucket_count: dict = {}
+            for s in priced:
+                bucket_count[s["bucket"]] = bucket_count.get(s["bucket"], 0) + 1
+            if sum_all:
+                chosen = priced
             else:
-                chosen_choice = sorted(choice_parts, key=lambda x: (not x[2], -x[1]))[:k]
-                parts = (
-                    [{"name": n, "usd": round(u, 2), "choice": False,
-                      "icon": _service_icon(n, comp_icons)} for n, u, _a in fixed_parts]
-                    + [{"name": n, "usd": round(u, 2), "choice": True,
-                        "icon": _service_icon(n, comp_icons)} for n, u, _a in chosen_choice]
-                )
+                best: dict = {}
+                for s in priced:
+                    cur_b = best.get(s["bucket"])
+                    rank = (s["is_anchor"], s["list_usd"])
+                    if cur_b is None or rank > (cur_b["is_anchor"], cur_b["list_usd"]):
+                        best[s["bucket"]] = s
+                chosen = list(best.values())
+            parts = [
+                {"name": s["name"], "usd": round(s["list_usd"], 2),
+                 "choice": (not sum_all) and bucket_count.get(s["bucket"], 0) >= 2,
+                 "icon": _service_icon(s["name"], comp_icons)}
+                for s in sorted(chosen, key=lambda x: (not x["is_anchor"], -x["list_usd"]))
+            ]
             standalone = round(sum(pt["usd"] for pt in parts), 2) if parts else None
+            # '정가 미확인': 가격을 모르고, 그 카테고리에 대표(가격 있는 것)도 없는 서비스만.
+            priced_buckets = {s["bucket"] for s in chosen}
+            unpriced, seen_un = [], set()
+            for s in svcs:
+                if s["list_usd"] is not None or not s["name"]:
+                    continue
+                if not sum_all and s["bucket"] in priced_buckets:
+                    continue  # 같은 종류에 대표가 있으면 대체 옵션으로 보고 숨김
+                if s["name"] in seen_un:
+                    continue
+                seen_un.add(s["name"]); unpriced.append(s["name"])
             savings_pct = None
             if standalone and eff is not None and standalone > 0:
                 savings_pct = round((standalone - eff) / standalone * 100)
@@ -991,7 +1023,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
             "analyzed": analyzed,
             "stale": bool(stale),
             "anchor": anchor,
-            "pickone": pickone,
+            "sum_all": sum_all,
         })
 
     groups = []

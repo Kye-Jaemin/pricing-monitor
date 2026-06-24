@@ -196,14 +196,15 @@ def bundle_run():
     return redirect(_bundle_url(names))
 
 
-@app.route("/bundle/pickone", methods=["POST"])
-def bundle_pickone():
-    """번들을 '택1(하나만 선택)'로 지정/해제 — 정가 합계가 택1 옵션을 모두
-    더하지 않고 하나만(앵커 우선) 반영하도록 한다. 재분석 없이 즉시 반영."""
+@app.route("/bundle/sumall", methods=["POST"])
+def bundle_sumall():
+    """번들을 '모두 합산'으로 지정/해제. 기본은 같은 카테고리에서 하나만 세지만,
+    정말로 둘 다 포함인 번들(예: Verizon Netflix & Max)은 켜서 전부 합산.
+    재분석 없이 즉시 반영."""
     company = (request.form.get("company") or "").strip()
     if company:
-        val = "1" if request.form.get("pickone") else "0"
-        store.set_setting("bundle.pickone:" + company, val)
+        val = "1" if request.form.get("sumall") else "0"
+        store.set_setting("bundle.sumall:" + company, val)
     names = [n for n in request.form.getlist("sel") if n]
     return redirect(_bundle_url(names))
 

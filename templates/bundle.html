@@ -213,13 +213,13 @@
         {% if not co.analyzed %}<span class="badge badge-low">{{ t('bundle.not_analyzed') }}</span>
         {% elif co.stale %}<span class="badge badge-low">{{ t('bundle.stale') }}</span>{% endif %}
       </summary>
-      <form method="post" action="{{ url_for('bundle_pickone') }}" class="pickone-form">
+      <form method="post" action="{{ url_for('bundle_sumall') }}" class="pickone-form">
         <input type="hidden" name="company" value="{{ co.name }}">
         {% for n in data.selected %}<input type="hidden" name="sel" value="{{ n }}">{% endfor %}
         <label class="pickone-toggle">
-          <input type="checkbox" name="pickone" value="1" {% if co.pickone %}checked{% endif %} onchange="this.form.submit()">
-          {{ t('bundle.pickone') }}</label>
-        <span class="muted pickone-help">{{ t('bundle.pickone_help') }}</span>
+          <input type="checkbox" name="sumall" value="1" {% if co.sum_all %}checked{% endif %} onchange="this.form.submit()">
+          {{ t('bundle.sumall') }}</label>
+        <span class="muted pickone-help">{{ t('bundle.sumall_help') }}</span>
       </form>
       {% if co.plans %}
       <table class="log-table bundle-table">
