@@ -882,8 +882,12 @@ def bundle_view(names: list[str] | None = None) -> dict:
                     "list_usd": lp, "icon": _service_icon(sname, comp_icons),
                 })
                 if lp is not None:
-                    (choice_parts if s.get("choice") else fixed_parts).append((sname, lp))
-                elif sname:
+                    if s.get("choice"):
+                        choice_parts.append((sname, lp, is_anchor))
+                    else:
+                        fixed_parts.append((sname, lp))
+                elif sname and not s.get("choice"):
+                    # 상시 포함인데 가격 미상만 '미확인'(택1 옵션은 하나만 고르므로 제외)
                     unpriced.append(sname)
                 if is_anchor:
                     continue  # 앵커 자신은 연계 집계에서 제외
@@ -891,14 +895,15 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 g["cat_count"][cat] = g["cat_count"].get(cat, 0) + 1
                 if cat not in partner_cats:
                     partner_cats.append(cat)
-            # 정가 합계: 상시 포함 전부 + 택1은 상위 choose개만(과대계상 방지)
+            # 정가 합계: 상시 포함 전부 + 택1은 choose개만(앵커 우선, 그다음 고가).
+            #   택1을 모두 더하지 않음(과대계상 방지). 앵커가 옵션이면 그 값을 사용.
             k = p.get("choose") or 1
-            chosen_choice = sorted(choice_parts, key=lambda x: -x[1])[:k]
+            chosen_choice = sorted(choice_parts, key=lambda x: (not x[2], -x[1]))[:k]
             parts = (
                 [{"name": n, "usd": round(u, 2), "choice": False,
                   "icon": _service_icon(n, comp_icons)} for n, u in fixed_parts]
                 + [{"name": n, "usd": round(u, 2), "choice": True,
-                    "icon": _service_icon(n, comp_icons)} for n, u in chosen_choice]
+                    "icon": _service_icon(n, comp_icons)} for n, u, _a in chosen_choice]
             )
             standalone = round(sum(pt["usd"] for pt in parts), 2) if parts else None
             savings_pct = None
