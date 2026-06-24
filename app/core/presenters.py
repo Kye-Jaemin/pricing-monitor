@@ -732,7 +732,7 @@ def _fmt_money(amount, currency: str) -> str | None:
 
 def _standalone_usd_map() -> dict:
     """비번들 업체로 수집된 서비스의 '대표 정가'(최저 유료 월가, USD) 맵.
-    번들 포함 서비스의 원가 매칭에 사용. {업체명(소문자): usd}."""
+    번들 포함 서비스의 원가 매칭에 사용. 키는 정규화 업체명(표기 차이 흡수)."""
     out: dict[str, float] = {}
     for c in store.list_companies(active_only=True):
         if c["is_bundle"] or not store.latest_snapshots_for_company(c["name"]):
@@ -745,17 +745,22 @@ def _standalone_usd_map() -> dict:
             if eff is not None:
                 prices.append(eff)
         if prices:
-            out[c["name"].lower()] = min(prices)
+            out[_normalize_feature(c["name"])] = min(prices)
     return out
 
 
 def _match_standalone(service_name: str, smap: dict):
-    """서비스 이름과 가장 잘 맞는(가장 긴 업체명 포함) 수집 정가를 찾는다."""
-    s = (service_name or "").lower()
-    best_name, best_price = "", None
-    for cname, price in smap.items():
-        if len(cname) >= 3 and (cname in s or s in cname) and len(cname) > len(best_name):
-            best_name, best_price = cname, price
+    """서비스 이름과 맞는 수집 정가를 찾는다. 정규화 키 동일 → 우선, 없으면
+    정규화 부분일치(가장 긴 키)로 매칭(예: 'Max' ↔ 'HBO Max')."""
+    key = _normalize_feature(service_name)
+    if not key:
+        return None
+    if key in smap:
+        return smap[key]
+    best_k, best_price = "", None
+    for k, price in smap.items():
+        if len(k) >= 3 and (k in key or key in k) and len(k) > len(best_k):
+            best_k, best_price = k, price
     return best_price
 
 
