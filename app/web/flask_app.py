@@ -701,13 +701,14 @@ def source_delete():
 @app.route("/runs")
 def runs():
     running_ids = _running_ids["value"]
-    admin = presenters.companies_admin()
+    targets = presenters.collection_targets()
     return render_template(
         "runs.html",
         data=presenters.runs_view(),
-        companies=admin["companies"],
-        categories=admin["categories"],
-        category_chips=admin["category_chips"],
+        companies=targets["companies"],
+        target_groups=targets["groups"],
+        categories=targets["categories"],
+        category_chips=targets["category_chips"],
         running=_run_in_progress["value"],
         running_ids=list(running_ids) if running_ids is not None else None,
         access_required=bool(config.ACCESS_CODE),

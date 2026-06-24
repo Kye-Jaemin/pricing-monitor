@@ -86,8 +86,8 @@
     </div>
     {% endif %}
     <label class="muted sel-all"><input type="checkbox" id="selAll" {% if not running or running_ids is none %}checked{% endif %}> {{ t('runs.select_all') }}</label>
-    {% macro company_row(c) %}
-      <div class="select-company">
+    {% macro company_row(c, nested=False) %}
+      <div class="select-company{% if nested %} select-company-nested{% endif %}">
         <span class="sc-name">{% if c.icon %}<img class="company-icon" src="{{ c.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ c.name }}
           {%- if c.is_bundle %} <span class="tag tag-bundle">📦</span>{% elif c.is_component %} <span class="tag tag-component">🧩</span>{% endif %}</span>
         {% for s in c.sources %}
@@ -97,28 +97,21 @@
       </div>
     {% endmacro %}
     <div class="select-list">
-      {% for cat in categories %}
-      {% set members = companies|selectattr('category_id','equalto',cat.id)|list %}
-      {% if members %}
-      {% set providers = members|selectattr('is_bundle')|list %}
-      {% set comps = members|selectattr('is_component')|list %}
-      {% set others = members|rejectattr('is_bundle')|rejectattr('is_component')|list %}
-      <div class="select-cat-group" data-cat="{{ cat.id }}">
-        <div class="select-cat-head">{{ cat.name }} <span class="muted">({{ members|length }})</span></div>
-        {% for c in providers %}{{ company_row(c) }}{% endfor %}
-        {% if comps %}<div class="select-sub-head">↳ {{ t('runs.bundle_services') }}</div>{% endif %}
-        {% for c in comps %}{{ company_row(c) }}{% endfor %}
-        {% for c in others %}{{ company_row(c) }}{% endfor %}
+      {% for g in target_groups %}
+      <div class="select-cat-group" data-cat="{{ g.id if g.id else 'none' }}">
+        <div class="select-cat-head">{{ g.name or t('cat.none') }} <span class="muted">({{ g.count }})</span></div>
+        {% for pb in g.providers %}
+        {{ company_row(pb.provider) }}
+        {% if pb.services %}<div class="select-sub-head">↳ {{ t('runs.bundle_services') }}</div>
+          {% for c in pb.services %}{{ company_row(c, nested=True) }}{% endfor %}
+        {% endif %}
+        {% endfor %}
+        {% for c in g.others %}{{ company_row(c) }}{% endfor %}
+        {% if g.orphans %}{% if g.providers %}<div class="select-sub-head">↳ {{ t('runs.bundle_services_other') }}</div>{% endif %}
+          {% for c in g.orphans %}{{ company_row(c, nested=True) }}{% endfor %}
+        {% endif %}
       </div>
-      {% endif %}
       {% endfor %}
-      {% set uncat = companies|rejectattr('category_id')|list %}
-      {% if uncat %}
-      <div class="select-cat-group" data-cat="none">
-        <div class="select-cat-head">{{ t('cat.none') }} <span class="muted">({{ uncat|length }})</span></div>
-        {% for c in uncat %}{{ company_row(c) }}{% endfor %}
-      </div>
-      {% endif %}
     </div>
     <div class="actions">
       <button type="submit" name="scope" value="selected" class="btn-primary" {% if running %}disabled{% endif %}>

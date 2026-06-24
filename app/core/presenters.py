@@ -1084,6 +1084,84 @@ def _auto_register_components(names, exclude_name: str, category_id) -> None:
         existing.add(nm.lower())
 
 
+def _bundle_provider_services() -> dict:
+    """번들 제공업체명 → 그 업체 번들에 실제 포함된 구성요소 업체명 목록.
+
+    각 제공업체의 bundle_analysis(plans[].services)에 나온 서비스명을, 등록된
+    구성요소 업체명과 매칭한다. (구성요소는 여러 제공업체에 중복될 수 있음)
+    """
+    comp_names = [
+        c["name"] for c in store.list_companies(active_only=True) if c["is_component"]
+    ]
+    out: dict[str, list[str]] = {}
+    for c in store.list_companies(active_only=True):
+        if not c["is_bundle"]:
+            continue
+        row = store.get_bundle_analysis(c["name"])
+        svc_names: set[str] = set()
+        if row:
+            try:
+                payload = json.loads(row["payload_json"]) or {}
+                for p in payload.get("plans", []):
+                    for s in p.get("services", []):
+                        nm = (s.get("name") or "").strip().lower()
+                        if nm:
+                            svc_names.add(nm)
+            except (ValueError, TypeError):
+                pass
+        matched = []
+        for cn in comp_names:
+            cl = cn.lower()
+            if any(len(sn) >= 3 and (cl in sn or sn in cl) for sn in svc_names):
+                matched.append(cn)
+        out[c["name"]] = matched
+    return out
+
+
+def collection_targets() -> dict:
+    """수집 대상 선택용 구조: 분류 그룹 안에서 제공업체별로 그 업체의 결합
+    서비스를 중첩한다. (여러 번들이 같은 분류를 공유해도 업체별로 분리)
+    """
+    cat_list, _n2i, _id2n = _category_context()
+    admin = companies_admin()
+    by_name = {c["name"]: c for c in admin["companies"]}
+    prov_services = _bundle_provider_services()
+
+    def build(members):
+        providers = [c for c in members if c["is_bundle"]]
+        prov_blocks = []
+        claimed = set()
+        for pv in providers:
+            svc_cos = []
+            for sn in prov_services.get(pv["name"], []):
+                co = by_name.get(sn)
+                if co:
+                    svc_cos.append(co)
+                    claimed.add(sn)
+            prov_blocks.append({"provider": pv, "services": svc_cos})
+        others = [c for c in members if not c["is_bundle"] and not c["is_component"]]
+        orphans = [
+            c for c in members if c["is_component"] and c["name"] not in claimed
+        ]
+        return prov_blocks, others, orphans
+
+    groups = []
+    for cat in cat_list:
+        members = [c for c in admin["companies"] if c["category_id"] == cat["id"]]
+        if not members:
+            continue
+        prov_blocks, others, orphans = build(members)
+        groups.append({"id": cat["id"], "name": cat["name"], "count": len(members),
+                       "providers": prov_blocks, "others": others, "orphans": orphans})
+    uncat = [c for c in admin["companies"] if not c["category_id"]]
+    if uncat:
+        prov_blocks, others, orphans = build(uncat)
+        groups.append({"id": None, "name": None, "count": len(uncat),
+                       "providers": prov_blocks, "others": others, "orphans": orphans})
+    return {"groups": groups, "categories": cat_list,
+            "category_chips": admin["category_chips"], "companies": admin["companies"]}
+
+
 def _effective_category(feature: str, cat_map: dict[str, str]) -> str:
     """기능의 카테고리: 저장된 매핑(AI/사용자) 우선, 없으면 키워드 휴리스틱."""
     from . import compare as cmp
