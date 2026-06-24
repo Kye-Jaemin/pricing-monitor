@@ -58,6 +58,12 @@ code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; font-size: .9e
   background: var(--card); border: 1px solid var(--line);
   border-radius: 12px; padding: 18px 20px; margin-bottom: 18px;
 }
+/* 번들 제공업체 카드: 일반(비번들) 업체 카드와 색으로 구분 (번들 태그와 동일 보라 계열) */
+.company-card-bundle {
+  border-color: #e9b8f0;
+  border-left: 4px solid #c026d3;
+  background: #fdf4ff;
+}
 .card-head {
   display: flex; align-items: baseline; justify-content: space-between;
   gap: 12px; margin-bottom: 10px; flex-wrap: wrap;

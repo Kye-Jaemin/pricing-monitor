@@ -31,7 +31,7 @@
     <span class="muted">{{ g.companies|length }}</span></h2>
   {% endif %}
   {% for c in g.companies %}
-<details class="card company-card">
+<details class="card company-card{% if c.is_bundle %} company-card-bundle{% endif %}">
   <summary class="company-summary">
     {% if c.icon %}<img class="company-icon" src="{{ c.icon }}" alt="" onerror="this.style.display='none'">{% endif %}
     <span class="cc-name">{{ c.company }}</span>
