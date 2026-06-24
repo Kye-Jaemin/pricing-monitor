@@ -64,7 +64,7 @@
       <span class="cat-count">{{ data.all_companies|length }}</span></button>
   </div>
   {% endif %}
-  <form method="get" action="{{ url_for('bundle_page') }}">
+  <form method="post" action="{{ url_for('bundle_run') }}">
     <div class="select-list">
       {% for name in data.all_companies %}
       <label class="src-check bnd-pick" data-cat="{{ (data.company_cat or {}).get(name) or 'none' }}">
@@ -73,19 +73,15 @@
       </label>
       {% endfor %}
     </div>
+    <div class="compare-ai-opts">
+      <label class="src-check"><input type="checkbox" name="ai_analyze" value="1"> 🤖 {{ t('bundle.analyze') }}</label>
+      {% if access_required %}<input type="password" name="access_code" class="access-input" placeholder="{{ t('runs.access_label') }}" autocomplete="off">{% endif %}
+      {% if data.needs_analysis %}<span class="badge badge-low">{{ t('bundle.needs_analysis', n=data.needs_analysis|length) }}</span>{% endif %}
+    </div>
     <button type="submit" class="btn-primary">{{ t('bundle.view_selected') }}</button>
   </form>
-</details>
-
-<section class="card">
-  <form method="post" action="{{ url_for('bundle_analyze') }}" class="run-form">
-    {% for n in data.selected %}<input type="hidden" name="company" value="{{ n }}">{% endfor %}
-    {% if access_required %}<input type="password" name="access_code" class="access-input" placeholder="{{ t('runs.access_label') }}" autocomplete="off">{% endif %}
-    <button type="submit" class="btn-primary">🤖 {{ t('bundle.analyze') }}</button>
-    {% if data.needs_analysis %}<span class="badge badge-low">{{ t('bundle.needs_analysis', n=data.needs_analysis|length) }}</span>{% endif %}
-  </form>
   <p class="muted">{{ t('bundle.analyze_help') }}</p>
-</section>
+</details>
 {% endif %}
 
 {% if data.groups and not saved_view %}

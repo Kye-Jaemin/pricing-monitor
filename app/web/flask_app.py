@@ -172,18 +172,28 @@ def bundle_card_rename(card_id: int):
     return redirect(request.referrer or url_for("bundle_page"))
 
 
-@app.route("/bundle/analyze", methods=["POST"])
-def bundle_analyze():
-    """번들 업체 원문을 AI로 구조화 추출(번들 요금제·포함 서비스). 코드 필요."""
-    if config.ACCESS_CODE and (request.form.get("access_code") or "").strip() != config.ACCESS_CODE:
-        return redirect(url_for("bundle_page", error="bad_code"))
+def _bundle_url(names, **extra):
+    from urllib.parse import urlencode
+
+    q = [("company", n) for n in names] + [(k, v) for k, v in extra.items() if v]
+    return url_for("bundle_page") + (("?" + urlencode(q)) if q else "")
+
+
+@app.route("/bundle/run", methods=["POST"])
+def bundle_run():
+    """선택 업체 분석 — 'AI 구조 분석' 체크 시 추출을 함께 실행하고, 결과를
+    선택 업체로 필터해 보여준다(선택+분석 한 버튼)."""
     names = [n for n in request.form.getlist("company") if n]
-    try:
-        n = presenters.run_bundle_extraction(names or None)
-    except Exception:  # noqa: BLE001
-        log.exception("[bundle] AI 번들 추출 실패")
-        return redirect(url_for("bundle_page", error="ai_failed"))
-    return redirect(url_for("bundle_page", notice=("analyzed" if n else "no_raw")))
+    if request.form.get("ai_analyze"):
+        if config.ACCESS_CODE and (request.form.get("access_code") or "").strip() != config.ACCESS_CODE:
+            return redirect(_bundle_url(names, error="bad_code"))
+        try:
+            n = presenters.run_bundle_extraction(names or None)
+        except Exception:  # noqa: BLE001
+            log.exception("[bundle] AI 번들 추출 실패")
+            return redirect(_bundle_url(names, error="ai_failed"))
+        return redirect(_bundle_url(names, notice=("analyzed" if n else "no_raw")))
+    return redirect(_bundle_url(names))
 
 
 @app.route("/howto")
