@@ -840,8 +840,8 @@ def bundle_view(names: list[str] | None = None) -> dict:
             # 연계 카테고리(앵커 제외) 집계 + 조합. 택1(choice) 서비스 표시.
             partner_cats = []
             svcs = []
-            fixed_list = []     # 상시 포함 서비스 정가(USD)
-            choice_list = []    # 택1 대상 서비스 정가(USD)
+            fixed_parts = []     # [(이름, 정가USD)] 상시 포함
+            choice_parts = []    # [(이름, 정가USD)] 택1 대상
             for s in p.get("services", []):
                 sname = (s.get("name") or "")
                 is_anchor = bool(anchor and anchor.lower() in sname.lower())
@@ -855,7 +855,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
                     "list_usd": lp,
                 })
                 if lp is not None:
-                    (choice_list if s.get("choice") else fixed_list).append(lp)
+                    (choice_parts if s.get("choice") else fixed_parts).append((sname, lp))
                 if is_anchor:
                     continue  # 앵커 자신은 연계 집계에서 제외
                 cat = s.get("category") or "기타"
@@ -864,8 +864,12 @@ def bundle_view(names: list[str] | None = None) -> dict:
                     partner_cats.append(cat)
             # 정가 합계: 상시 포함 전부 + 택1은 상위 choose개만(과대계상 방지)
             k = p.get("choose") or 1
-            standalone = sum(fixed_list) + sum(sorted(choice_list, reverse=True)[:k])
-            standalone = round(standalone, 2) if (fixed_list or choice_list) else None
+            chosen_choice = sorted(choice_parts, key=lambda x: -x[1])[:k]
+            parts = (
+                [{"name": n, "usd": round(u, 2), "choice": False} for n, u in fixed_parts]
+                + [{"name": n, "usd": round(u, 2), "choice": True} for n, u in chosen_choice]
+            )
+            standalone = round(sum(pt["usd"] for pt in parts), 2) if parts else None
             savings_pct = None
             if standalone and eff is not None and standalone > 0:
                 savings_pct = round((standalone - eff) / standalone * 100)
@@ -904,6 +908,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 "price_note": p.get("price_note"),
                 "services": svcs,
                 "standalone_usd": standalone,
+                "standalone_parts": parts,
                 "savings_pct": savings_pct,
             })
         g["companies"].append({

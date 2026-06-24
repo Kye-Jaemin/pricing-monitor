@@ -191,9 +191,18 @@
             <td class="muted nowrap">{{ pl.provider }}</td>
             <td class="nowrap">{% if pl.monthly_usd is not none %}${{ '%g'|format(pl.monthly_usd) }}{% if pl.monthly_orig %} <span class="muted">({{ pl.monthly_orig }})</span>{% endif %}{% elif pl.monthly_orig %}<span class="muted">{{ pl.monthly_orig }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
             <td class="nowrap">{% if pl.annual_usd is not none %}${{ '%g'|format(pl.annual_usd) }}{% if pl.annual_orig %} <span class="muted">({{ pl.annual_orig }})</span>{% endif %}{% elif pl.annual_orig %}<span class="muted">{{ pl.annual_orig }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
-            <td class="nowrap">
-              {%- if pl.standalone_usd %}<span class="muted">{{ t('bundle.standalone') }} ${{ '%g'|format(pl.standalone_usd) }}</span>
-                {% if pl.savings_pct is not none and pl.savings_pct > 0 %}<span class="save-badge">−{{ pl.savings_pct }}%</span>{% endif %}
+            <td>
+              {%- if pl.standalone_usd %}
+                <details class="standalone-detail">
+                  <summary><span class="muted">{{ t('bundle.standalone') }} ${{ '%g'|format(pl.standalone_usd) }}</span>
+                    {% if pl.savings_pct is not none and pl.savings_pct > 0 %}<span class="save-badge">−{{ pl.savings_pct }}%</span>{% endif %}</summary>
+                  <ul class="standalone-parts">
+                    {% for sp in pl.standalone_parts %}
+                    <li>{{ sp.name }} <span class="muted">${{ '%g'|format(sp.usd) }}</span>{% if sp.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}</li>
+                    {% endfor %}
+                    <li class="standalone-sum">= {{ t('bundle.standalone') }} ${{ '%g'|format(pl.standalone_usd) }}</li>
+                  </ul>
+                </details>
                 {% if pl.monthly_usd is not none %}<span class="save-bar" title="{{ t('bundle.standalone') }} ${{ '%g'|format(pl.standalone_usd) }} → ${{ '%g'|format(pl.monthly_usd) }}"><span class="save-bar-fill" style="width: {{ ([pl.monthly_usd / pl.standalone_usd * 100, 100]|min)|round }}%"></span></span>{% endif %}
               {%- else %}<span class="muted">—</span>{% endif %}
             </td>

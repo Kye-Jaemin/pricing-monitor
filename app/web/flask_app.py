@@ -529,9 +529,9 @@ def companies_add():
     if not name:
         return redirect(url_for("companies_page", error="업체명은 필수입니다."))
 
-    # 번들은 스토어로 제공되지 않으므로 웹/구글 검색만 허용(스토어 선택 시 웹으로)
-    if is_bundle and source_type in ("apple", "google_play"):
-        source_type = "web"
+    # 번들은 구글 검색만 지원(제공업체+결합업체로 자동 검색) — 소스/URL 입력 불필요
+    if is_bundle:
+        source_type = "google_search"
 
     # 앵커 칸이 비었지만 '번들-X' 분류를 골랐다면 거기서 앵커를 보강(검색어에 포함)
     if is_bundle and not anchor:
@@ -542,8 +542,10 @@ def companies_add():
                           if c["id"] == int(cid_sel)), None)
             anchor = _bundle_anchor(cname) or ""
 
+    # 번들은 URL 입력 없이 항상 '제공업체 결합업체' 자동 검색 소스를 생성
+    src_url = "" if is_bundle else request.form.get("url")
     url, icon, error = _resolve_source_url(
-        name, source_type, request.form.get("url"), is_bundle=is_bundle, anchor=anchor
+        name, source_type, src_url, is_bundle=is_bundle, anchor=anchor
     )
     if error:
         return redirect(url_for("companies_page", error=error))

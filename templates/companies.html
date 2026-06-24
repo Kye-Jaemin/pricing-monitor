@@ -52,7 +52,7 @@
       <input type="text" name="anchor" id="addAnchor" placeholder="Netflix">
       <span class="muted bundle-hint">{{ t('companies.field_services_hint') }}</span>
     </label>
-    <label>{{ t('companies.field_type') }}
+    <label class="non-bundle">{{ t('companies.field_type') }}
       <select name="source_type" id="addSrcType">
         {% for key, label in source_types.items() %}
         <option value="{{ key }}" data-store="{{ '1' if key in ('apple','google_play') else '0' }}">{{ label }}</option>
@@ -67,7 +67,7 @@
         {% endfor %}
       </select>
     </label>
-    <label>{{ t('companies.field_url') }}
+    <label class="non-bundle">{{ t('companies.field_url') }}
       <input type="url" name="url" placeholder="https://www.notion.so/pricing">
     </label>
     <label class="bundle-check"><input type="checkbox" name="is_bundle" value="1" id="bundleChk"> 📦 {{ t('companies.field_bundle') }}</label>
