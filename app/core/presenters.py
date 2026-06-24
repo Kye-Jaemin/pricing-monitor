@@ -841,7 +841,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 "id": cid, "name": id_to_name.get(cid),
                 "anchor": _bundle_anchor(id_to_name.get(cid)),
                 "companies": [], "prices": [], "cat_count": {}, "combos": {},
-                "band_map": {},
+                "band_map": {}, "dumbbell": [],
             }
         anchor = g["anchor"]
         co_icon = _company_icon(icon_map.get(name), src_map.get(name, []))
@@ -934,6 +934,12 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 "standalone_parts": parts,
                 "savings_pct": savings_pct,
             })
+            # 덤벨 차트용: 행=번들 구성, 점=할인가(번들가) ↔ 정가 합계
+            if eff is not None:
+                g["dumbbell"].append({
+                    "company": name, "plan": p.get("name"), "icon": co_icon,
+                    "bundle": eff, "list": standalone,
+                })
         g["companies"].append({
             "name": name,
             "icon": co_icon,
@@ -954,6 +960,10 @@ def bundle_view(names: list[str] | None = None) -> dict:
         g["price_min"] = prices[0]["usd"] if prices else None
         g["price_max"] = prices[-1]["usd"] if prices else None
         g["price_points"] = prices
+        db = g.pop("dumbbell")
+        vals = [d["bundle"] for d in db] + [d["list"] for d in db if d["list"] is not None]
+        g["dumbbell"] = sorted(db, key=lambda d: d["bundle"])
+        g["dmax"] = max(vals) if vals else 1
         g["plan_total"] = sum(co["plan_count"] for co in g["companies"])
         g["service_categories"] = sorted(
             ({"category": k, "count": v} for k, v in cat_count.items()),

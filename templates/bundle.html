@@ -115,7 +115,28 @@
       {{ t('bundle.plan_count', n=g.plan_total) }}</span>
   </div>
 
-  {% if g.price_points %}
+  {% if g.dumbbell %}
+  {% set dmax = g.dmax or 1 %}
+  <div class="dumbbell">
+    <div class="db-legend"><span class="db-dot db-bundle"></span>{{ t('bundle.db_bundle') }}<span class="db-dot db-list"></span>{{ t('bundle.db_list') }}</div>
+    {% for d in g.dumbbell %}
+    {% set bp = (d.bundle / dmax * 100)|round(1) %}
+    <div class="dumbbell-row">
+      <span class="db-label" title="{{ d.company }} · {{ d.plan }}">{% if d.icon %}<img class="svc-icon" src="{{ d.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ d.company }} · {{ d.plan }}</span>
+      <span class="db-track">
+        {% if d.list is not none %}
+        {% set lp = (d.list / dmax * 100)|round(1) %}
+        {% set lo = [bp, lp]|min %}{% set hi = [bp, lp]|max %}
+        <span class="db-line" style="left: {{ lo }}%; width: {{ (hi - lo)|round(1) }}%"></span>
+        <span class="db-dot db-list" style="left: {{ lp }}%" title="{{ t('bundle.db_list') }} ${{ '%g'|format(d.list) }}"></span>
+        {% endif %}
+        <span class="db-dot db-bundle" style="left: {{ bp }}%" title="{{ t('bundle.db_bundle') }} ${{ '%g'|format(d.bundle) }}"></span>
+      </span>
+      <span class="db-val">${{ '%g'|format(d.bundle) }}{% if d.list is not none %} <span class="muted">/ ${{ '%g'|format(d.list) }}</span>{% endif %}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% elif g.price_points %}
   {% set gmin = g.price_min %}{% set gspan = (g.price_max - g.price_min) or 1 %}
   <div class="bundle-strip" title="{{ t('bundle.price_dist') }}">
     {% for p in g.price_points %}
