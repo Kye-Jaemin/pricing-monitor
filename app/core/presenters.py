@@ -843,6 +843,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
     needs_analysis: list[str] = []
     for c in bundle_companies:
         name = c["name"]
+        pickone = store.get_setting("bundle.pickone:" + name) == "1"
         _rt, cur_sig = _primary_raw_text(name)
         row = store.get_bundle_analysis(name)
         analyzed = row is not None
@@ -903,7 +904,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
                     if s.get("choice"):
                         choice_parts.append((sname, lp, is_anchor))
                     else:
-                        fixed_parts.append((sname, lp))
+                        fixed_parts.append((sname, lp, is_anchor))
                 elif sname and not s.get("choice"):
                     # 상시 포함인데 가격 미상만 '미확인'(택1 옵션은 하나만 고르므로 제외)
                     unpriced.append(sname)
@@ -916,13 +917,21 @@ def bundle_view(names: list[str] | None = None) -> dict:
             # 정가 합계: 상시 포함 전부 + 택1은 choose개만(앵커 우선, 그다음 고가).
             #   택1을 모두 더하지 않음(과대계상 방지). 앵커가 옵션이면 그 값을 사용.
             k = p.get("choose") or 1
-            chosen_choice = sorted(choice_parts, key=lambda x: (not x[2], -x[1]))[:k]
-            parts = (
-                [{"name": n, "usd": round(u, 2), "choice": False,
-                  "icon": _service_icon(n, comp_icons)} for n, u in fixed_parts]
-                + [{"name": n, "usd": round(u, 2), "choice": True,
-                    "icon": _service_icon(n, comp_icons)} for n, u, _a in chosen_choice]
-            )
+            if pickone:
+                # 사용자가 '택1'로 지정한 번들: 가격 있는 서비스 전체를 택1 풀로 보고
+                # k개만(앵커 우선) 반영 → Netflix+TVing 합산 방지.
+                pool = fixed_parts + choice_parts
+                chosen = sorted(pool, key=lambda x: (not x[2], -x[1]))[:k]
+                parts = [{"name": n, "usd": round(u, 2), "choice": True,
+                          "icon": _service_icon(n, comp_icons)} for n, u, _a in chosen]
+            else:
+                chosen_choice = sorted(choice_parts, key=lambda x: (not x[2], -x[1]))[:k]
+                parts = (
+                    [{"name": n, "usd": round(u, 2), "choice": False,
+                      "icon": _service_icon(n, comp_icons)} for n, u, _a in fixed_parts]
+                    + [{"name": n, "usd": round(u, 2), "choice": True,
+                        "icon": _service_icon(n, comp_icons)} for n, u, _a in chosen_choice]
+                )
             standalone = round(sum(pt["usd"] for pt in parts), 2) if parts else None
             savings_pct = None
             if standalone and eff is not None and standalone > 0:
@@ -982,6 +991,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
             "analyzed": analyzed,
             "stale": bool(stale),
             "anchor": anchor,
+            "pickone": pickone,
         })
 
     groups = []
