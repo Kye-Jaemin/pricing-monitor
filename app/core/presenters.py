@@ -863,6 +863,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
             svcs = []
             fixed_parts = []     # [(이름, 정가USD)] 상시 포함
             choice_parts = []    # [(이름, 정가USD)] 택1 대상
+            unpriced = []        # 정가를 모르는 서비스(합계에서 빠짐)
             for s in p.get("services", []):
                 sname = (s.get("name") or "")
                 is_anchor = bool(anchor and anchor.lower() in sname.lower())
@@ -877,6 +878,8 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 })
                 if lp is not None:
                     (choice_parts if s.get("choice") else fixed_parts).append((sname, lp))
+                elif sname:
+                    unpriced.append(sname)
                 if is_anchor:
                     continue  # 앵커 자신은 연계 집계에서 제외
                 cat = s.get("category") or "기타"
@@ -932,6 +935,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 "services": svcs,
                 "standalone_usd": standalone,
                 "standalone_parts": parts,
+                "unpriced": unpriced,
                 "savings_pct": savings_pct,
             })
             # 덤벨 차트용: 행=번들 구성, 점=할인가(번들가) ↔ 정가 합계

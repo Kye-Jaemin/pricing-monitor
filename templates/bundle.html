@@ -210,18 +210,21 @@
             <td class="nowrap">{% if pl.monthly_usd is not none %}${{ '%g'|format(pl.monthly_usd) }}{% if pl.monthly_orig %} <span class="muted">({{ pl.monthly_orig }})</span>{% endif %}{% elif pl.monthly_orig %}<span class="muted">{{ pl.monthly_orig }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
             <td class="nowrap">{% if pl.annual_usd is not none %}${{ '%g'|format(pl.annual_usd) }}{% if pl.annual_orig %} <span class="muted">({{ pl.annual_orig }})</span>{% endif %}{% elif pl.annual_orig %}<span class="muted">{{ pl.annual_orig }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
             <td>
-              {%- if pl.standalone_usd %}
+              {%- if pl.standalone_usd or pl.unpriced %}
                 <details class="standalone-detail">
-                  <summary><span class="muted">{{ t('bundle.standalone') }} ${{ '%g'|format(pl.standalone_usd) }}</span>
+                  <summary><span class="muted">{{ t('bundle.standalone') }} {% if pl.unpriced %}≥{% endif %}${{ '%g'|format(pl.standalone_usd or 0) }}</span>
                     {% if pl.savings_pct is not none and pl.savings_pct > 0 %}<span class="save-badge">−{{ pl.savings_pct }}%</span>{% endif %}</summary>
                   <ul class="standalone-parts">
                     {% for sp in pl.standalone_parts %}
                     <li>{% if sp.icon %}<img class="svc-icon" src="{{ sp.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ sp.name }} <span class="muted">${{ '%g'|format(sp.usd) }}</span>{% if sp.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}</li>
                     {% endfor %}
-                    <li class="standalone-sum">= {{ t('bundle.standalone') }} ${{ '%g'|format(pl.standalone_usd) }}</li>
+                    {% for nm in pl.unpriced %}
+                    <li class="unpriced-part">{{ nm }} <span class="muted">{{ t('bundle.unpriced') }}</span></li>
+                    {% endfor %}
+                    {% if pl.standalone_usd %}<li class="standalone-sum">= {{ t('bundle.standalone') }} {% if pl.unpriced %}≥{% endif %}${{ '%g'|format(pl.standalone_usd) }}</li>{% endif %}
                   </ul>
                 </details>
-                {% if pl.monthly_usd is not none %}<span class="save-bar" title="{{ t('bundle.standalone') }} ${{ '%g'|format(pl.standalone_usd) }} → ${{ '%g'|format(pl.monthly_usd) }}"><span class="save-bar-fill" style="width: {{ ([pl.monthly_usd / pl.standalone_usd * 100, 100]|min)|round }}%"></span></span>{% endif %}
+                {% if pl.monthly_usd is not none and pl.standalone_usd %}<span class="save-bar" title="{{ t('bundle.standalone') }} ${{ '%g'|format(pl.standalone_usd) }} → ${{ '%g'|format(pl.monthly_usd) }}"><span class="save-bar-fill" style="width: {{ ([pl.monthly_usd / pl.standalone_usd * 100, 100]|min)|round }}%"></span></span>{% endif %}
               {%- else %}<span class="muted">—</span>{% endif %}
             </td>
             <td>
