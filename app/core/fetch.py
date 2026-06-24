@@ -45,15 +45,14 @@ def build_bundle_search_url(provider: str, anchor: str | None = None) -> str:
 
     if anchor:
         q = quote_plus(
-            f"{provider} bundle plans that include {anchor}: monthly bundle price, "
-            f"which other services are bundled with {anchor}, and the standalone "
-            f"regular monthly price of each included service"
+            f"{provider} membership or bundle that includes {anchor}: monthly price, "
+            f"the full list of included benefits/services (혜택), and the standalone "
+            f"regular price of each benefit"
         )
     else:
         q = quote_plus(
-            f"{provider} bundle plans price, which services are included, what each "
-            f"bundle costs per month, and the standalone regular price of each "
-            f"included service"
+            f"{provider} membership or bundle price, the full list of included "
+            f"benefits/services (혜택), and the standalone regular price of each benefit"
         )
     return f"https://www.google.com/search?q={q}&hl=en&gl=us"
 
