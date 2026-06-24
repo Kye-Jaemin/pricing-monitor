@@ -76,7 +76,7 @@
     <p><input type="password" name="access_code" class="access-input" placeholder="{{ t('runs.access_label') }}" autocomplete="off" required></p>
     {% endif %}
     {% if category_chips %}
-    <div class="cat-filter" data-target=".select-company" data-disable-hidden="1" role="tablist" aria-label="{{ t('cat.title') }}">
+    <div class="cat-filter" data-target=".select-cat-group" data-disable-hidden="1" role="tablist" aria-label="{{ t('cat.title') }}">
       <button type="button" class="cat-chip on" data-cat="all">{{ t('filter.all') }}
         <span class="cat-count">{{ companies|length }}</span></button>
       {% for cat in category_chips %}
@@ -86,16 +86,33 @@
     </div>
     {% endif %}
     <label class="muted sel-all"><input type="checkbox" id="selAll" {% if not running or running_ids is none %}checked{% endif %}> {{ t('runs.select_all') }}</label>
-    <div class="select-list">
-      {% for c in companies %}
-      <div class="select-company" data-cat="{{ c.category_id if c.category_id else 'none' }}">
-        <span class="sc-name">{% if c.icon %}<img class="company-icon" src="{{ c.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ c.name }}</span>
+    {% macro company_row(c) %}
+      <div class="select-company">
+        <span class="sc-name">{% if c.icon %}<img class="company-icon" src="{{ c.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ c.name }}
+          {%- if c.is_bundle %} <span class="tag tag-bundle">📦</span>{% elif c.is_component %} <span class="tag tag-component">🧩</span>{% endif %}</span>
         {% for s in c.sources %}
         <label class="src-check"><input type="checkbox" name="source_ids" value="{{ s.id }}" {% if not running or running_ids is none or s.id in running_ids %}checked{% endif %}> <span class="tag tag-src-{{ s.source_type }}">{{ s.source_label }}</span></label>
         {% endfor %}
         {% if not c.sources %}<span class="muted">{{ t('runs.no_sources') }}</span>{% endif %}
       </div>
+    {% endmacro %}
+    <div class="select-list">
+      {% for cat in categories %}
+      {% set members = companies|selectattr('category_id','equalto',cat.id)|list %}
+      {% if members %}
+      <div class="select-cat-group" data-cat="{{ cat.id }}">
+        <div class="select-cat-head">{{ cat.name }} <span class="muted">({{ members|length }})</span></div>
+        {% for c in members %}{{ company_row(c) }}{% endfor %}
+      </div>
+      {% endif %}
       {% endfor %}
+      {% set uncat = companies|rejectattr('category_id')|list %}
+      {% if uncat %}
+      <div class="select-cat-group" data-cat="none">
+        <div class="select-cat-head">{{ t('cat.none') }} <span class="muted">({{ uncat|length }})</span></div>
+        {% for c in uncat %}{{ company_row(c) }}{% endfor %}
+      </div>
+      {% endif %}
     </div>
     <div class="actions">
       <button type="submit" name="scope" value="selected" class="btn-primary" {% if running %}disabled{% endif %}>

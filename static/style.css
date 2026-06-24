@@ -379,6 +379,11 @@ a.btn-primary:hover { text-decoration: none; }
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
   padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
 }
+.select-cat-group { margin-bottom: 10px; }
+.select-cat-head {
+  font-weight: 700; font-size: .9rem; margin: 6px 0 4px; padding: 4px 8px;
+  background: #eef2ff; border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0;
+}
 .select-company .sc-name { font-weight: 600; min-width: 140px; }
 .src-check { display: inline-flex; align-items: center; gap: 5px; font-size: .88rem; }
 
