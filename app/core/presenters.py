@@ -1233,7 +1233,9 @@ def diag_bundle_price(q: str = "mybox") -> str:
         out += ["   - " + c["name"] for c in allc if c["is_component"]]
         return "\n".join(out)
 
+    out.append("SERPAPI_KEY set: %s" % bool(config.SERPAPI_KEY))
     smap = _standalone_usd_map()
+    names = {c["name"] for c in hits}
     for c in hits:
         out.append("-" * 50)
         out.append("company   : %s" % c["name"])
@@ -1241,6 +1243,11 @@ def diag_bundle_price(q: str = "mybox") -> str:
                    % (c["is_component"], c["is_bundle"], c["active"]))
         rows = store.latest_snapshots_for_company(c["name"])
         out.append("  snapshots: %d" % len(rows))
+        for r in rows:
+            rt = r["raw_text"] or ""
+            out.append("  snap    : src=%s conf=%s cur=%s raw_len=%d"
+                       % (r["source_type"], r["confidence"], r["currency"], len(rt)))
+            out.append("    raw[:400]= %r" % rt[:400])
         tiers = _company_plan_tiers(c["name"])
         if not tiers:
             out.append("  tiers   : (none)  <-- 수집/추출에서 가격 티어가 안 나옴")
@@ -1251,6 +1258,13 @@ def diag_bundle_price(q: str = "mybox") -> str:
         out.append("  norm key : %s" % key)
         out.append("  smap[key]= %s (USD)" % smap.get(key))
         out.append("  match    = %s" % _match_standalone(c["name"], smap))
+
+    out.append("=" * 50)
+    out.append("최근 수집 로그(해당 업체):")
+    for r in store.recent_runs(120):
+        if r["company"] in names:
+            out.append("  [%s] src=%s status=%s err=%s"
+                       % (r["company"], r["source_type"], r["status"], r["error_message"]))
 
     out.append("=" * 50)
     out.append("번들 분석상의 서비스 / list_price / 매칭:")
