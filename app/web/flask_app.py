@@ -196,6 +196,18 @@ def bundle_run():
     return redirect(_bundle_url(names))
 
 
+@app.route("/diag/bundle-price")
+def diag_bundle_price():
+    """번들 구성요소 정가 매칭 진단(브라우저에서 바로 확인). 텍스트로 출력.
+    예: /diag/bundle-price?q=mybox  (ACCESS_CODE 설정 시 &code=... 필요)"""
+    if config.ACCESS_CODE and (request.args.get("code") or "") != config.ACCESS_CODE:
+        return ("코드가 필요합니다: /diag/bundle-price?q=mybox&code=액세스코드", 403,
+                {"Content-Type": "text/plain; charset=utf-8"})
+    q = request.args.get("q") or "mybox"
+    report = presenters.diag_bundle_price(q)
+    return (report, 200, {"Content-Type": "text/plain; charset=utf-8"})
+
+
 @app.route("/bundle/svcprice", methods=["POST"])
 def bundle_svcprice():
     """번들 포함 서비스의 정가를 사용자가 직접 입력/수정(번들 통화 기준).

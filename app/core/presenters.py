@@ -1213,6 +1213,68 @@ def _auto_register_components(names, exclude_name: str, category_id) -> None:
         existing.add(key)
 
 
+def diag_bundle_price(q: str = "mybox") -> str:
+    """특정 서비스의 정가가 합산에 안 들어가는 원인을 텍스트로 진단.
+    CLI 스크립트와 웹 라우트가 공용으로 사용."""
+    from pathlib import Path
+    from .. import config
+
+    q = (q or "mybox").lower()
+    out = []
+    p = Path(config.DB_PATH).expanduser()
+    out.append("DB_PATH        : %s" % config.DB_PATH)
+    out.append("DB_PATH(abs)   : %s" % p.resolve())
+    out.append("search term    : %s" % q)
+    allc = store.list_companies(active_only=False)
+    out.append("total companies: %d" % len(allc))
+    hits = [c for c in allc if q in c["name"].lower()]
+    if not hits:
+        out.append("!! '%s' 를 이름에 포함하는 업체가 없음. 등록된 구성요소:" % q)
+        out += ["   - " + c["name"] for c in allc if c["is_component"]]
+        return "\n".join(out)
+
+    smap = _standalone_usd_map()
+    for c in hits:
+        out.append("-" * 50)
+        out.append("company   : %s" % c["name"])
+        out.append("  flags   : component=%s bundle=%s active=%s"
+                   % (c["is_component"], c["is_bundle"], c["active"]))
+        rows = store.latest_snapshots_for_company(c["name"])
+        out.append("  snapshots: %d" % len(rows))
+        tiers = _company_plan_tiers(c["name"])
+        if not tiers:
+            out.append("  tiers   : (none)  <-- 수집/추출에서 가격 티어가 안 나옴")
+        for t in tiers:
+            out.append("  tier    : name=%r free=%s monthly=%s annual=%s"
+                       % (t["name"], t["is_free"], t["monthly"], t["annual"]))
+        key = _normalize_feature(c["name"])
+        out.append("  norm key : %s" % key)
+        out.append("  smap[key]= %s (USD)" % smap.get(key))
+        out.append("  match    = %s" % _match_standalone(c["name"], smap))
+
+    out.append("=" * 50)
+    out.append("번들 분석상의 서비스 / list_price / 매칭:")
+    for c in allc:
+        if not c["is_bundle"]:
+            continue
+        row = store.get_bundle_analysis(c["name"])
+        if not row:
+            continue
+        try:
+            payload = json.loads(row["payload_json"]) or {}
+        except (ValueError, TypeError):
+            continue
+        for pl in payload.get("plans", []):
+            for s in pl.get("services", []):
+                nm = s.get("name") or ""
+                if q not in nm.lower():
+                    continue
+                out.append("  [%s] svc=%r choice=%s list_price=%s -> match=%s"
+                           % (c["name"], nm, s.get("choice"), s.get("list_price"),
+                              _match_standalone(nm, smap)))
+    return "\n".join(out)
+
+
 def clear_components() -> int:
     """구성요소(🧩)로 등록된 업체를 모두 삭제. 반환: 삭제한 업체 수."""
     comps = [c["name"] for c in store.list_companies(active_only=False) if c["is_component"]]
