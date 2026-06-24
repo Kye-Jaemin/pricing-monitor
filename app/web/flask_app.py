@@ -196,15 +196,15 @@ def bundle_run():
     return redirect(_bundle_url(names))
 
 
-@app.route("/bundle/sumall", methods=["POST"])
-def bundle_sumall():
-    """번들을 '모두 합산'으로 지정/해제. 기본은 같은 카테고리에서 하나만 세지만,
-    정말로 둘 다 포함인 번들(예: Verizon Netflix & Max)은 켜서 전부 합산.
+@app.route("/bundle/pickone", methods=["POST"])
+def bundle_pickone():
+    """번들을 '택1 멤버십'으로 지정/해제. 기본은 포함 서비스를 전부 합산하지만,
+    Naver처럼 같은 종류 중 하나만 고르는 멤버십은 켜서 같은 종류는 하나만 센다.
     재분석 없이 즉시 반영."""
     company = (request.form.get("company") or "").strip()
     if company:
-        val = "1" if request.form.get("sumall") else "0"
-        store.set_setting("bundle.sumall:" + company, val)
+        val = "1" if request.form.get("pickone") else "0"
+        store.set_setting("bundle.pickone:" + company, val)
     names = [n for n in request.form.getlist("sel") if n]
     return redirect(_bundle_url(names))
 
