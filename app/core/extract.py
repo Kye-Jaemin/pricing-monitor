@@ -331,10 +331,16 @@ def extract_bundles_ai(company: str, raw_text: str, anchor: str | None = None) -
     from anthropic import Anthropic
 
     def _num(v):
-        try:
-            return float(v)
-        except (TypeError, ValueError):
+        if v is None:
             return None
+        if isinstance(v, (int, float)):
+            return float(v)
+        sv = str(v).replace(",", "")
+        if "%" in sv:
+            return None  # 'Up to 5% points' 같은 비율 값은 정가가 아님
+        # "1,650 KRW/month", "~3,000 to 5,000원" 같은 문자열 → 첫 숫자(범위면 하한)
+        m = re.search(r"\d+(?:\.\d+)?", sv)
+        return float(m.group()) if m else None
 
     client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
     text = raw_text[:18000]
@@ -362,8 +368,15 @@ def extract_bundles_ai(company: str, raw_text: str, anchor: str | None = None) -
         "'one of the following'). In that case set choose to how many you pick (usually 1) "
         "AND mark every option in that set choice=true — do NOT treat them as all-included "
         "(never sum their prices as if you get them all). list_price = that benefit's "
-        "standalone/regular monthly price IF stated (e.g. a 'standalone values if bought "
-        "separately' list), in the same currency, else null. category is "
+        "standalone/regular MONTHLY price IF stated ANYWHERE in the same currency as monthly. "
+        "CAPTURE THIS AGGRESSIVELY for EVERY benefit, not just streaming: 'Standalone Value: "
+        "1,650 KRW/month', 'NAVER MYBOX ... Standalone Value: 1,650 KRW/month', 'Digital Pack "
+        "... ~3,000 to 5,000 KRW/month', 'standalone values if bought separately', 'regular "
+        "price $X' all give list_price. Strip thousands separators (1,650 -> 1650). For a "
+        "RANGE ('~3,000 to 5,000') use the LOWER number (3000). For non-numeric/percentage "
+        "values ('Variable', 'Up to 5% points back') set list_price=null. Always-included "
+        "perks (cloud storage, webtoon cookies/digital pack, points/rewards) ARE services — "
+        "include them with their Standalone Value as list_price and choice=false. category is "
         "the SERVICE TYPE — short and concrete, e.g. 'Streaming Video', 'Music', "
         "'Mobile/Telecom', 'Cloud Storage', 'Gaming', 'News', 'Shopping', 'Points/Rewards', "
         "'Content', 'Delivery', 'Fitness'. Do NOT use vague labels like 'Additional "
