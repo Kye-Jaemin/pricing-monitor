@@ -59,13 +59,14 @@
         {% endfor %}
       </select>
     </label>
-    <label class="non-bundle">{{ t('cat.assign') }}
+    <label>{{ t('cat.assign') }}
       <select name="category_id">
         <option value="">{{ t('cat.none') }}</option>
         {% for cat in data.categories %}
         <option value="{{ cat.id }}">{{ cat.name }}</option>
         {% endfor %}
       </select>
+      <span class="muted bundle-only bundle-hint">{{ t('companies.bundle_cat_hint') }}</span>
     </label>
     <label class="non-bundle">{{ t('companies.field_url') }}
       <input type="url" name="url" placeholder="https://www.notion.so/pricing">
