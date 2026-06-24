@@ -200,23 +200,6 @@
     {% endif %}
   </div>
 
-  {% if g.bands %}
-  <div class="bundle-bands">
-    <div class="bundle-bands-title">{{ t('bundle.bands_title') }}</div>
-    {% for b in g.bands %}
-    <div class="band band-paid">
-      <div class="band-head">{{ b.label }} <span class="band-range muted">({{ t('bundle.band_range', lo='%g'|format(b.lower), hi='%g'|format(b.upper)) }})</span>
-        <span class="muted">· {{ t('bundle.plan_count', n=b.plan_count) }}</span></div>
-      <div class="band-svc-list">
-        {% for s in b.services %}
-        <span class="bundle-svc{% if s.is_anchor %} bundle-svc-anchor{% endif %}{% if s.choice %} bundle-svc-choice{% endif %}"><span class="bundle-item-cat">{{ s.category }}</span>{% if s.icon %}<img class="svc-icon" src="{{ s.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ s.name }}{% if s.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}</span>
-        {% endfor %}
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-
   <div class="bundle-companies">
     {% for co in g.companies %}
     <details class="bundle-co">

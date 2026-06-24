@@ -858,7 +858,6 @@ def bundle_view(names: list[str] | None = None) -> dict:
     src_map: dict[str, list[str]] = {}
     for s in store.list_sources(active_only=True):
         src_map.setdefault(s["company_name"], []).append(s["url"])
-    band_usd = get_band_width()
     smap = _standalone_usd_map()   # 비번들 수집 서비스의 정가(원가 매칭용)
     # 서비스 아이콘 매칭용: 실제 아이콘이 있는 업체만(google_search 전용은 보통 없음)
     comp_icons = {}
@@ -902,7 +901,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 "id": cid, "name": id_to_name.get(cid),
                 "anchor": _bundle_anchor(id_to_name.get(cid)),
                 "companies": [], "prices": [], "cat_count": {}, "combos": {},
-                "band_map": {}, "dumbbell": [],
+                "dumbbell": [],
             }
         anchor = g["anchor"]
         co_icon = _company_icon(icon_map.get(name), src_map.get(name, []))
@@ -998,27 +997,6 @@ def bundle_view(names: list[str] | None = None) -> dict:
             if partner_cats:
                 key = " + ".join(sorted(partner_cats))
                 g["combos"][key] = g["combos"].get(key, 0) + 1
-            # 가격대(밴드)별 포함 서비스 집계
-            if eff is not None:
-                ub = max(band_usd, math.ceil(eff / band_usd) * band_usd)
-                bkey = round(ub, 2)
-                b = g["band_map"].get(bkey)
-                if b is None:
-                    b = g["band_map"][bkey] = {
-                        "upper": ub, "lower": max(0.0, ub - band_usd),
-                        "svc": {}, "plans": [],
-                    }
-                b["plans"].append({
-                    "company": name, "name": p.get("name"),
-                    "monthly_usd": m_usd, "monthly_orig": (_fmt_money(p.get("monthly"), cur) if cur != "USD" else None),
-                })
-                for sv in svcs:
-                    e = b["svc"].get(sv["name"])
-                    if e is None:
-                        b["svc"][sv["name"]] = dict(sv)
-                    else:
-                        e["is_anchor"] = e["is_anchor"] or sv["is_anchor"]
-                        e["choice"] = e["choice"] or sv["choice"]
             co_plans.append({
                 "name": p.get("name"), "provider": p.get("provider"),
                 "currency": cur,
@@ -1088,20 +1066,6 @@ def bundle_view(names: list[str] | None = None) -> dict:
             ({"cats": k, "count": v} for k, v in combos.items()),
             key=lambda x: -x["count"],
         )[:6]
-        # 가격대(밴드)별 포함 서비스 — 카테고리 가중치순 정렬
-        band_map = g.pop("band_map")
-        g["bands"] = []
-        for b in sorted(band_map.values(), key=lambda x: x["lower"]):
-            svcs = sorted(
-                b["svc"].values(),
-                key=lambda s: (not s["is_anchor"], s["choice"], s["name"].lower()),
-            )
-            g["bands"].append({
-                "label": "~$%g" % b["upper"],
-                "lower": b["lower"], "upper": b["upper"],
-                "plan_count": len(b["plans"]),
-                "services": svcs,
-            })
         groups.append(g)
     groups.sort(key=lambda x: (x["id"] is None, (x["name"] or "").lower()))
     return {

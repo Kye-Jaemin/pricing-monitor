@@ -716,9 +716,6 @@ a.btn-primary:hover { text-decoration: none; }
 .bundle-pie-wrap { position: relative; height: 220px; }
 .bundle-bar-wrap { position: relative; min-height: 80px; }
 .bundle-pie-wrap canvas, .bundle-bar-wrap canvas { width: 100% !important; height: 100% !important; }
-.bundle-bands { margin: 8px 0 12px; }
-.bundle-bands-title { font-weight: 600; font-size: .9rem; margin-bottom: 6px; }
-.band-svc-list { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 4px; }
 .pos-feat { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; margin: 4px 0; background: #fff; }
 .pos-feat > summary { cursor: pointer; font-size: .9rem; }
 .pos-feat > summary:hover { color: var(--accent); }
