@@ -420,6 +420,30 @@ def extract_bundles_ai(company: str, raw_text: str, anchor: str | None = None) -
             "price_note": (str(p.get("price_note")).strip() if p.get("price_note") else None),
             "services": services,
         })
+
+    # 안전장치: 원문에 '택1/중 하나/select one' 신호가 있으면, AI가 놓친 경우라도
+    # 같은 카테고리의 복수 서비스를 택1로 보정(정가 합산 과대계상 방지).
+    # (둘 다 포함하는 통신사 번들 등은 이런 문구가 없어 영향 없음.)
+    low = (raw_text or "").lower()
+    pick_signals = [
+        "택1", "택 1", "중 택", "중 1개", "중 하나", "중에서 1", "1개 선택",
+        "하나를 선택", "하나 선택", "원하는 1", "select one", "choose one",
+        "choose 1", "pick one", "select any one", "choose any one",
+    ]
+    if any(sig in low for sig in pick_signals):
+        for p in plans:
+            by_cat: dict = {}
+            for s in p["services"]:
+                by_cat.setdefault(s["category"], []).append(s)
+            changed = False
+            for grp in by_cat.values():
+                if len(grp) >= 2 and not any(s["choice"] for s in grp):
+                    for s in grp:
+                        s["choice"] = True
+                    changed = True
+            if changed and not p.get("choose"):
+                p["choose"] = 1
+
     return {"anchor": anchor or "", "plans": plans}
 
 
