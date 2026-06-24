@@ -630,8 +630,15 @@ a.btn-primary:hover { text-decoration: none; }
 .bundle-strip-min { left: 0; } .bundle-strip-max { right: 0; }
 /* 번들 가격 덤벨 차트(행=번들 구성, 가로=가격, 할인가↔정가 합계) */
 .dumbbell { margin: 8px 0 14px; }
-.db-legend { font-size: .78rem; color: var(--muted); margin-bottom: 8px; display: flex; gap: 14px; align-items: center; }
+.db-controls { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; }
+.db-legend { font-size: .78rem; color: var(--muted); display: flex; gap: 14px; align-items: center; }
 .db-legend .db-dot { position: static; transform: none; display: inline-block; vertical-align: -1px; margin-right: 4px; box-shadow: none; }
+.db-sort { font-size: .78rem; color: var(--muted); display: flex; gap: 10px; align-items: center; }
+.db-sort-label { font-weight: 600; }
+.db-sort label { display: inline-flex; align-items: center; gap: 3px; cursor: pointer; }
+.db-provider + .db-provider { margin-top: 6px; }
+.db-provider-head { font-size: .78rem; font-weight: 600; color: var(--muted); display: flex; align-items: center; gap: 5px; margin: 6px 0 2px; padding-top: 4px; border-top: 1px solid var(--line); }
+.db-provider:first-child .db-provider-head { border-top: none; padding-top: 0; }
 .db-rows { max-height: 320px; overflow-y: auto; scrollbar-gutter: stable; }
 .dumbbell-row { display: flex; align-items: center; gap: 10px; margin: 5px 0; }
 .db-label { --dbw: 180px; flex: 0 0 var(--dbw); min-width: 0; font-size: .83rem; overflow: hidden; white-space: nowrap; }

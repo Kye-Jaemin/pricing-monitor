@@ -1036,7 +1036,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
             if eff is not None:
                 g["dumbbell"].append({
                     "company": name, "plan": p.get("name"), "icon": co_icon,
-                    "bundle": eff, "list": standalone,
+                    "bundle": eff, "list": standalone, "save": savings_pct,
                 })
         g["companies"].append({
             "name": name,
@@ -1061,7 +1061,21 @@ def bundle_view(names: list[str] | None = None) -> dict:
         g["price_points"] = prices
         db = g.pop("dumbbell")
         vals = [d["bundle"] for d in db] + [d["list"] for d in db if d["list"] is not None]
-        g["dumbbell"] = sorted(db, key=lambda d: d["bundle"])
+        # 할인율순(기본 보기의 대체): 절감률 큰 순. 절감률 미상은 뒤로.
+        g["dumbbell"] = sorted(db, key=lambda d: (d["save"] is None, -(d["save"] or 0), d["bundle"]))
+        # 제공업체별(기본 보기): 같은 제공업체끼리 묶고, 그 안에선 번들가 오름차순.
+        #   제공업체 정렬은 첫 등장 순서를 유지(수집/등록 순).
+        prov_map: dict = {}
+        for d in db:
+            pr = prov_map.get(d["company"])
+            if pr is None:
+                pr = prov_map[d["company"]] = {
+                    "company": d["company"], "icon": d["icon"], "rows": [],
+                }
+            pr["rows"].append(d)
+        for pr in prov_map.values():
+            pr["rows"].sort(key=lambda d: d["bundle"])
+        g["dumbbell_providers"] = list(prov_map.values())
         g["dmax"] = max(vals) if vals else 1
         g["plan_total"] = sum(co["plan_count"] for co in g["companies"])
         g["service_categories"] = sorted(

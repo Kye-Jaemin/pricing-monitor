@@ -117,10 +117,7 @@
 
   {% if g.dumbbell %}
   {% set dmax = g.dmax or 1 %}
-  <div class="dumbbell">
-    <div class="db-legend"><span class="db-dot db-bundle"></span>{{ t('bundle.db_bundle') }}<span class="db-dot db-list"></span>{{ t('bundle.db_list') }}</div>
-    <div class="db-rows">
-    {% for d in g.dumbbell %}
+  {% macro db_row(d) %}
     {% set bp = (d.bundle / dmax * 100)|round(1) %}
     <div class="dumbbell-row">
       <span class="db-label" title="{{ d.company }} · {{ d.plan }}"><span class="db-ltext">{% if d.icon %}<img class="svc-icon" src="{{ d.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ d.company }} · {{ d.plan }}</span></span>
@@ -137,7 +134,26 @@
         {% set sv = ((d.list - d.bundle) / d.list * 100)|round %}
         {% if sv > 0 %}<span class="save-badge">−{{ sv }}%</span>{% endif %}{% endif %}</span>
     </div>
+  {% endmacro %}
+  <div class="dumbbell">
+    <div class="db-controls">
+      <div class="db-legend"><span class="db-dot db-bundle"></span>{{ t('bundle.db_bundle') }}<span class="db-dot db-list"></span>{{ t('bundle.db_list') }}</div>
+      <div class="db-sort">
+        <span class="db-sort-label">{{ t('bundle.db_sort') }}</span>
+        <label><input type="radio" name="dbsort-{{ g.id }}" value="provider" checked> {{ t('bundle.db_by_provider') }}</label>
+        <label><input type="radio" name="dbsort-{{ g.id }}" value="save"> {{ t('bundle.db_by_save') }}</label>
+      </div>
+    </div>
+    <div class="db-rows db-view db-view-provider">
+    {% for prov in g.dumbbell_providers %}
+      <div class="db-provider">
+        <div class="db-provider-head">{% if prov.icon %}<img class="svc-icon" src="{{ prov.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ prov.company }}</div>
+        {% for d in prov.rows %}{{ db_row(d) }}{% endfor %}
+      </div>
     {% endfor %}
+    </div>
+    <div class="db-rows db-view db-view-save" hidden>
+    {% for d in g.dumbbell %}{{ db_row(d) }}{% endfor %}
     </div>
     <div class="db-axis">
       <span class="db-label"></span>
@@ -294,6 +310,20 @@
       options: { maintainAspectRatio: false, cutout: '55%',
         plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } },
           title: { display: !!anchor, text: '⚓ ' + anchor } } }
+    });
+  });
+  document.querySelectorAll('.dumbbell').forEach(function (db) {
+    var radios = db.querySelectorAll('.db-sort input[type=radio]');
+    var byProv = db.querySelector('.db-view-provider');
+    var bySave = db.querySelector('.db-view-save');
+    if (!byProv || !bySave) return;
+    function apply(mode) {
+      var prov = mode !== 'save';
+      byProv.hidden = !prov;
+      bySave.hidden = prov;
+    }
+    radios.forEach(function (r) {
+      r.addEventListener('change', function () { if (r.checked) apply(r.value); });
     });
   });
   document.querySelectorAll('canvas.bundle-bar').forEach(function (cv) {
