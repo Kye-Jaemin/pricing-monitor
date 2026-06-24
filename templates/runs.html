@@ -123,6 +123,10 @@
     </div>
   </form>
   <div class="dedup-tools">
+    <form method="post" action="{{ url_for('companies_clear_components') }}"
+          onsubmit="return confirm('{{ t('companies.confirm_clear_components') }}');">
+      <button type="submit" class="btn-secondary">🗑 {{ t('companies.clear_components') }}</button>
+    </form>
     <form method="post" action="{{ url_for('companies_dedup_components') }}"
           onsubmit="return confirm('{{ t('companies.confirm_dedup') }}');">
       <button type="submit" class="btn-secondary">🧹 {{ t('companies.dedup_components') }}</button>

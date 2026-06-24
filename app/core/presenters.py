@@ -1139,40 +1139,18 @@ def run_bundle_extraction(names: list[str] | None = None, only_stale: bool = Fal
         result = extract.extract_bundles_ai(name, rt, anchor)
         store.set_bundle_analysis(name, json.dumps(result, ensure_ascii=False), sig)
         n += 1
-        # 추출된 포함 서비스를 원가 수집용 구성요소로 자동 등록(같은 번들 분류에)
-        svc_names = {
-            (s.get("name") or "").strip()
-            for p in result.get("plans", [])
-            for s in p.get("services", [])
-        }
-        _auto_register_components(svc_names, exclude_name=name, category_id=c["category_id"])
+        # (구성요소 자동 등록 안 함 — 정가는 AI가 뽑은 list_price로 직접 표시한다.
+        #  AI가 만든 혜택성 이름이 쓰레기/중복 업체로 쌓이고 분석할 때마다 재생성되던
+        #  문제 때문에 제거. 특정 구성요소의 개별 정가가 필요하면 수동으로 추가.)
     return n
 
 
-def _auto_register_components(names, exclude_name: str, category_id) -> None:
-    """추출된 포함 서비스를 '번들 구성요소'(원가 수집용)로 자동 등록한다.
-
-    새로 만든 서비스만 구성요소로 표시 + 같은 번들 분류 + 구글 검색 소스 부여.
-    이미 존재하는 업체는 건드리지 않는다.
-    """
-    from .fetch import build_google_search_url
-
-    # 정규화 키로 기존 업체와 비교 → 'Disney+'/'Disney Plus' 같은 변형 중복 방지
-    existing = {_normalize_feature(c["name"]) for c in store.list_companies(active_only=False)}
-    excl = _normalize_feature(exclude_name or "")
-    for nm in names:
-        nm = (nm or "").strip()
-        key = _normalize_feature(nm)
-        if not nm or key == excl or key in existing:
-            continue
-        store.add_company(nm)
-        store.set_company_component(nm, True)
-        if category_id:
-            store.set_company_category(nm, category_id)
-        store.add_source(
-            company=nm, source_type="google_search", url=build_google_search_url(nm)
-        )
-        existing.add(key)
+def clear_components() -> int:
+    """구성요소(🧩)로 등록된 업체를 모두 삭제. 반환: 삭제한 업체 수."""
+    comps = [c["name"] for c in store.list_companies(active_only=False) if c["is_component"]]
+    for nm in comps:
+        store.delete_company(nm)
+    return len(comps)
 
 
 def _dedup_company_groups(groups) -> int:

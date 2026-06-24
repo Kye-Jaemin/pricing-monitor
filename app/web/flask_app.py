@@ -673,6 +673,14 @@ def companies_dedup_components_ai():
     return redirect(url_for(dest, notice=f"AI 중복 구성요소 {n}개를 정리했습니다."))
 
 
+@app.route("/companies/clear-components", methods=["POST"])
+def companies_clear_components():
+    """구성요소(🧩)로 등록된 업체를 모두 삭제(자동 생성된 쓰레기 정리)."""
+    n = presenters.clear_components()
+    dest = "runs" if "runs" in (request.referrer or "") else "companies_page"
+    return redirect(url_for(dest, notice=f"구성요소 {n}개를 삭제했습니다."))
+
+
 @app.route("/companies/delete-by-category", methods=["POST"])
 def companies_delete_by_category():
     """해당 분류에 속한 업체를 전체 삭제."""
