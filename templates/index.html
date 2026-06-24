@@ -35,6 +35,7 @@
   <summary class="company-summary">
     {% if c.icon %}<img class="company-icon" src="{{ c.icon }}" alt="" onerror="this.style.display='none'">{% endif %}
     <span class="cc-name">{{ c.company }}</span>
+    {% if c.is_bundle %}<span class="tag tag-bundle">📦 {{ t('companies.bundle_tag') }}</span>{% endif %}
     {% if c.has_free_tier %}<span class="badge badge-free">{{ t('badge.free_tier') }}</span>{% endif %}
     {% if c.free_trial %}<span class="badge badge-trial">{{ t('badge.free_trial') }}</span>{% endif %}
     {% if c.confidence == 'low' %}<span class="badge badge-low">{{ t('badge.review') }}</span>{% endif %}
@@ -50,6 +51,19 @@
       <button type="submit" class="btn-danger btn-sm">{{ t('btn.delete') }}</button>
     </form>
   </div>
+
+  {% if c.bundle_services %}
+  <div class="bundle-members">
+    <div class="bundle-members-title">🔗 {{ t('overview.bundle_members', n=c.bundle_services|length) }}</div>
+    <div class="bundle-members-list">
+      {% for s in c.bundle_services %}
+      <a class="bundle-member" href="{{ url_for('company', name=s.company) }}">
+        {% if s.icon %}<img class="svc-icon" src="{{ s.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ s.company }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
 
   <p class="source-line">
     {{ t('overview.source') }} <a href="{{ c.primary_source_url }}" target="_blank" rel="noopener"><span class="tag tag-src-{{ c.primary_source_type }}">{{ c.primary_source_label }}</span></a>

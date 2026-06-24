@@ -461,21 +461,39 @@ def overview() -> dict:
         )
     # ── 업체 분류로 그룹화(정의 순서, 미분류는 마지막) + 필터 칩 ──
     cat_list, name_to_id, id_to_name = _category_context()
+    flags = {c["name"]: c for c in store.list_companies(active_only=False)}
     for co in companies:
         cid = name_to_id.get(co["company"])
         co["category_id"] = cid
         co["category"] = id_to_name.get(cid)
+        rec = flags.get(co["company"])
+        co["is_bundle"] = bool(rec["is_bundle"]) if rec else False
+        co["is_component"] = bool(rec["is_component"]) if rec else False
+
+    # 번들: 제공업체 아래로 결합업체(구성요소)를 중첩. 중첩된 구성요소는 최상위에서 제외.
+    prov_services = _bundle_provider_services()
+    by_name = {co["company"]: co for co in companies}
+
+    def _nest(members):
+        mset = {m["company"] for m in members}
+        claimed = set()
+        for co in members:
+            if co["is_bundle"]:
+                svc = [by_name[n] for n in prov_services.get(co["company"], []) if n in mset]
+                co["bundle_services"] = svc
+                claimed.update(s["company"] for s in svc)
+        return [co for co in members if not (co["is_component"] and co["company"] in claimed)]
 
     groups = []
     for cat in cat_list:
         members = [co for co in companies if co["category_id"] == cat["id"]]
         if members:
             groups.append(
-                {"id": cat["id"], "name": cat["name"], "companies": members}
+                {"id": cat["id"], "name": cat["name"], "companies": _nest(members)}
             )
     uncategorized = [co for co in companies if not co.get("category_id")]
     if uncategorized:
-        groups.append({"id": None, "name": None, "companies": uncategorized})
+        groups.append({"id": None, "name": None, "companies": _nest(uncategorized)})
 
     category_chips = [
         {"id": g["id"], "name": g["name"], "count": len(g["companies"])}
