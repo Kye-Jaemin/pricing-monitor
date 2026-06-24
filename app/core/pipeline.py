@@ -25,6 +25,23 @@ def _utcnow_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+# 구글 검색 본문이 비었거나 봇 차단/동의 화면으로 보이면 SerpAPI 폴백 대상.
+_GOOGLE_BLOCK_MARKERS = (
+    "unusual traffic", "not a robot", "recaptcha", "before you continue",
+    "enable javascript", "비정상적인 트래픽", "자동으로 전송", "로봇이 아닙니다",
+    "사람인지 확인", "계속하려면",
+)
+
+
+def _google_blocked_or_empty(text: str) -> bool:
+    """Playwright 가 가져온 구글 검색 본문이 쓸모없는지(빈/차단/동의) 판단."""
+    t = (text or "").strip()
+    if len(t) < 400:
+        return True
+    low = t.lower()
+    return any(m in low for m in _GOOGLE_BLOCK_MARKERS)
+
+
 @dataclass
 class SourceResult:
     company: str
@@ -121,9 +138,15 @@ def _process_source(
     label = SOURCE_TYPE_LABELS.get(source_type, source_type)
 
     # b. 페이지 렌더링 → 본문 텍스트
-    #    구글 검색은 헤드리스 봇 차단이 심해, SerpAPI 키가 있으면 그걸로 가져온다.
-    if source_type == "google_search" and config.SERPAPI_KEY:
-        page_text = fetch.fetch_google_via_serpapi(source_url)
+    #    구글 검색: 먼저 무료 Playwright 로 시도하고, 결과가 비었거나 봇 차단으로
+    #    보이면 그때만 SerpAPI 로 폴백한다(월 100회 무료 쿼터 절약).
+    if source_type == "google_search":
+        try:
+            page_text = fetch.fetch_page_text(source_url)
+        except Exception:  # noqa: BLE001  (차단/타임아웃 → 폴백 판단으로)
+            page_text = ""
+        if config.SERPAPI_KEY and _google_blocked_or_empty(page_text):
+            page_text = fetch.fetch_google_via_serpapi(source_url)
     else:
         page_text = fetch.fetch_page_text(source_url)
 
