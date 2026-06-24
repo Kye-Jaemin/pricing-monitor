@@ -254,7 +254,20 @@
                     {% if pl.savings_pct is not none and pl.savings_pct > 0 %}<span class="save-badge">−{{ pl.savings_pct }}%</span>{% endif %}</summary>
                   <ul class="standalone-parts">
                     {% for sp in pl.standalone_parts %}
-                    <li>{% if sp.icon %}<img class="svc-icon" src="{{ sp.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ sp.name }} <span class="muted">${{ '%g'|format(sp.usd) }}</span>{% if sp.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}</li>
+                    <li>{% if sp.icon %}<img class="svc-icon" src="{{ sp.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ sp.name }} <span class="muted">${{ '%g'|format(sp.usd) }}</span>{% if sp.manual %} <span class="badge badge-manual">{{ t('bundle.manual_tag') }}</span>{% endif %}{% if sp.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}
+                      {% if sp.key %}
+                      <details class="svcprice-edit">
+                        <summary title="{{ t('bundle.edit_price') }}">✎</summary>
+                        <form method="post" action="{{ url_for('bundle_svcprice') }}" class="svcprice-form">
+                          <input type="hidden" name="company" value="{{ co.name }}">
+                          <input type="hidden" name="key" value="{{ sp.key }}">
+                          {% for n in data.selected %}<input type="hidden" name="sel" value="{{ n }}">{% endfor %}
+                          <input type="number" step="any" name="value" class="svcprice-input" value="{{ sp.override_raw }}" placeholder="{{ t('bundle.enter_price', cur=pl.currency) }}">
+                          <button type="submit" class="btn-secondary btn-sm">{{ t('bundle.set_price') }}</button>
+                          <span class="muted svcprice-hint">{{ t('bundle.clear_hint') }}</span>
+                        </form>
+                      </details>
+                      {% endif %}</li>
                     {% endfor %}
                     {% for up in pl.unpriced %}
                     <li class="unpriced-part">{{ up.name }} <span class="muted">{{ t('bundle.unpriced') }}</span>

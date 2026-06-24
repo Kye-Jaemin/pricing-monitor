@@ -928,10 +928,10 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 skey = _normalize_feature(sname)
                 # 정가 우선순위: ①사용자 직접 입력(번들 통화) ②AI list_price ③수집 정가 매칭
                 ov = store.get_setting("bundle.svc:" + name + ":" + skey)
+                ov_num = re.sub(r"[^\d.]", "", ov) if ov else ""
                 lp = None
-                if ov:
-                    ov_num = re.sub(r"[^\d.]", "", ov)
-                    lp = _to_usd(float(ov_num), cur) if ov_num else None
+                if ov_num:
+                    lp = _to_usd(float(ov_num), cur)
                 if lp is None:
                     lp = _to_usd(s.get("list_price"), cur)
                 if lp is None:
@@ -940,7 +940,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
                     "name": sname, "category": s.get("category") or "기타",
                     "is_anchor": is_anchor, "choice": bool(s.get("choice")),
                     "list_usd": lp, "bucket": _cat_bucket(s.get("category") or "", sname),
-                    "key": skey, "manual": bool(ov),
+                    "key": skey, "manual": bool(ov), "override_raw": ov_num,
                     "icon": _service_icon(sname, comp_icons),
                 })
                 if is_anchor:
@@ -972,9 +972,11 @@ def bundle_view(names: list[str] | None = None) -> dict:
             chosen_pool = sorted(pool, key=lambda x: (not x["is_anchor"], -x["list_usd"]))[:k]
             parts = (
                 [{"name": s["name"], "usd": round(s["list_usd"], 2), "choice": False,
+                  "key": s["key"], "manual": s["manual"], "override_raw": s["override_raw"],
                   "icon": _service_icon(s["name"], comp_icons)}
                  for s in sorted(fixed, key=lambda x: (not x["is_anchor"], -x["list_usd"]))]
                 + [{"name": s["name"], "usd": round(s["list_usd"], 2), "choice": True,
+                    "key": s["key"], "manual": s["manual"], "override_raw": s["override_raw"],
                     "icon": _service_icon(s["name"], comp_icons)} for s in chosen_pool]
             )
             standalone = round(sum(pt["usd"] for pt in parts), 2) if parts else None
