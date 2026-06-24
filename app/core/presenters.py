@@ -930,37 +930,42 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 if cat not in partner_cats:
                     partner_cats.append(cat)
             # ── 정가 합계 ─────────────────────────────────────────
-            # 기본(pickone=off): 가격 있는 포함 서비스를 전부 합산(수집 결과 그대로).
-            # pickone=on(택1 멤버십): 같은 종류(버킷)에서는 하나만(앵커 우선, 고가) 센다.
+            # 핵심: AI가 매긴 choice(택1) 표시를 그대로 존중.
+            #   choice=true → 택1 대안(여럿 중 choose개만, 앵커 우선) — 나머지는 제외.
+            #   choice=false → 항상 포함 → 전부 합산.
+            # pickone 토글: AI가 택1을 놓쳐 모두 '항상 포함'으로 잡힌 경우 대비 —
+            #   '항상 포함' 중에서도 같은 종류(버킷)는 하나만 센다(과대계상 방지).
             priced = [s for s in svcs if s["list_usd"] is not None]
-            bucket_count: dict = {}
-            for s in priced:
-                bucket_count[s["bucket"]] = bucket_count.get(s["bucket"], 0) + 1
+            fixed = [s for s in priced if not s["choice"]]   # 항상 포함
+            pool = [s for s in priced if s["choice"]]         # 택1 대안
+            fixed_buckets: set = set()
             if pickone:
                 best: dict = {}
-                for s in priced:
+                for s in fixed:
                     cur_b = best.get(s["bucket"])
                     rank = (s["is_anchor"], s["list_usd"])
                     if cur_b is None or rank > (cur_b["is_anchor"], cur_b["list_usd"]):
                         best[s["bucket"]] = s
-                chosen = list(best.values())
-            else:
-                chosen = priced
-            parts = [
-                {"name": s["name"], "usd": round(s["list_usd"], 2),
-                 "choice": pickone and bucket_count.get(s["bucket"], 0) >= 2,
-                 "icon": _service_icon(s["name"], comp_icons)}
-                for s in sorted(chosen, key=lambda x: (not x["is_anchor"], -x["list_usd"]))
-            ]
+                fixed = list(best.values())
+                fixed_buckets = set(best.keys())
+            k = p.get("choose") or 1
+            chosen_pool = sorted(pool, key=lambda x: (not x["is_anchor"], -x["list_usd"]))[:k]
+            parts = (
+                [{"name": s["name"], "usd": round(s["list_usd"], 2), "choice": False,
+                  "icon": _service_icon(s["name"], comp_icons)}
+                 for s in sorted(fixed, key=lambda x: (not x["is_anchor"], -x["list_usd"]))]
+                + [{"name": s["name"], "usd": round(s["list_usd"], 2), "choice": True,
+                    "icon": _service_icon(s["name"], comp_icons)} for s in chosen_pool]
+            )
             standalone = round(sum(pt["usd"] for pt in parts), 2) if parts else None
-            # '정가 미확인': 가격 미상 + (택1 모드면) 같은 종류에 대표가 없는 것만.
-            priced_buckets = {s["bucket"] for s in chosen}
+            # '정가 미확인': 가격 미상이면서 '항상 포함(choice=false)'인 것만.
+            #   택1 대안의 미상 가격은 (어차피 하나만 고르므로) 합계/미확인에서 제외.
             unpriced, seen_un = [], set()
             for s in svcs:
-                if s["list_usd"] is not None or not s["name"]:
+                if s["list_usd"] is not None or not s["name"] or s["choice"]:
                     continue
-                if pickone and s["bucket"] in priced_buckets:
-                    continue  # 택1 모드: 같은 종류에 대표가 있으면 대체 옵션으로 보고 숨김
+                if pickone and s["bucket"] in fixed_buckets:
+                    continue  # 택1 모드: 같은 종류에 대표가 있으면 그 종류 미상은 숨김
                 if s["name"] in seen_un:
                     continue
                 seen_un.add(s["name"]); unpriced.append(s["name"])
