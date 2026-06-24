@@ -123,7 +123,7 @@
     {% for d in g.dumbbell %}
     {% set bp = (d.bundle / dmax * 100)|round(1) %}
     <div class="dumbbell-row">
-      <span class="db-label" title="{{ d.company }} · {{ d.plan }}">{% if d.icon %}<img class="svc-icon" src="{{ d.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ d.company }} · {{ d.plan }}</span>
+      <span class="db-label" title="{{ d.company }} · {{ d.plan }}"><span class="db-ltext">{% if d.icon %}<img class="svc-icon" src="{{ d.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ d.company }} · {{ d.plan }}</span></span>
       <span class="db-track">
         {% if d.list is not none %}
         {% set lp = (d.list / dmax * 100)|round(1) %}
