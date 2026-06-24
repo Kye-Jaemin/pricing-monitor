@@ -384,6 +384,8 @@ a.btn-primary:hover { text-decoration: none; }
   font-weight: 700; font-size: .9rem; margin: 6px 0 4px; padding: 4px 8px;
   background: #eef2ff; border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0;
 }
+.dedup-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.dedup-tools form { display: inline-flex; gap: 6px; align-items: center; margin: 0; }
 .select-sub-head { font-size: .8rem; font-weight: 600; color: var(--muted); margin: 4px 0 2px 14px; }
 .select-company-nested { margin-left: 14px; border-left: 2px solid var(--line); padding-left: 8px; }
 .select-company .sc-name { font-weight: 600; min-width: 140px; }

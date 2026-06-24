@@ -16,10 +16,12 @@
 </div>
 {% if error == 'bad_code' %}
 <div class="alert">{{ t('runs.bad_code', contact=contact) }}</div>
-{% endif %}
-{% if error == 'no_selection' %}
+{% elif error == 'no_selection' %}
 <div class="alert">{{ t('runs.no_selection') }}</div>
+{% elif error %}
+<div class="alert">{{ error }}</div>
 {% endif %}
+{% if notice %}<div class="notice">{{ notice }}</div>{% endif %}
 
 {% set sc = scheduler %}
 <details class="card sched-card">
@@ -120,6 +122,18 @@
       <button type="submit" name="scope" value="all" class="btn-secondary" {% if running %}disabled{% endif %}>{{ t('runs.run_all') }}</button>
     </div>
   </form>
+  <div class="dedup-tools">
+    <form method="post" action="{{ url_for('companies_dedup_components') }}"
+          onsubmit="return confirm('{{ t('companies.confirm_dedup') }}');">
+      <button type="submit" class="btn-secondary">🧹 {{ t('companies.dedup_components') }}</button>
+    </form>
+    <form method="post" action="{{ url_for('companies_dedup_components_ai') }}">
+      {% if access_required %}<input type="password" name="access_code" class="access-input" placeholder="{{ t('runs.access_label') }}" autocomplete="off">{% endif %}
+      <button type="submit" class="btn-secondary"
+              onclick="return confirm('{{ t('companies.confirm_dedup_ai') }}');">🤖 {{ t('companies.dedup_components_ai') }}</button>
+    </form>
+    <span class="muted">{{ t('companies.dedup_help') }}</span>
+  </div>
 </section>
 <script>
   (function () {

@@ -642,20 +642,22 @@ def categories_delete():
 def companies_dedup_components():
     """이름 표기만 다른 중복 구성요소를 정리(자동 등록 변형 중복 제거)."""
     n = presenters.dedup_components()
-    return redirect(url_for("companies_page", notice=f"중복 구성요소 {n}개를 정리했습니다."))
+    dest = "runs" if "runs" in (request.referrer or "") else "companies_page"
+    return redirect(url_for(dest, notice=f"중복 구성요소 {n}개를 정리했습니다."))
 
 
 @app.route("/companies/dedup-components-ai", methods=["POST"])
 def companies_dedup_components_ai():
     """AI 군집으로 한↔영 등 표기가 다른 중복 구성요소까지 정리. 코드 필요."""
+    dest = "runs" if "runs" in (request.referrer or "") else "companies_page"
     if config.ACCESS_CODE and (request.form.get("access_code") or "").strip() != config.ACCESS_CODE:
-        return redirect(url_for("companies_page", error="액세스 코드가 올바르지 않습니다."))
+        return redirect(url_for(dest, error="액세스 코드가 올바르지 않습니다."))
     try:
         n = presenters.dedup_components_ai()
     except Exception:  # noqa: BLE001
         log.exception("[companies] AI 중복 정리 실패")
-        return redirect(url_for("companies_page", error="AI 정리에 실패했습니다. 잠시 후 다시 시도하세요."))
-    return redirect(url_for("companies_page", notice=f"AI 중복 구성요소 {n}개를 정리했습니다."))
+        return redirect(url_for(dest, error="AI 정리에 실패했습니다. 잠시 후 다시 시도하세요."))
+    return redirect(url_for(dest, notice=f"AI 중복 구성요소 {n}개를 정리했습니다."))
 
 
 @app.route("/companies/delete-by-category", methods=["POST"])
@@ -737,6 +739,7 @@ def runs():
         contact=config.ACCESS_CONTACT,
         scheduler=sched.get_status(),
         error=request.args.get("error"),
+        notice=request.args.get("notice"),
     )
 
 
