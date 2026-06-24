@@ -121,15 +121,8 @@ def _process_source(
     label = SOURCE_TYPE_LABELS.get(source_type, source_type)
 
     # b. 페이지 렌더링 → 본문 텍스트
-    #    구글 검색은 헤드리스 봇 차단이 심해 반드시 SerpAPI 로 가져온다.
-    #    (키 없이 Playwright 로 긁으면 차단당해 가격 0건짜리 빈 결과가 되므로,
-    #     키가 없으면 조용히 넘어가지 말고 명확히 에러를 낸다.)
-    if source_type == "google_search":
-        if not config.SERPAPI_KEY:
-            raise RuntimeError(
-                "google_search 수집에는 SERPAPI_KEY 가 필요합니다 "
-                "(Render 환경변수에 설정하세요)."
-            )
+    #    구글 검색은 헤드리스 봇 차단이 심해, SerpAPI 키가 있으면 그걸로 가져온다.
+    if source_type == "google_search" and config.SERPAPI_KEY:
         page_text = fetch.fetch_google_via_serpapi(source_url)
     else:
         page_text = fetch.fetch_page_text(source_url)
