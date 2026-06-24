@@ -994,11 +994,12 @@ def load_bundle_card(card_id: int) -> dict | None:
     return {"id": row["id"], "title": row["title"], "created_at": row["created_at"], "data": data}
 
 
-def run_bundle_extraction(names: list[str] | None = None) -> int:
+def run_bundle_extraction(names: list[str] | None = None, only_stale: bool = False) -> int:
     """번들 업체의 대표 출처 원문에서 번들 요금제를 AI로 구조화 추출·저장.
 
     names 가 주어지면 그 업체만(없으면 전체 번들 업체).
-    반환: 추출을 시도한 업체 수. (라우트에서 액세스 코드 확인 후 호출)
+    only_stale=True 면 원문이 직전 추출 이후 바뀐 업체만(수집 파이프라인용).
+    반환: 추출을 시도한 업체 수.
     """
     from . import extract
 
@@ -1014,6 +1015,10 @@ def run_bundle_extraction(names: list[str] | None = None) -> int:
         rt, sig = _primary_raw_text(name)
         if not rt:
             continue
+        if only_stale:
+            row = store.get_bundle_analysis(name)
+            if row is not None and row["signature"] == sig:
+                continue  # 원문 변경 없음 → 재추출 생략(비용 절약)
         anchor = _bundle_anchor(id_to_name.get(c["category_id"]))
         result = extract.extract_bundles_ai(name, rt, anchor)
         store.set_bundle_analysis(name, json.dumps(result, ensure_ascii=False), sig)

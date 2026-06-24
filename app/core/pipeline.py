@@ -298,6 +298,23 @@ def run_once(progress_cb=None, source_ids=None, stale_days=None) -> RunResult:
             done += 1
             report("")
 
+    # 번들 업체: 수집 직후 결합 서비스를 자동 추출 → 구성요소(서비스별 구글 검색)
+    # 소스를 자동 등록한다. 원문이 바뀐 경우만 AI 추출(비용 절약). 다음 수집 회차에
+    # 그 구성요소들의 개별 가격이 모인다.
+    if config.ANTHROPIC_API_KEY:
+        collected = {c["name"] for c in companies}
+        bundle_targets = sorted(
+            c["name"] for c in store.list_companies(active_only=True)
+            if c["is_bundle"] and c["name"] in collected
+        )
+        if bundle_targets:
+            try:
+                from . import presenters
+
+                presenters.run_bundle_extraction(bundle_targets, only_stale=True)
+            except Exception:  # noqa: BLE001
+                pass
+
     run.finished_at = _utcnow_iso()
     report("")
     return run
