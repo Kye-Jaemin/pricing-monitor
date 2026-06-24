@@ -1087,32 +1087,56 @@ def _auto_register_components(names, exclude_name: str, category_id) -> None:
         existing.add(key)
 
 
-def dedup_components() -> int:
-    """이름 표기만 다른 중복 구성요소를 정리한다(정규화 키 기준).
+def _dedup_company_groups(groups) -> int:
+    """동일 그룹(같은 서비스로 판정된 업체들)에서 중복 '구성요소'를 정리.
 
-    같은 키 그룹에서 일반(비구성요소) 업체가 있으면 그걸 남기고 중복 '구성요소'만
-    삭제. 모두 구성요소면 수집 데이터(스냅샷) 있는 것 우선 1개만 남기고 삭제.
-    반환: 삭제한 업체 수.
+    그룹에 일반(비구성요소) 업체가 있으면 그걸 남기고 중복 구성요소를 모두 삭제.
+    모두 구성요소면 수집 데이터(스냅샷) 있는 것 우선 1개만 남김. 반환: 삭제 수.
     """
-    groups: dict[str, list] = {}
-    for c in store.list_companies(active_only=False):
-        groups.setdefault(_normalize_feature(c["name"]), []).append(c)
     removed = 0
-    for members in groups.values():
+    for members in groups:
         if len(members) < 2:
             continue
         non_comp = [c for c in members if not c["is_component"]]
         comps = [c for c in members if c["is_component"]]
         if non_comp:
-            to_delete = comps  # 실제 업체가 있으면 중복 구성요소는 모두 제거
+            to_delete = comps
         else:
             comps.sort(key=lambda c: (
                 0 if store.latest_snapshots_for_company(c["name"]) else 1, c["name"]))
-            to_delete = comps[1:]  # 데이터 있는 것 우선 1개만 남김
+            to_delete = comps[1:]
         for c in to_delete:
             store.delete_company(c["name"])
             removed += 1
     return removed
+
+
+def dedup_components() -> int:
+    """이름 표기만 다른 중복 구성요소를 정규화 키 기준으로 정리. 반환: 삭제 수."""
+    groups: dict[str, list] = {}
+    for c in store.list_companies(active_only=False):
+        groups.setdefault(_normalize_feature(c["name"]), []).append(c)
+    return _dedup_company_groups(groups.values())
+
+
+def dedup_components_ai() -> int:
+    """AI 의미 군집으로 한↔영 등 표기가 전혀 다른 중복 구성요소까지 정리.
+
+    예: '넷플릭스'·'Netflix'·'Netflix Standard' → 한 그룹. (AI 호출, 코드 필요)
+    """
+    from . import extract
+
+    companies = list(store.list_companies(active_only=False))
+    names = [c["name"] for c in companies]
+    if len(names) < 2:
+        return 0
+    mapping = extract.dedupe_features_ai(names)  # {원본명: canonical}
+    by_name = {c["name"]: c for c in companies}
+    groups: dict[str, list] = {}
+    for nm in names:
+        canon = mapping.get(nm) or _normalize_feature(nm)
+        groups.setdefault(canon.lower(), []).append(by_name[nm])
+    return _dedup_company_groups(groups.values())
 
 
 def _bundle_provider_services() -> dict:
