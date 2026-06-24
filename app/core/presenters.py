@@ -482,7 +482,10 @@ def overview() -> dict:
                 svc = [by_name[n] for n in prov_services.get(co["company"], []) if n in mset]
                 co["bundle_services"] = svc
                 claimed.update(s["company"] for s in svc)
-        return [co for co in members if not (co["is_component"] and co["company"] in claimed)]
+        visible = [co for co in members if not (co["is_component"] and co["company"] in claimed)]
+        # 번들 제공업체(📦)를 그룹 상단으로 (그 외 순서는 유지 — 안정 정렬)
+        visible.sort(key=lambda co: not co["is_bundle"])
+        return visible
 
     groups = []
     for cat in cat_list:
