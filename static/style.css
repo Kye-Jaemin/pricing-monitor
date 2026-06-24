@@ -158,6 +158,8 @@ details.card > summary:hover { color: var(--accent); }
 .pickone-form { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0 4px; padding: 6px 10px; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; }
 .pickone-toggle { display: inline-flex; align-items: center; gap: 5px; font-size: .85rem; font-weight: 600; color: #9a3412; cursor: pointer; }
 .pickone-help { font-size: .78rem; }
+.svcprice-form { display: inline-flex; gap: 4px; align-items: center; margin-left: 6px; }
+.svcprice-input { width: 90px; padding: 2px 6px; font-size: .8rem; border: 1px solid var(--line); border-radius: 6px; }
 .bundle-members { margin: 6px 0 12px; padding: 8px 10px; background: #faf5ff; border: 1px solid #f0e6ff; border-radius: 8px; }
 .bundle-members-title { font-size: .82rem; font-weight: 600; color: #86198f; margin-bottom: 6px; }
 .bundle-members-list { display: flex; flex-wrap: wrap; gap: 6px; }

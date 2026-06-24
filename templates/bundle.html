@@ -240,8 +240,16 @@
                     {% for sp in pl.standalone_parts %}
                     <li>{% if sp.icon %}<img class="svc-icon" src="{{ sp.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ sp.name }} <span class="muted">${{ '%g'|format(sp.usd) }}</span>{% if sp.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}</li>
                     {% endfor %}
-                    {% for nm in pl.unpriced %}
-                    <li class="unpriced-part">{{ nm }} <span class="muted">{{ t('bundle.unpriced') }}</span></li>
+                    {% for up in pl.unpriced %}
+                    <li class="unpriced-part">{{ up.name }} <span class="muted">{{ t('bundle.unpriced') }}</span>
+                      <form method="post" action="{{ url_for('bundle_svcprice') }}" class="svcprice-form">
+                        <input type="hidden" name="company" value="{{ co.name }}">
+                        <input type="hidden" name="key" value="{{ up.key }}">
+                        {% for n in data.selected %}<input type="hidden" name="sel" value="{{ n }}">{% endfor %}
+                        <input type="number" step="any" name="value" class="svcprice-input" placeholder="{{ t('bundle.enter_price', cur=pl.currency) }}">
+                        <button type="submit" class="btn-secondary btn-sm">{{ t('bundle.set_price') }}</button>
+                      </form>
+                    </li>
                     {% endfor %}
                     {% if pl.standalone_usd %}<li class="standalone-sum">= {{ t('bundle.standalone') }} {% if pl.unpriced %}≥{% endif %}${{ '%g'|format(pl.standalone_usd) }}</li>{% endif %}
                   </ul>

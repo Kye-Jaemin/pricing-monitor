@@ -196,6 +196,20 @@ def bundle_run():
     return redirect(_bundle_url(names))
 
 
+@app.route("/bundle/svcprice", methods=["POST"])
+def bundle_svcprice():
+    """번들 포함 서비스의 정가를 사용자가 직접 입력/수정(번들 통화 기준).
+    멤버십 페이지엔 없고 별도 검색에만 있는 정가를 직접 채울 때 사용. 빈 값=해제.
+    재분석 없이 즉시 반영."""
+    company = (request.form.get("company") or "").strip()
+    key = (request.form.get("key") or "").strip()
+    value = (request.form.get("value") or "").strip()
+    if company and key:
+        store.set_setting("bundle.svc:" + company + ":" + key, value)
+    names = [n for n in request.form.getlist("sel") if n]
+    return redirect(_bundle_url(names))
+
+
 @app.route("/bundle/pickone", methods=["POST"])
 def bundle_pickone():
     """번들을 '택1 멤버십'으로 지정/해제. 기본은 포함 서비스를 전부 합산하지만,

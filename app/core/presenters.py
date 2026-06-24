@@ -750,18 +750,30 @@ def _fmt_money(amount, currency: str) -> str | None:
 
 def _standalone_usd_map() -> dict:
     """비번들 업체로 수집된 서비스의 '대표 정가'(최저 유료 월가, USD) 맵.
-    번들 포함 서비스의 원가 매칭에 사용. 키는 정규화 업체명(표기 차이 흡수)."""
+    번들 포함 서비스의 원가 매칭에 사용. 키는 정규화 업체명(표기 차이 흡수).
+    수집 통화(예: KRW)를 USD로 변환해 저장한다."""
     out: dict[str, float] = {}
     for c in store.list_companies(active_only=True):
-        if c["is_bundle"] or not store.latest_snapshots_for_company(c["name"]):
+        if c["is_bundle"]:
             continue
+        rows = store.latest_snapshots_for_company(c["name"])
+        if not rows:
+            continue
+        try:
+            snap = PricingSnapshot.from_payload_json(
+                _pick_primary(rows, _priority_map(c["name"]))["payload_json"]
+            )
+            cur = (snap.currency or "USD").upper()
+        except Exception:  # noqa: BLE001
+            cur = "USD"
         prices = []
         for tr in _company_plan_tiers(c["name"]):
             if tr.get("is_free"):
                 continue
             eff = tr["monthly"] if tr["monthly"] is not None else tr["annual"]
-            if eff is not None:
-                prices.append(eff)
+            u = _to_usd(eff, cur)
+            if u is not None:
+                prices.append(u)
         if prices:
             out[_normalize_feature(c["name"])] = min(prices)
     return out
@@ -913,14 +925,22 @@ def bundle_view(names: list[str] | None = None) -> dict:
             for s in p.get("services", []):
                 sname = (s.get("name") or "")
                 is_anchor = bool(anchor and anchor.lower() in sname.lower())
-                # 원가(정가): AI가 잡은 list_price(통화 환산) 우선, 없으면 수집 정가 매칭
-                lp = _to_usd(s.get("list_price"), cur)
+                skey = _normalize_feature(sname)
+                # 정가 우선순위: ①사용자 직접 입력(번들 통화) ②AI list_price ③수집 정가 매칭
+                ov = store.get_setting("bundle.svc:" + name + ":" + skey)
+                lp = None
+                if ov:
+                    ov_num = re.sub(r"[^\d.]", "", ov)
+                    lp = _to_usd(float(ov_num), cur) if ov_num else None
+                if lp is None:
+                    lp = _to_usd(s.get("list_price"), cur)
                 if lp is None:
                     lp = _match_standalone(sname, smap)
                 svcs.append({
                     "name": sname, "category": s.get("category") or "기타",
                     "is_anchor": is_anchor, "choice": bool(s.get("choice")),
                     "list_usd": lp, "bucket": _cat_bucket(s.get("category") or "", sname),
+                    "key": skey, "manual": bool(ov),
                     "icon": _service_icon(sname, comp_icons),
                 })
                 if is_anchor:
@@ -968,7 +988,8 @@ def bundle_view(names: list[str] | None = None) -> dict:
                     continue  # 택1 모드: 같은 종류에 대표가 있으면 그 종류 미상은 숨김
                 if s["name"] in seen_un:
                     continue
-                seen_un.add(s["name"]); unpriced.append(s["name"])
+                seen_un.add(s["name"])
+                unpriced.append({"name": s["name"], "key": s["key"]})
             savings_pct = None
             if standalone and eff is not None and standalone > 0:
                 savings_pct = round((standalone - eff) / standalone * 100)
@@ -1139,10 +1160,57 @@ def run_bundle_extraction(names: list[str] | None = None, only_stale: bool = Fal
         result = extract.extract_bundles_ai(name, rt, anchor)
         store.set_bundle_analysis(name, json.dumps(result, ensure_ascii=False), sig)
         n += 1
-        # (구성요소 자동 등록 안 함 — 정가는 AI가 뽑은 list_price로 직접 표시한다.
-        #  AI가 만든 혜택성 이름이 쓰레기/중복 업체로 쌓이고 분석할 때마다 재생성되던
-        #  문제 때문에 제거. 특정 구성요소의 개별 정가가 필요하면 수동으로 추가.)
+        # 정가를 번들 페이지에서 못 구한(=list_price 없는) '진짜 서비스'만 구성요소로
+        # 등록해 개별 정가를 따로 수집한다(예: 멤버십 페이지엔 없고 전용 검색에만 있는
+        # Naver MyBox). 혜택성 이름(Perks/Credit/Content 등)은 등록 제외.
+        needs = [
+            (s.get("name") or "").strip()
+            for p in result.get("plans", [])
+            for s in p.get("services", [])
+            if s.get("list_price") in (None, "", 0) and not _is_junk_component(s.get("name") or "")
+        ]
+        _auto_register_components(needs, exclude_name=name, category_id=c["category_id"])
     return n
+
+
+# 혜택 설명(실제 구독 서비스가 아님)을 구성요소 자동 등록에서 제외하기 위한 패턴.
+_JUNK_COMPONENT_RE = re.compile(
+    r"(?i)(perk|benefit|credit|content|discount|reward|\bpoint|bonus|cashback|"
+    r"voucher|coupon|membership|included|free\s*trial|subscription credit|혜택|적립|할인|쿠폰)"
+)
+
+
+def _is_junk_component(name: str) -> bool:
+    """혜택성/설명형 이름이면 True(구성요소로 만들지 않음)."""
+    nm = (name or "").strip()
+    if len(nm) < 2:
+        return True
+    return bool(_JUNK_COMPONENT_RE.search(nm))
+
+
+def _auto_register_components(names, exclude_name: str, category_id) -> None:
+    """번들 포함 서비스 중 정가 미상인 '진짜 서비스'를 구성요소(원가 수집용)로 등록.
+
+    새로 만든 서비스만 구성요소로 표시 + 같은 번들 분류 + 구글 검색 소스 부여.
+    이미 존재하는 업체(표기 변형 포함)는 건드리지 않는다.
+    """
+    from .fetch import build_google_search_url
+
+    existing = {_normalize_feature(c["name"]) for c in store.list_companies(active_only=False)}
+    excl = _normalize_feature(exclude_name or "")
+    for nm in names:
+        nm = (nm or "").strip()
+        key = _normalize_feature(nm)
+        if not nm or key == excl or key in existing:
+            continue
+        store.add_company(nm)
+        store.set_company_component(nm, True)
+        if category_id:
+            store.set_company_category(nm, category_id)
+        store.add_source(
+            company=nm, source_type="google_search", url=build_google_search_url(nm)
+        )
+        existing.add(key)
 
 
 def clear_components() -> int:
