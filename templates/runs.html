@@ -100,9 +100,15 @@
       {% for cat in categories %}
       {% set members = companies|selectattr('category_id','equalto',cat.id)|list %}
       {% if members %}
+      {% set providers = members|selectattr('is_bundle')|list %}
+      {% set comps = members|selectattr('is_component')|list %}
+      {% set others = members|rejectattr('is_bundle')|rejectattr('is_component')|list %}
       <div class="select-cat-group" data-cat="{{ cat.id }}">
         <div class="select-cat-head">{{ cat.name }} <span class="muted">({{ members|length }})</span></div>
-        {% for c in members %}{{ company_row(c) }}{% endfor %}
+        {% for c in providers %}{{ company_row(c) }}{% endfor %}
+        {% if comps %}<div class="select-sub-head">↳ {{ t('runs.bundle_services') }}</div>{% endif %}
+        {% for c in comps %}{{ company_row(c) }}{% endfor %}
+        {% for c in others %}{{ company_row(c) }}{% endfor %}
       </div>
       {% endif %}
       {% endfor %}
