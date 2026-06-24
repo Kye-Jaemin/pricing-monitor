@@ -264,6 +264,21 @@ def set_company_component(name: str, is_component: bool) -> None:
         )
 
 
+def delete_companies_in_category(category_id: int) -> int:
+    """해당 분류에 속한 모든 업체를 전체 삭제(소스·스냅샷·변동·번들분석 포함).
+    반환: 삭제한 업체 수."""
+    with connect() as conn:
+        names = [
+            r["name"]
+            for r in conn.execute(
+                "SELECT name FROM companies WHERE category_id=?", (category_id,)
+            )
+        ]
+    for n in names:
+        delete_company(n)
+    return len(names)
+
+
 def delete_company(name: str) -> None:
     """업체 전체 삭제: 소스 + 스냅샷 + 변동 이력 + 업체 엔티티 모두 제거."""
     with connect() as conn:

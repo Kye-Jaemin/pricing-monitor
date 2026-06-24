@@ -19,8 +19,16 @@
   {% if data.categories %}
   <div class="cat-list">
     {% for cat in data.categories %}
+    {% set n_co = data.companies|selectattr('category_id','equalto',cat.id)|list|length %}
     <span class="chip cat-chip">
-      {{ cat.name }}
+      {{ cat.name }} <span class="cat-count">{{ n_co }}</span>
+      {% if n_co %}
+      <form method="post" action="{{ url_for('companies_delete_by_category') }}"
+            onsubmit="return confirm('{{ t('cat.confirm_delete_companies', name=cat.name, n=n_co) }}');">
+        <input type="hidden" name="category_id" value="{{ cat.id }}">
+        <button type="submit" class="btn-x" title="{{ t('cat.delete_companies') }}">🗑</button>
+      </form>
+      {% endif %}
       <form method="post" action="{{ url_for('categories_delete') }}"
             onsubmit="return confirm('{{ t('cat.confirm_delete', name=cat.name) }}');">
         <input type="hidden" name="category_id" value="{{ cat.id }}">

@@ -636,6 +636,15 @@ def categories_delete():
     return redirect(url_for("companies_page"))
 
 
+@app.route("/companies/delete-by-category", methods=["POST"])
+def companies_delete_by_category():
+    """해당 분류에 속한 업체를 전체 삭제."""
+    cid = request.form.get("category_id")
+    if cid and cid.isdigit():
+        store.delete_companies_in_category(int(cid))
+    return redirect(url_for("companies_page"))
+
+
 @app.route("/companies/set-category", methods=["POST"])
 def companies_set_category():
     """업체를 분류에 배정(빈 값이면 미분류)."""
