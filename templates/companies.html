@@ -46,6 +46,11 @@
     </label>
     <button type="submit" class="btn-secondary">{{ t('cat.add') }}</button>
   </form>
+  <form method="post" action="{{ url_for('companies_dedup_components') }}" class="add-form-inline"
+        onsubmit="return confirm('{{ t('companies.confirm_dedup') }}');">
+    <button type="submit" class="btn-secondary">🧹 {{ t('companies.dedup_components') }}</button>
+    <span class="muted">{{ t('companies.dedup_help') }}</span>
+  </form>
 </section>
 
 <section class="card" id="addCompanySection">

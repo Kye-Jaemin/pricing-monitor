@@ -636,6 +636,13 @@ def categories_delete():
     return redirect(url_for("companies_page"))
 
 
+@app.route("/companies/dedup-components", methods=["POST"])
+def companies_dedup_components():
+    """이름 표기만 다른 중복 구성요소를 정리(자동 등록 변형 중복 제거)."""
+    n = presenters.dedup_components()
+    return redirect(url_for("companies_page", notice=f"중복 구성요소 {n}개를 정리했습니다."))
+
+
 @app.route("/companies/delete-by-category", methods=["POST"])
 def companies_delete_by_category():
     """해당 분류에 속한 업체를 전체 삭제."""

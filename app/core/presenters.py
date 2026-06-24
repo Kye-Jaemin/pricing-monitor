@@ -1069,10 +1069,13 @@ def _auto_register_components(names, exclude_name: str, category_id) -> None:
     """
     from .fetch import build_google_search_url
 
-    existing = {c["name"].lower() for c in store.list_companies(active_only=False)}
+    # 정규화 키로 기존 업체와 비교 → 'Disney+'/'Disney Plus' 같은 변형 중복 방지
+    existing = {_normalize_feature(c["name"]) for c in store.list_companies(active_only=False)}
+    excl = _normalize_feature(exclude_name or "")
     for nm in names:
         nm = (nm or "").strip()
-        if not nm or nm.lower() == (exclude_name or "").lower() or nm.lower() in existing:
+        key = _normalize_feature(nm)
+        if not nm or key == excl or key in existing:
             continue
         store.add_company(nm)
         store.set_company_component(nm, True)
@@ -1081,7 +1084,35 @@ def _auto_register_components(names, exclude_name: str, category_id) -> None:
         store.add_source(
             company=nm, source_type="google_search", url=build_google_search_url(nm)
         )
-        existing.add(nm.lower())
+        existing.add(key)
+
+
+def dedup_components() -> int:
+    """이름 표기만 다른 중복 구성요소를 정리한다(정규화 키 기준).
+
+    같은 키 그룹에서 일반(비구성요소) 업체가 있으면 그걸 남기고 중복 '구성요소'만
+    삭제. 모두 구성요소면 수집 데이터(스냅샷) 있는 것 우선 1개만 남기고 삭제.
+    반환: 삭제한 업체 수.
+    """
+    groups: dict[str, list] = {}
+    for c in store.list_companies(active_only=False):
+        groups.setdefault(_normalize_feature(c["name"]), []).append(c)
+    removed = 0
+    for members in groups.values():
+        if len(members) < 2:
+            continue
+        non_comp = [c for c in members if not c["is_component"]]
+        comps = [c for c in members if c["is_component"]]
+        if non_comp:
+            to_delete = comps  # 실제 업체가 있으면 중복 구성요소는 모두 제거
+        else:
+            comps.sort(key=lambda c: (
+                0 if store.latest_snapshots_for_company(c["name"]) else 1, c["name"]))
+            to_delete = comps[1:]  # 데이터 있는 것 우선 1개만 남김
+        for c in to_delete:
+            store.delete_company(c["name"])
+            removed += 1
+    return removed
 
 
 def _bundle_provider_services() -> dict:
