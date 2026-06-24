@@ -759,6 +759,21 @@ def _match_standalone(service_name: str, smap: dict):
     return best_price
 
 
+def _service_icon(service_name: str, comp_icons: dict) -> str | None:
+    """서비스 아이콘: 매칭 업체의 실제 아이콘 우선, 없으면 서비스명 기반 파비콘 추정."""
+    s = (service_name or "").lower()
+    best_name, best_icon = "", None
+    for cname, icon in comp_icons.items():
+        if len(cname) >= 3 and (cname in s or s in cname) and len(cname) > len(best_name):
+            best_name, best_icon = cname, icon
+    if best_icon:
+        return best_icon
+    tokens = re.findall(r"[a-z0-9]+", s)
+    if tokens:
+        return f"https://www.google.com/s2/favicons?domain={tokens[0]}.com&sz=64"
+    return None
+
+
 def _bundle_anchor(cat_name: str | None) -> str | None:
     """분류명에서 앵커 서비스 추출. '번들-Netflix'/'Bundle: Netflix' → 'Netflix'."""
     if not cat_name:
@@ -787,6 +802,12 @@ def bundle_view(names: list[str] | None = None) -> dict:
         src_map.setdefault(s["company_name"], []).append(s["url"])
     band_usd = get_band_width()
     smap = _standalone_usd_map()   # 비번들 수집 서비스의 정가(원가 매칭용)
+    # 서비스 아이콘 매칭용: 실제 아이콘이 있는 업체만(google_search 전용은 보통 없음)
+    comp_icons = {}
+    for c in store.list_companies(active_only=False):
+        ic = _company_icon(icon_map.get(c["name"]), src_map.get(c["name"], []))
+        if ic:
+            comp_icons[c["name"].lower()] = ic
 
     all_bundle = [c for c in store.list_companies(active_only=True) if c["is_bundle"]]
     all_names = sorted(c["name"] for c in all_bundle)
@@ -852,7 +873,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 svcs.append({
                     "name": sname, "category": s.get("category") or "기타",
                     "is_anchor": is_anchor, "choice": bool(s.get("choice")),
-                    "list_usd": lp,
+                    "list_usd": lp, "icon": _service_icon(sname, comp_icons),
                 })
                 if lp is not None:
                     (choice_parts if s.get("choice") else fixed_parts).append((sname, lp))
@@ -866,8 +887,10 @@ def bundle_view(names: list[str] | None = None) -> dict:
             k = p.get("choose") or 1
             chosen_choice = sorted(choice_parts, key=lambda x: -x[1])[:k]
             parts = (
-                [{"name": n, "usd": round(u, 2), "choice": False} for n, u in fixed_parts]
-                + [{"name": n, "usd": round(u, 2), "choice": True} for n, u in chosen_choice]
+                [{"name": n, "usd": round(u, 2), "choice": False,
+                  "icon": _service_icon(n, comp_icons)} for n, u in fixed_parts]
+                + [{"name": n, "usd": round(u, 2), "choice": True,
+                    "icon": _service_icon(n, comp_icons)} for n, u in chosen_choice]
             )
             standalone = round(sum(pt["usd"] for pt in parts), 2) if parts else None
             savings_pct = None

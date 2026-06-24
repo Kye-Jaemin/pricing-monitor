@@ -157,7 +157,7 @@
         <span class="muted">· {{ t('bundle.plan_count', n=b.plan_count) }}</span></div>
       <div class="band-svc-list">
         {% for s in b.services %}
-        <span class="bundle-svc{% if s.is_anchor %} bundle-svc-anchor{% endif %}{% if s.choice %} bundle-svc-choice{% endif %}"><span class="bundle-item-cat">{{ s.category }}</span>{{ s.name }}{% if s.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}</span>
+        <span class="bundle-svc{% if s.is_anchor %} bundle-svc-anchor{% endif %}{% if s.choice %} bundle-svc-choice{% endif %}"><span class="bundle-item-cat">{{ s.category }}</span>{% if s.icon %}<img class="svc-icon" src="{{ s.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ s.name }}{% if s.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}</span>
         {% endfor %}
       </div>
     </div>
@@ -194,7 +194,7 @@
                     {% if pl.savings_pct is not none and pl.savings_pct > 0 %}<span class="save-badge">−{{ pl.savings_pct }}%</span>{% endif %}</summary>
                   <ul class="standalone-parts">
                     {% for sp in pl.standalone_parts %}
-                    <li>{{ sp.name }} <span class="muted">${{ '%g'|format(sp.usd) }}</span>{% if sp.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}</li>
+                    <li>{% if sp.icon %}<img class="svc-icon" src="{{ sp.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ sp.name }} <span class="muted">${{ '%g'|format(sp.usd) }}</span>{% if sp.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}</li>
                     {% endfor %}
                     <li class="standalone-sum">= {{ t('bundle.standalone') }} ${{ '%g'|format(pl.standalone_usd) }}</li>
                   </ul>
@@ -203,7 +203,7 @@
               {%- else %}<span class="muted">—</span>{% endif %}
             </td>
             <td>
-              {%- if pl.services %}{% for s in pl.services %}<span class="bundle-svc{% if s.is_anchor %} bundle-svc-anchor{% endif %}{% if s.choice %} bundle-svc-choice{% endif %}"><span class="bundle-item-cat">{{ s.category }}</span>{{ s.name }}{% if s.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}</span> {% endfor %}
+              {%- if pl.services %}{% for s in pl.services %}<span class="bundle-svc{% if s.is_anchor %} bundle-svc-anchor{% endif %}{% if s.choice %} bundle-svc-choice{% endif %}"><span class="bundle-item-cat">{{ s.category }}</span>{% if s.icon %}<img class="svc-icon" src="{{ s.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ s.name }}{% if s.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}</span> {% endfor %}
               {%- else %}<span class="muted">{{ pl.price_note or '—' }}</span>{% endif %}
             </td>
           </tr>

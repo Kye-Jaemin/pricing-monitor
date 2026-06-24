@@ -624,6 +624,7 @@ a.btn-primary:hover { text-decoration: none; }
   display: inline-block; font-size: .72rem; font-weight: 700; color: #3730a3;
   background: #eef2ff; border-radius: 5px; padding: 0 5px; margin-right: 3px;
 }
+.svc-icon { width: 14px; height: 14px; border-radius: 3px; object-fit: cover; vertical-align: -2px; margin: 0 3px; background: #fff; }
 .bundle-svc { display: inline-block; margin: 2px 8px 2px 0; font-size: .85rem; white-space: nowrap; }
 .bundle-svc-anchor { font-weight: 700; }
 .bundle-svc-anchor .bundle-item-cat { background: #fae8ff; color: #86198f; }
