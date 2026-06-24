@@ -130,23 +130,24 @@
   </div>
   {% endif %}
 
-  {% if g.service_categories %}
-  <div class="bundle-cats">
-    <span class="muted">{{ t('bundle.services_title') }}{% if g.anchor %} ({{ t('bundle.excl_anchor') }}){% endif %}:</span>
-    {% for sc in g.service_categories %}
-    <span class="chip band-cat-chip">{{ sc.category }} <span class="cat-count">{{ sc.count }}</span></span>
-    {% endfor %}
+  <div class="bundle-charts">
+    {% if g.service_categories %}
+    <div class="bundle-chart">
+      <div class="bundle-chart-title">{{ t('bundle.services_title') }}{% if g.anchor %} ({{ t('bundle.excl_anchor') }}){% endif %}</div>
+      <div class="bundle-pie-wrap">
+        <canvas class="bundle-pie" data-anchor="{{ g.anchor or '' }}" data-cats='{{ g.service_categories | tojson }}'></canvas>
+      </div>
+    </div>
+    {% endif %}
+    {% if g.combos %}
+    <div class="bundle-chart">
+      <div class="bundle-chart-title">{{ t('bundle.combos_title') }}</div>
+      <div class="bundle-bar-wrap" style="height: {{ g.combos|length * 34 + 24 }}px">
+        <canvas class="bundle-bar" data-combos='{{ g.combos | tojson }}'></canvas>
+      </div>
+    </div>
+    {% endif %}
   </div>
-  {% endif %}
-
-  {% if g.combos %}
-  <div class="bundle-cats">
-    <span class="muted">{{ t('bundle.combos_title') }}:</span>
-    {% for cb in g.combos %}
-    <span class="chip">{{ cb.cats }} <span class="cat-count">{{ cb.count }}</span></span>
-    {% endfor %}
-  </div>
-  {% endif %}
 
   {% if g.bands %}
   <div class="bundle-bands">
@@ -218,4 +219,42 @@
   </div>
 </section>
 {% endfor %}
+{% endblock %}
+
+{% block scripts %}
+{% if data.groups %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+(function () {
+  function hue(i) { return (i * 57) % 360; }
+  document.querySelectorAll('canvas.bundle-pie').forEach(function (cv) {
+    var cats; try { cats = JSON.parse(cv.getAttribute('data-cats') || '[]'); } catch (e) { return; }
+    if (!cats.length) return;
+    var anchor = cv.getAttribute('data-anchor') || '';
+    new Chart(cv, {
+      type: 'doughnut',
+      data: { labels: cats.map(function (c) { return c.category; }),
+        datasets: [{ data: cats.map(function (c) { return c.count; }),
+          backgroundColor: cats.map(function (_, i) { return 'hsl(' + hue(i) + ',70%,55%)'; }),
+          borderColor: '#fff', borderWidth: 2 }] },
+      options: { maintainAspectRatio: false, cutout: '55%',
+        plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } },
+          title: { display: !!anchor, text: '⚓ ' + anchor } } }
+    });
+  });
+  document.querySelectorAll('canvas.bundle-bar').forEach(function (cv) {
+    var cb; try { cb = JSON.parse(cv.getAttribute('data-combos') || '[]'); } catch (e) { return; }
+    if (!cb.length) return;
+    new Chart(cv, {
+      type: 'bar',
+      data: { labels: cb.map(function (x) { return x.cats; }),
+        datasets: [{ data: cb.map(function (x) { return x.count; }), backgroundColor: '#7c3aed', borderRadius: 4 }] },
+      options: { indexAxis: 'y', maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } }
+    });
+  });
+})();
+</script>
+{% endif %}
 {% endblock %}
