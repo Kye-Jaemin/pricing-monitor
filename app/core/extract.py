@@ -345,7 +345,12 @@ def extract_bundles_ai(company: str, raw_text: str, anchor: str | None = None) -
     client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
     text = raw_text[:18000]
     anchor_line = (
-        f"Focus on bundle plans that include '{anchor}'. " if anchor else ""
+        f"This page is about bundles built around '{anchor}'. Extract EVERY plan that "
+        f"includes '{anchor}' as a benefit — BOTH dedicated bundle/pass products AND larger "
+        f"PARENT plans (e.g. mobile/telecom rate plans like '5GX', unlimited plans) that "
+        f"bundle '{anchor}' among their perks. Do NOT omit a plan just because '{anchor}' is "
+        f"only one of several included benefits, and do NOT collapse distinct rate plans into "
+        f"one. List each separately. " if anchor else ""
     )
     prompt = (
         "You extract BUNDLE or MEMBERSHIP plans from a provider's page. This includes "
@@ -398,6 +403,7 @@ def extract_bundles_ai(company: str, raw_text: str, anchor: str | None = None) -
     resp = client.messages.create(
         model=config.ANTHROPIC_MODEL,
         max_tokens=8192,
+        temperature=0,   # 같은 원문 → 같은 결과(재분석마다 plan 수가 달라지던 문제 완화)
         messages=[{"role": "user", "content": prompt}],
     )
     raw = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
