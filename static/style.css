@@ -645,13 +645,13 @@ a.btn-primary:hover { text-decoration: none; }
 /* 번들 가격 덤벨 차트(행=번들 구성, 가로=가격, 할인가↔정가 합계) */
 .dumbbell { margin: 8px 0 14px; }
 .db-controls { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; }
-.db-legend { font-size: .78rem; color: var(--muted); display: flex; gap: 14px; align-items: center; }
-.db-legend .db-dot { position: static; transform: none; display: inline-block; vertical-align: -1px; margin-right: 4px; box-shadow: none; }
+.db-legend { font-size: .85rem; color: var(--muted); display: flex; gap: 14px; align-items: center; }
+.db-legend .db-dot { position: static; transform: none; display: inline-block; width: 12px; height: 12px; border-width: 2px; vertical-align: -1px; margin-right: 4px; box-shadow: none; }
 .db-sort { font-size: .78rem; color: var(--muted); display: flex; gap: 10px; align-items: center; }
 .db-sort-label { font-weight: 600; }
 .db-sort label { display: inline-flex; align-items: center; gap: 3px; cursor: pointer; }
 .db-provider + .db-provider { margin-top: 6px; }
-.db-provider-head { font-size: .78rem; font-weight: 600; color: var(--muted); display: flex; align-items: center; gap: 5px; margin: 6px 0 2px; padding-top: 4px; border-top: 1px solid var(--line); cursor: pointer; list-style: none; }
+.db-provider-head { font-size: .88rem; font-weight: 600; color: var(--muted); display: flex; align-items: center; gap: 6px; margin: 10px 0 4px; padding-top: 6px; border-top: 1px solid var(--line); cursor: pointer; list-style: none; }
 .db-provider-head::-webkit-details-marker { display: none; }
 .db-provider-head::before { content: "▾"; font-size: .7rem; color: var(--muted); transition: transform .15s ease; }
 .db-provider:not([open]) > .db-provider-head::before { transform: rotate(-90deg); }
@@ -659,8 +659,8 @@ a.btn-primary:hover { text-decoration: none; }
 .db-prov-count { font-weight: 400; color: var(--muted); }
 .db-provider:first-child > .db-provider-head { border-top: none; padding-top: 0; }
 /* .db-rows: 내부 스크롤 없이(스크롤바 제거) 아래로 계속 표시 */
-.dumbbell-row { display: flex; align-items: center; gap: 10px; margin: 5px 0; }
-.db-label { --dbw: 180px; flex: 0 0 var(--dbw); min-width: 0; font-size: .83rem; overflow: hidden; white-space: nowrap; }
+.dumbbell-row { display: flex; align-items: center; gap: 14px; margin: 9px 0; }
+.db-label { --dbw: 220px; flex: 0 0 var(--dbw); min-width: 0; font-size: .92rem; overflow: hidden; white-space: nowrap; }
 .db-label .db-ltext { display: inline-block; white-space: nowrap; will-change: transform; }
 /* 영역보다 긴 라벨만 자동으로 흐른다(JS가 .db-flow 부여). hover 하면 멈춰 읽기. */
 .db-label.db-flow .db-ltext { animation: db-marquee 7s ease-in-out infinite alternate; }
@@ -670,18 +670,18 @@ a.btn-primary:hover { text-decoration: none; }
   86%, 100% { transform: translateX(min(0px, calc(var(--dbw) - 100% - 8px))); }
 }
 @media (prefers-reduced-motion: reduce) { .db-label.db-flow .db-ltext { animation: none; } }
-.db-track { position: relative; flex: 1; height: 16px; }
-.db-track::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--line); }
-.db-line { position: absolute; top: 50%; height: 3px; transform: translateY(-50%); background: #cbd5e1; border-radius: 2px; }
-.db-dot { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; transform: translate(-50%, -50%); border: 2px solid #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); cursor: help; }
+.db-track { position: relative; flex: 1; height: 24px; }
+.db-track::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: var(--line); }
+.db-line { position: absolute; top: 50%; height: 5px; transform: translateY(-50%); background: #cbd5e1; border-radius: 3px; }
+.db-dot { position: absolute; top: 50%; width: 18px; height: 18px; border-radius: 50%; transform: translate(-50%, -50%); border: 3px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.28); cursor: help; }
 .db-bundle { background: var(--change); }
 .db-list { background: #f87171; }
-.db-val { flex: 0 0 150px; font-size: .8rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.db-axis { display: flex; align-items: flex-start; gap: 10px; margin-top: 2px; }
-.db-axis .db-track { height: 16px; }
+.db-val { flex: 0 0 180px; font-size: .9rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.db-axis { display: flex; align-items: flex-start; gap: 14px; margin-top: 4px; }
+.db-axis .db-track { height: 18px; }
 .db-axis .db-track::before { top: 0; }
-.db-tick { position: absolute; top: 2px; font-size: .7rem; color: var(--muted); white-space: nowrap; }
-@media (max-width: 760px) { .db-label { --dbw: 110px; } .db-val { flex-basis: 120px; } }
+.db-tick { position: absolute; top: 2px; font-size: .76rem; color: var(--muted); white-space: nowrap; }
+@media (max-width: 760px) { .db-label { --dbw: 140px; font-size: .85rem; } .db-val { flex-basis: 150px; } }
 .bundle-cats { margin: 8px 0 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .band-cat-chip { background: #eef2ff; color: #3730a3; }
 .bundle-co { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 6px 0; background: #fff; }
