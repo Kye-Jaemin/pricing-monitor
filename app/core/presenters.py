@@ -1249,6 +1249,41 @@ def diag_bundle_price(q: str = "mybox") -> str:
         out.append("  smap[key]= %s (USD)" % smap.get(key))
         out.append("  match    = %s" % _match_standalone(c["name"], smap))
 
+        # 번들 업체: 추출 경로(원문 선택→앵커→추출 결과) 진단
+        if c["is_bundle"]:
+            _cl, _n2i, id_to_name = _category_context()
+            anchor = _bundle_anchor(id_to_name.get(c["category_id"]))
+            primary = _pick_primary(rows, _priority_map(c["name"])) if rows else None
+            prt = (primary["raw_text"] or "") if primary else ""
+            out.append("  -- bundle 추출 진단 --")
+            out.append("  category : %s" % id_to_name.get(c["category_id"]))
+            out.append("  anchor   : %r" % anchor)
+            out.append("  primary  : src=%s raw_len=%d"
+                       % (primary["source_type"] if primary else "(none)", len(prt)))
+            if anchor:
+                out.append("  anchor_in_raw : %s  (%d회)"
+                           % (anchor.lower() in prt.lower(), prt.lower().count(anchor.lower())))
+            brow = store.get_bundle_analysis(c["name"])
+            if not brow:
+                out.append("  bundle_analysis: (없음) <-- 추출이 아직 안 됨/실패")
+            else:
+                try:
+                    bp = json.loads(brow["payload_json"]) or {}
+                except (ValueError, TypeError):
+                    bp = {}
+                pls = bp.get("plans", []) or []
+                out.append("  bundle_analysis: plans=%d (sig=%s)"
+                           % (len(pls), (brow["signature"] or "")[:8]))
+                for pl in pls:
+                    svcs = pl.get("services", []) or []
+                    out.append("    plan: name=%r cur=%s monthly=%s annual=%s choose=%s svc=%d"
+                               % (pl.get("name"), pl.get("currency"), pl.get("monthly"),
+                                  pl.get("annual"), pl.get("choose"), len(svcs)))
+                    for s in svcs:
+                        out.append("      svc: %r cat=%s choice=%s list_price=%s"
+                                   % (s.get("name"), s.get("category"),
+                                      s.get("choice"), s.get("list_price")))
+
     out.append("=" * 50)
     out.append("최근 수집 로그(해당 업체):")
     for r in store.recent_runs(120):
