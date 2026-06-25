@@ -685,7 +685,7 @@ def save_bundle_card(title: str, payload_json: str) -> int:
 def list_bundle_cards() -> list[sqlite3.Row]:
     with connect() as conn:
         return conn.execute(
-            "SELECT id, title, created_at FROM bundle_cards ORDER BY id DESC"
+            "SELECT id, title, created_at, payload_json FROM bundle_cards ORDER BY id DESC"
         ).fetchall()
 
 

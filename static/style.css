@@ -369,6 +369,8 @@ a.btn-primary:hover { text-decoration: none; }
 .saved-card-title { padding-right: 24px; }
 .saved-card.current { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .saved-card-title { font-weight: 600; font-size: .95rem; color: var(--accent); }
+.saved-card-providers { font-size: .78rem; color: var(--muted); line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .saved-card-title:hover { text-decoration: underline; }
 .saved-card-meta { font-size: .82rem; color: var(--muted); }
 .saved-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; }

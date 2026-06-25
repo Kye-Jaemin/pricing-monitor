@@ -1166,10 +1166,25 @@ def save_bundle_card(title: str = "", names: list[str] | None = None) -> int | N
 
 
 def saved_bundle_cards() -> list[dict]:
-    return [
-        {"id": r["id"], "title": r["title"], "created_at": r["created_at"]}
-        for r in store.list_bundle_cards()
-    ]
+    out = []
+    for r in store.list_bundle_cards():
+        # 저장된 페이로드에서 제공업체명(그룹별 업체)을 뽑아 카드 부제로.
+        provs, seen = [], set()
+        try:
+            data = json.loads(r["payload_json"]) or {}
+            for g in data.get("groups", []):
+                for co in g.get("companies", []):
+                    nm = co.get("name")
+                    if nm and nm not in seen:
+                        seen.add(nm)
+                        provs.append(nm)
+        except (ValueError, TypeError):
+            provs = []
+        out.append({
+            "id": r["id"], "title": r["title"], "created_at": r["created_at"],
+            "providers": provs,
+        })
+    return out
 
 
 def load_bundle_card(card_id: int) -> dict | None:
