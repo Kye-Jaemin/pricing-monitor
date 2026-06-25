@@ -89,7 +89,7 @@
     {% endif %}
     <label class="muted sel-all"><input type="checkbox" id="selAll" {% if not running or running_ids is none %}checked{% endif %}> {{ t('runs.select_all') }}</label>
     {% macro company_row(c, nested=False) %}
-      <div class="select-company{% if nested %} select-company-nested{% endif %}">
+      <div class="select-company{% if nested %} select-company-nested{% endif %}{% if c.is_bundle %} select-company-bundle{% endif %}">
         <span class="sc-name">{% if c.icon %}<img class="company-icon" src="{{ c.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ c.name }}
           {%- if c.is_bundle %} <span class="tag tag-bundle">📦</span>{% elif c.is_component %} <span class="tag tag-component">🧩</span>{% endif %}</span>
         {% for s in c.sources %}
@@ -104,13 +104,20 @@
         <div class="select-cat-head">{{ g.name or t('cat.none') }} <span class="muted">({{ g.count }})</span></div>
         {% for pb in g.providers %}
         {{ company_row(pb.provider) }}
-        {% if pb.services %}<div class="select-sub-head">↳ {{ t('runs.bundle_services') }}</div>
+        {% if pb.services %}
+        <details class="select-bundle-svcs">
+          <summary class="select-sub-head">↳ {{ t('runs.bundle_services') }} <span class="muted">({{ pb.services|length }})</span></summary>
           {% for c in pb.services %}{{ company_row(c, nested=True) }}{% endfor %}
+        </details>
         {% endif %}
         {% endfor %}
         {% for c in g.others %}{{ company_row(c) }}{% endfor %}
-        {% if g.orphans %}{% if g.providers %}<div class="select-sub-head">↳ {{ t('runs.bundle_services_other') }}</div>{% endif %}
+        {% if g.orphans %}
+        <details class="select-bundle-svcs">
+          {% if g.providers %}<summary class="select-sub-head">↳ {{ t('runs.bundle_services_other') }} <span class="muted">({{ g.orphans|length }})</span></summary>
+          {% else %}<summary class="select-sub-head">↳ {{ t('runs.bundle_services') }} <span class="muted">({{ g.orphans|length }})</span></summary>{% endif %}
           {% for c in g.orphans %}{{ company_row(c, nested=True) }}{% endfor %}
+        </details>
         {% endif %}
       </div>
       {% endfor %}

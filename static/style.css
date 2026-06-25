@@ -410,6 +410,15 @@ a.btn-primary:hover { text-decoration: none; }
 .select-sub-head { font-size: .8rem; font-weight: 600; color: var(--muted); margin: 4px 0 2px 14px; }
 .select-company-nested { margin-left: 14px; border-left: 2px solid var(--line); padding-left: 8px; }
 .select-company .sc-name { font-weight: 600; min-width: 140px; }
+/* 번들 제공업체 행: 보라색으로 구분(결합/구성요소와 분리) */
+.select-company-bundle { border-color: #e3a0ef; border-left: 4px solid #c026d3; background: #fbeaff; }
+/* 결합 서비스: 접기/펼치기(기본 접힘) */
+.select-bundle-svcs { margin: 2px 0 6px; }
+.select-bundle-svcs > summary { cursor: pointer; list-style: none; display: flex; align-items: center; }
+.select-bundle-svcs > summary::-webkit-details-marker { display: none; }
+.select-bundle-svcs > summary::before { content: "▸"; margin-right: 4px; font-size: .7rem; transition: transform .15s ease; }
+.select-bundle-svcs[open] > summary::before { transform: rotate(90deg); }
+.select-bundle-svcs > summary:hover { color: var(--accent); }
 .src-check { display: inline-flex; align-items: center; gap: 5px; font-size: .88rem; }
 
 .progress-wrap { margin: 4px 0 16px; }
