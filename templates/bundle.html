@@ -193,6 +193,10 @@
     {% if g.category_values %}
     <div class="bundle-chart">
       <div class="bundle-chart-title">{{ t('bundle.catvalue_title') }}{% if g.anchor %} ({{ t('bundle.excl_anchor') }}){% endif %}</div>
+      <details class="chart-formula">
+        <summary>ƒ {{ t('bundle.formula_label') }}</summary>
+        <p class="muted">{{ t('bundle.catvalue_help') }}</p>
+      </details>
       <div class="bundle-bar-wrap" style="height: {{ g.category_values|length * 34 + 24 }}px">
         <canvas class="bundle-bar" data-catvalue='{{ g.category_values | tojson }}'></canvas>
       </div>
