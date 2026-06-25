@@ -648,9 +648,14 @@ a.btn-primary:hover { text-decoration: none; }
 .db-sort-label { font-weight: 600; }
 .db-sort label { display: inline-flex; align-items: center; gap: 3px; cursor: pointer; }
 .db-provider + .db-provider { margin-top: 6px; }
-.db-provider-head { font-size: .78rem; font-weight: 600; color: var(--muted); display: flex; align-items: center; gap: 5px; margin: 6px 0 2px; padding-top: 4px; border-top: 1px solid var(--line); }
-.db-provider:first-child .db-provider-head { border-top: none; padding-top: 0; }
-.db-rows { max-height: 320px; overflow-y: auto; scrollbar-gutter: stable; }
+.db-provider-head { font-size: .78rem; font-weight: 600; color: var(--muted); display: flex; align-items: center; gap: 5px; margin: 6px 0 2px; padding-top: 4px; border-top: 1px solid var(--line); cursor: pointer; list-style: none; }
+.db-provider-head::-webkit-details-marker { display: none; }
+.db-provider-head::before { content: "▾"; font-size: .7rem; color: var(--muted); transition: transform .15s ease; }
+.db-provider:not([open]) > .db-provider-head::before { transform: rotate(-90deg); }
+.db-provider-head:hover { color: var(--accent); }
+.db-prov-count { font-weight: 400; color: var(--muted); }
+.db-provider:first-child > .db-provider-head { border-top: none; padding-top: 0; }
+/* .db-rows: 내부 스크롤 없이(스크롤바 제거) 아래로 계속 표시 */
 .dumbbell-row { display: flex; align-items: center; gap: 10px; margin: 5px 0; }
 .db-label { --dbw: 180px; flex: 0 0 var(--dbw); min-width: 0; font-size: .83rem; overflow: hidden; white-space: nowrap; }
 .db-label .db-ltext { display: inline-block; white-space: nowrap; will-change: transform; }

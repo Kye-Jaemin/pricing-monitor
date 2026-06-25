@@ -146,10 +146,10 @@
     </div>
     <div class="db-rows db-view db-view-provider">
     {% for prov in g.dumbbell_providers %}
-      <div class="db-provider">
-        <div class="db-provider-head">{% if prov.icon %}<img class="svc-icon" src="{{ prov.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ prov.company }}</div>
+      <details class="db-provider" open>
+        <summary class="db-provider-head">{% if prov.icon %}<img class="svc-icon" src="{{ prov.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ prov.company }} <span class="db-prov-count">{{ prov.rows|length }}</span></summary>
         {% for d in prov.rows %}{{ db_row(d) }}{% endfor %}
-      </div>
+      </details>
     {% endfor %}
     </div>
     <div class="db-rows db-view db-view-save" hidden>
