@@ -69,6 +69,9 @@ code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; font-size: .9e
   border-color: #d36ae6; border-left-color: #c026d3;
   box-shadow: 0 18px 44px rgba(192, 38, 211, .18);
 }
+/* 업체 관리: 번들 제공업체 카드 보라색 + 결합 서비스(구성요소) 한 단계 중첩 */
+.card.company-admin-card-bundle { border-left: 5px solid #c026d3; background: #fdf4ff; }
+.company-admin-card-nested { margin-left: 28px; border-left: 3px solid #e3a0ef; }
 .card-head {
   display: flex; align-items: baseline; justify-content: space-between;
   gap: 12px; margin-bottom: 10px; flex-wrap: wrap;

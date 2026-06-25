@@ -706,8 +706,37 @@ def companies_admin() -> dict:
     n_uncat = sum(1 for co in companies if not co["category_id"])
     if n_uncat:
         category_chips.append({"id": None, "name": None, "count": n_uncat})
+
+    # 번들: 제공업체를 상단에 두고 그 결합 서비스(구성요소)를 한 단계 아래로 중첩.
+    #   같은 분류 안에서만 묶고, 나머지 업체는 그 뒤에 나열한다.
+    prov_services = _bundle_provider_services()
+
+    def _emit_group(members, out):
+        byname = {m["name"]: m for m in members}
+        claimed = set()
+        for co in members:
+            if co["is_bundle"]:
+                co["nested"] = False
+                out.append(co)
+                for sn in prov_services.get(co["name"], []):
+                    svc = byname.get(sn)
+                    if svc is not None and sn not in claimed:
+                        svc["nested"] = True
+                        out.append(svc)
+                        claimed.add(sn)
+        for co in members:
+            if co["is_bundle"] or co["name"] in claimed:
+                continue
+            co["nested"] = False
+            out.append(co)
+
+    ordered: list = []
+    for cat in cat_list:
+        _emit_group([co for co in companies if co["category_id"] == cat["id"]], ordered)
+    _emit_group([co for co in companies if not co["category_id"]], ordered)
+
     return {
-        "companies": companies,
+        "companies": ordered,
         "categories": cat_list,
         "category_chips": category_chips,
     }

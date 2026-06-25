@@ -125,7 +125,7 @@
 {% endif %}
 
 {% for c in data.companies %}
-<section class="card company-admin-card" data-cat="{{ c.category_id if c.category_id else 'none' }}">
+<section class="card company-admin-card{% if c.is_bundle %} company-admin-card-bundle{% endif %}{% if c.nested %} company-admin-card-nested{% endif %}" data-cat="{{ c.category_id if c.category_id else 'none' }}">
   <div class="card-head">
     <h2>
       {% if c.icon %}<img class="company-icon" src="{{ c.icon }}" alt="" onerror="this.style.display='none'">{% endif %}
