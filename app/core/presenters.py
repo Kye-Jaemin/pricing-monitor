@@ -1240,6 +1240,11 @@ def diag_bundle_price(q: str = "mybox") -> str:
         out.append("company   : %s" % c["name"])
         out.append("  flags   : component=%s bundle=%s active=%s"
                    % (c["is_component"], c["is_bundle"], c["active"]))
+        srcs = store.list_sources(company=c["name"], active_only=False)
+        out.append("  sources : %d" % len(srcs))
+        for s in srcs:
+            out.append("    src: id=%s type=%s active=%s url=%s"
+                       % (s["id"], s["source_type"], s["active"], (s["url"] or "")[:90]))
         rows = store.latest_snapshots_for_company(c["name"])
         out.append("  snapshots: %d" % len(rows))
         for r in rows:
