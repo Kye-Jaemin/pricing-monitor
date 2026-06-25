@@ -903,7 +903,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
             g = groups_map[cid] = {
                 "id": cid, "name": id_to_name.get(cid),
                 "anchor": _bundle_anchor(id_to_name.get(cid)),
-                "companies": [], "prices": [], "cat_count": {}, "combos": {},
+                "companies": [], "prices": [], "cat_count": {}, "cat_value": {},
                 "dumbbell": [],
             }
         anchor = g["anchor"]
@@ -921,8 +921,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
                     "usd": eff, "company": name,
                     "plan": p.get("name"), "icon": co_icon,
                 })
-            # 연계 카테고리(앵커 제외) 집계 + 조합.
-            partner_cats = []
+            # 연계 카테고리(앵커 제외) 빈도 집계.
             svcs = []
             for s in p.get("services", []):
                 sname = (s.get("name") or "")
@@ -949,8 +948,6 @@ def bundle_view(names: list[str] | None = None) -> dict:
                     continue  # 앵커 자신은 연계 집계에서 제외
                 cat = s.get("category") or "기타"
                 g["cat_count"][cat] = g["cat_count"].get(cat, 0) + 1
-                if cat not in partner_cats:
-                    partner_cats.append(cat)
             # ── 정가 합계 ─────────────────────────────────────────
             # 핵심: AI가 매긴 choice(택1) 표시를 그대로 존중.
             #   choice=true → 택1 대안(여럿 중 choose개만, 앵커 우선) — 나머지는 제외.
@@ -972,6 +969,13 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 fixed_buckets = set(best.keys())
             k = p.get("choose") or 1
             chosen_pool = sorted(pool, key=lambda x: (not x["is_anchor"], -x["list_usd"]))[:k]
+            # 카테고리별 정가 기여($): 실제 정가 합계에 들어가는 구성요소를
+            #   카테고리로 묶어 list_usd 합산(앵커 제외, 택1/pickone 반영분만).
+            for s in fixed + chosen_pool:
+                if s["is_anchor"]:
+                    continue
+                cv = s.get("category") or "기타"
+                g["cat_value"][cv] = g["cat_value"].get(cv, 0.0) + s["list_usd"]
             parts = (
                 [{"name": s["name"], "usd": round(s["list_usd"], 2), "choice": False,
                   "key": s["key"], "manual": s["manual"], "override_raw": s["override_raw"],
@@ -997,9 +1001,6 @@ def bundle_view(names: list[str] | None = None) -> dict:
             savings_pct = None
             if standalone and eff is not None and standalone > 0:
                 savings_pct = round((standalone - eff) / standalone * 100)
-            if partner_cats:
-                key = " + ".join(sorted(partner_cats))
-                g["combos"][key] = g["combos"].get(key, 0) + 1
             co_plans.append({
                 "name": p.get("name"), "provider": p.get("provider"),
                 "currency": cur,
@@ -1038,7 +1039,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
     for g in groups_map.values():
         prices = sorted(g.pop("prices"), key=lambda x: x["usd"])
         cat_count = g.pop("cat_count")
-        combos = g.pop("combos")
+        cat_value = g.pop("cat_value")
         g["price_min"] = prices[0]["usd"] if prices else None
         g["price_max"] = prices[-1]["usd"] if prices else None
         g["price_points"] = prices
@@ -1065,10 +1066,10 @@ def bundle_view(names: list[str] | None = None) -> dict:
             ({"category": k, "count": v} for k, v in cat_count.items()),
             key=lambda x: -x["count"],
         )
-        g["combos"] = sorted(
-            ({"cats": k, "count": v} for k, v in combos.items()),
-            key=lambda x: -x["count"],
-        )[:6]
+        g["category_values"] = sorted(
+            ({"category": k, "usd": round(v, 2)} for k, v in cat_value.items()),
+            key=lambda x: -x["usd"],
+        )
         groups.append(g)
     groups.sort(key=lambda x: (x["id"] is None, (x["name"] or "").lower()))
     return {

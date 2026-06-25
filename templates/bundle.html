@@ -190,11 +190,11 @@
       </div>
     </div>
     {% endif %}
-    {% if g.combos %}
+    {% if g.category_values %}
     <div class="bundle-chart">
-      <div class="bundle-chart-title">{{ t('bundle.combos_title') }}</div>
-      <div class="bundle-bar-wrap" style="height: {{ g.combos|length * 34 + 24 }}px">
-        <canvas class="bundle-bar" data-combos='{{ g.combos | tojson }}'></canvas>
+      <div class="bundle-chart-title">{{ t('bundle.catvalue_title') }}{% if g.anchor %} ({{ t('bundle.excl_anchor') }}){% endif %}</div>
+      <div class="bundle-bar-wrap" style="height: {{ g.category_values|length * 34 + 24 }}px">
+        <canvas class="bundle-bar" data-catvalue='{{ g.category_values | tojson }}'></canvas>
       </div>
     </div>
     {% endif %}
@@ -323,15 +323,17 @@
     });
   });
   document.querySelectorAll('canvas.bundle-bar').forEach(function (cv) {
-    var cb; try { cb = JSON.parse(cv.getAttribute('data-combos') || '[]'); } catch (e) { return; }
+    var cb; try { cb = JSON.parse(cv.getAttribute('data-catvalue') || '[]'); } catch (e) { return; }
     if (!cb.length) return;
+    var money = function (v) { return '$' + (Math.round(v * 100) / 100); };
     new Chart(cv, {
       type: 'bar',
-      data: { labels: cb.map(function (x) { return x.cats; }),
-        datasets: [{ data: cb.map(function (x) { return x.count; }), backgroundColor: '#7c3aed', borderRadius: 4 }] },
+      data: { labels: cb.map(function (x) { return x.category; }),
+        datasets: [{ data: cb.map(function (x) { return x.usd; }), backgroundColor: '#7c3aed', borderRadius: 4 }] },
       options: { indexAxis: 'y', maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } }
+        plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: function (ctx) { return money(ctx.parsed.x); } } } },
+        scales: { x: { beginAtZero: true, ticks: { callback: function (v) { return money(v); } } } } }
     });
   });
 })();
