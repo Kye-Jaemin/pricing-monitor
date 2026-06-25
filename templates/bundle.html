@@ -283,7 +283,7 @@
               {%- else %}<span class="muted">—</span>{% endif %}
             </td>
             <td>
-              {%- if pl.services %}{% for s in pl.services %}<span class="bundle-svc{% if s.is_anchor %} bundle-svc-anchor{% endif %}{% if s.choice %} bundle-svc-choice{% endif %}"><span class="bundle-item-cat">{{ s.category }}</span>{% if s.icon %}<img class="svc-icon" src="{{ s.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ s.name }}{% if s.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}</span> {% endfor %}
+              {%- if pl.services %}{% for s in pl.services %}<span class="bundle-svc{% if s.is_anchor %} bundle-svc-anchor{% endif %}{% if s.choice %} bundle-svc-choice{% endif %}{% if s.tier_alt %} bundle-svc-tier{% endif %}"><span class="bundle-item-cat">{{ s.category }}</span>{% if s.icon %}<img class="svc-icon" src="{{ s.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ s.name }}{% if s.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}{% if s.tier_alt %} <span class="choose-mark" title="{{ t('bundle.tier_help') }}">{{ t('bundle.tier_mark') }}</span>{% endif %}</span> {% endfor %}
               {%- else %}<span class="muted">{{ pl.price_note or '—' }}</span>{% endif %}
             </td>
           </tr>

@@ -805,6 +805,15 @@ def _cat_bucket(category: str, name: str = "") -> str:
     return (category or "기타").strip().lower()
 
 
+# 같은 서비스의 '티어 변형'(Netflix Standard/Premium/4K 등)을 묶기 위한 브랜드 키.
+def _brand_key(name: str) -> str:
+    """서비스의 브랜드(선행 토큰) 키 — 같은 서비스의 티어 변형 묶기용.
+    'Netflix Standard with Ads'/'Netflix Premium 4K (upgrade)' → 'netflix'."""
+    s = re.sub(r"[^a-z0-9가-힣\s]", " ", (name or "").lower())
+    toks = [t for t in s.split() if t]
+    return toks[0] if toks else ""
+
+
 def _match_standalone(service_name: str, smap: dict):
     """서비스 이름과 맞는 수집 정가를 찾는다. 정규화 키 동일 → 우선, 없으면
     정규화 부분일치(가장 긴 키)로 매칭(예: 'Max' ↔ 'HBO Max')."""
@@ -941,6 +950,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
                     "name": sname, "category": s.get("category") or "기타",
                     "is_anchor": is_anchor, "choice": bool(s.get("choice")),
                     "list_usd": lp, "bucket": _cat_bucket(s.get("category") or "", sname),
+                    "brand": _brand_key(sname), "tier_alt": False,
                     "key": skey, "manual": bool(ov), "override_raw": ov_num,
                     "icon": _service_icon(sname, comp_icons),
                 })
@@ -955,7 +965,23 @@ def bundle_view(names: list[str] | None = None) -> dict:
             # pickone 토글: AI가 택1을 놓쳐 모두 '항상 포함'으로 잡힌 경우 대비 —
             #   '항상 포함' 중에서도 같은 종류(버킷)는 하나만 센다(과대계상 방지).
             priced = [s for s in svcs if s["list_usd"] is not None]
-            fixed = [s for s in priced if not s["choice"]]   # 항상 포함
+            # 같은 서비스의 '티어 변형'(예: Netflix Standard/Premium/4K)은 하나만 받는
+            # 것이므로 같은 (버킷,브랜드)끼리는 1개만 센다(기준=앵커 우선, 그다음 최저가
+            # =기본 포함분). 다른 서비스(Hulu·Apple TV+ 등)는 브랜드가 달라 그대로 유지.
+            #   → 같은 카테고리 안에서도 '택1 티어'와 '각각 포함'이 구분된다.
+            tier_groups: dict = {}
+            for s in priced:
+                if s["choice"] or not s["brand"]:
+                    continue
+                tier_groups.setdefault((s["bucket"], s["brand"]), []).append(s)
+            for members in tier_groups.values():
+                if len(members) <= 1:
+                    continue
+                rep = min(members, key=lambda x: (not x["is_anchor"], x["list_usd"]))
+                for s in members:
+                    if s is not rep:
+                        s["tier_alt"] = True   # 합계 제외(같은 서비스 상위 티어)
+            fixed = [s for s in priced if not s["choice"] and not s["tier_alt"]]  # 항상 포함
             pool = [s for s in priced if s["choice"]]         # 택1 대안
             fixed_buckets: set = set()
             if pickone:
