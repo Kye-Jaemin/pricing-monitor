@@ -20,11 +20,22 @@
 {% endif %}
 
 <section class="card">
-  <h2>{{ t('bundle.saved_title') }}</h2>
+  <div class="card-head">
+    <h2>{{ t('bundle.saved_title') }}</h2>
+    {% if saved_cards %}
+    <div class="saved-bulk">
+      <label class="muted"><input type="checkbox" id="cardSelAll"> {{ t('bundle.select_all_cards') }}</label>
+      <button type="submit" form="bundleCardsDelete" id="cardBulkDel" class="btn-danger btn-sm" disabled>🗑 {{ t('bundle.delete_selected') }} <span id="cardSelCount"></span></button>
+    </div>
+    {% endif %}
+  </div>
+  <form id="bundleCardsDelete" method="post" action="{{ url_for('bundle_cards_delete') }}"
+        onsubmit="return confirm('{{ t('bundle.confirm_delete_selected') }}')"></form>
   {% if saved_cards %}
   <div class="saved-grid">
     {% for c in saved_cards %}
     <div class="saved-card{% if saved_view and c.id == card.id %} current{% endif %}">
+      <label class="saved-card-pick"><input type="checkbox" name="card_ids" value="{{ c.id }}" form="bundleCardsDelete" class="card-pick"></label>
       <a class="saved-card-title" href="{{ url_for('bundle_card', card_id=c.id) }}">{{ c.title }}</a>
       <details class="rename-wrap">
         <summary>✎ {{ t('compare.rename_card') }}</summary>
@@ -304,6 +315,29 @@
 {% endblock %}
 
 {% block scripts %}
+{% if saved_cards %}
+<script>
+(function () {
+  var picks = Array.prototype.slice.call(document.querySelectorAll('.card-pick'));
+  var selAll = document.getElementById('cardSelAll');
+  var btn = document.getElementById('cardBulkDel');
+  var cnt = document.getElementById('cardSelCount');
+  if (!picks.length || !btn) return;
+  function sync() {
+    var n = picks.filter(function (p) { return p.checked; }).length;
+    btn.disabled = n === 0;
+    if (cnt) cnt.textContent = n ? '(' + n + ')' : '';
+    if (selAll) selAll.checked = n === picks.length;
+  }
+  picks.forEach(function (p) { p.addEventListener('change', sync); });
+  if (selAll) selAll.addEventListener('change', function () {
+    picks.forEach(function (p) { p.checked = selAll.checked; });
+    sync();
+  });
+  sync();
+})();
+</script>
+{% endif %}
 {% if bundle_running %}
 <script>
 (function () {

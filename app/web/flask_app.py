@@ -177,6 +177,15 @@ def bundle_card_delete(card_id: int):
     return redirect(url_for("bundle_page"))
 
 
+@app.route("/bundle/cards/delete", methods=["POST"])
+def bundle_cards_delete():
+    """저장된 번들 분석 카드 여러 개를 한 번에 삭제."""
+    ids = [int(x) for x in request.form.getlist("card_ids") if x.isdigit()]
+    for cid in ids:
+        store.delete_bundle_card(cid)
+    return redirect(url_for("bundle_page"))
+
+
 @app.route("/bundle/card/<int:card_id>/rename", methods=["POST"])
 def bundle_card_rename(card_id: int):
     title = (request.form.get("title") or "").strip()

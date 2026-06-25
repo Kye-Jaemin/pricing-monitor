@@ -353,11 +353,17 @@ a.btn-primary:hover { text-decoration: none; }
 
 /* 저장된 비교 카드 */
 .saved-grid { display: flex; gap: 12px; flex-wrap: wrap; }
+.saved-bulk { display: flex; align-items: center; gap: 12px; font-size: .82rem; }
+.saved-bulk label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
 .saved-card {
+  position: relative;
   flex: 1 1 220px; min-width: 200px;
   border: 1px solid var(--line); border-radius: 10px; padding: 12px;
   background: var(--card); display: flex; flex-direction: column; gap: 6px;
 }
+.saved-card-pick { position: absolute; top: 10px; right: 10px; }
+.saved-card-pick input { width: 16px; height: 16px; cursor: pointer; }
+.saved-card-title { padding-right: 24px; }
 .saved-card.current { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .saved-card-title { font-weight: 600; font-size: .95rem; color: var(--accent); }
 .saved-card-title:hover { text-decoration: underline; }
