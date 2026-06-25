@@ -118,6 +118,7 @@ def load_companies() -> list[dict]:
         result.append(
             {
                 "name": c["name"],
+                "is_bundle": bool(c["is_bundle"]),
                 "sources": [
                     {"id": s["id"], "type": s["source_type"], "url": s["url"]}
                     for s in ordered
@@ -128,7 +129,7 @@ def load_companies() -> list[dict]:
 
 
 def _process_source(
-    company: str, source: dict, *, multi_source: bool
+    company: str, source: dict, *, multi_source: bool, is_bundle: bool = False
 ) -> SourceResult:
     """업체의 소스 1개를 수집·추출·검증·diff·저장. 예외는 호출자가 run_log 로 기록."""
     source_type = source["type"]
@@ -138,9 +139,19 @@ def _process_source(
     label = SOURCE_TYPE_LABELS.get(source_type, source_type)
 
     # b. 페이지 렌더링 → 본문 텍스트
-    #    구글 검색: 먼저 무료 Playwright 로 시도하고, 결과가 비었거나 봇 차단으로
-    #    보이면 그때만 SerpAPI 로 폴백한다(월 100회 무료 쿼터 절약).
-    if source_type == "google_search":
+    if source_type == "google_search" and is_bundle and config.SERPAPI_KEY:
+        # 번들 검색: 결합/혜택·앵커(예: Netflix) 정보가 핵심인데 헤드리스 구글은
+        # 일반 홍보문만 주기 일쑤라, SerpAPI 를 우선 사용한다(번들은 수가 적어
+        # 월 100회 쿼터 부담이 적음). SerpAPI 가 비거나 실패하면 Playwright 로 폴백.
+        try:
+            page_text = fetch.fetch_google_via_serpapi(source_url)
+        except Exception:  # noqa: BLE001
+            page_text = ""
+        if _google_blocked_or_empty(page_text):
+            page_text = fetch.fetch_page_text(source_url)
+    elif source_type == "google_search":
+        # 일반 주간 수집: 무료 Playwright 먼저, 비었거나 봇 차단으로 보이면 그때만
+        # SerpAPI 로 폴백(월 100회 무료 쿼터 절약).
         try:
             page_text = fetch.fetch_page_text(source_url)
         except Exception:  # noqa: BLE001  (차단/타임아웃 → 폴백 판단으로)
@@ -282,6 +293,7 @@ def run_once(progress_cb=None, source_ids=None, stale_days=None) -> RunResult:
     for entry in companies:
         company = entry["name"]
         sources = entry["sources"]
+        is_bundle = entry.get("is_bundle", False)
         multi = len(sources) > 1
 
         if not sources:
@@ -299,7 +311,9 @@ def run_once(progress_cb=None, source_ids=None, stale_days=None) -> RunResult:
                 _utcnow_iso(), company=company, source_type=source_type
             )
             try:
-                result = _process_source(company, source, multi_source=multi)
+                result = _process_source(
+                    company, source, multi_source=multi, is_bundle=is_bundle
+                )
                 store.finish_run(
                     run_id,
                     run_finished_at=_utcnow_iso(),
