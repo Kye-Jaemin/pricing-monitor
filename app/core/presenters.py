@@ -716,18 +716,18 @@ def companies_admin() -> dict:
         claimed = set()
         for co in members:
             if co["is_bundle"]:
-                co["nested"] = False
-                out.append(co)
+                svcs = []
                 for sn in prov_services.get(co["name"], []):
                     svc = byname.get(sn)
                     if svc is not None and sn not in claimed:
-                        svc["nested"] = True
-                        out.append(svc)
+                        svcs.append(svc)
                         claimed.add(sn)
+                co["services"] = svcs   # 제공업체 아래 접어둘 결합 서비스
+                out.append(co)
         for co in members:
             if co["is_bundle"] or co["name"] in claimed:
                 continue
-            co["nested"] = False
+            co["services"] = []
             out.append(co)
 
     ordered: list = []

@@ -114,7 +114,7 @@
 {% endif %}
 
 {% if data.categories and data.companies %}
-<div class="cat-filter" data-target=".company-admin-card" role="tablist" aria-label="{{ t('cat.title') }}">
+<div class="cat-filter" data-target=".company-admin-card, .admin-bundle-svcs" role="tablist" aria-label="{{ t('cat.title') }}">
   <button type="button" class="cat-chip on" data-cat="all">{{ t('filter.all') }}
     <span class="cat-count">{{ data.companies|length }}</span></button>
   {% for cat in data.category_chips %}
@@ -124,8 +124,8 @@
 </div>
 {% endif %}
 
-{% for c in data.companies %}
-<section class="card company-admin-card{% if c.is_bundle %} company-admin-card-bundle{% endif %}{% if c.nested %} company-admin-card-nested{% endif %}" data-cat="{{ c.category_id if c.category_id else 'none' }}">
+{% macro admin_card(c, nested=False) %}
+<section class="card company-admin-card{% if c.is_bundle %} company-admin-card-bundle{% endif %}{% if nested %} company-admin-card-nested{% endif %}" data-cat="{{ c.category_id if c.category_id else 'none' }}">
   <div class="card-head">
     <h2>
       {% if c.icon %}<img class="company-icon" src="{{ c.icon }}" alt="" onerror="this.style.display='none'">{% endif %}
@@ -206,6 +206,16 @@
     <button type="submit" class="btn-secondary">{{ t('companies.add_source') }}</button>
   </form>
 </section>
+{% endmacro %}
+
+{% for c in data.companies %}
+  {{ admin_card(c) }}
+  {% if c.services %}
+  <details class="admin-bundle-svcs" data-cat="{{ c.category_id if c.category_id else 'none' }}">
+    <summary class="admin-bundle-svcs-head">↳ {{ t('runs.bundle_services') }} <span class="muted">({{ c.services|length }})</span></summary>
+    {% for sc in c.services %}{{ admin_card(sc, nested=True) }}{% endfor %}
+  </details>
+  {% endif %}
 {% endfor %}
 
 <section class="card">
