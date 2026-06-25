@@ -58,13 +58,17 @@ code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; font-size: .9e
   background: var(--card); border: 1px solid var(--line);
   border-radius: 12px; padding: 18px 20px; margin-bottom: 18px;
 }
-/* 번들 제공업체 카드: 일반(비번들) 업체 카드와 색으로 뚜렷이 구분 (보라 계열) */
-.company-card-bundle {
-  border: 1px solid #e7a6f2;
+/* 번들 제공업체 카드: 일반(비번들) 업체 카드와 색으로 뚜렷이 구분 (보라 계열).
+   .card.company-card-bundle 로 specificity 를 높여 아래 글래스 .card 규칙을 이긴다. */
+.card.company-card-bundle {
+  background: linear-gradient(180deg, rgba(250,232,255,.96), rgba(243,208,253,.86));
+  border: 1px solid #e3a0ef;
   border-left: 5px solid #c026d3;
-  background: #fbeaff;
 }
-.company-card-bundle:hover { box-shadow: 0 6px 18px rgba(192, 38, 211, .14); }
+.card.company-card-bundle:hover {
+  border-color: #d36ae6; border-left-color: #c026d3;
+  box-shadow: 0 18px 44px rgba(192, 38, 211, .18);
+}
 .card-head {
   display: flex; align-items: baseline; justify-content: space-between;
   gap: 12px; margin-bottom: 10px; flex-wrap: wrap;
