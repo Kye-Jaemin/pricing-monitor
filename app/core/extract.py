@@ -383,9 +383,15 @@ def extract_bundles_ai(company: str, raw_text: str, anchor: str | None = None) -
         "subscription option', 'Optional', or 'Add-on' (whether a benefit is optional is "
         "expressed by choice=true, NOT by the category). "
         "Use ONLY info present in the text — do not invent. Keep prices in their ORIGINAL "
-        "currency. If there are no plans, return [].\n"
+        "currency. Also return conditions = a SHORT note of any ELIGIBILITY REQUIREMENT or "
+        "notable RESTRICTION needed to get/buy this bundle (string or null): e.g. 'requires "
+        "an existing Xfinity Internet or Mobile plan', 'existing customers only', 'new "
+        "customers only', 'autopay required', region/term limits, '기존 가입자 전용', "
+        "'자사 인터넷/모바일 가입자 대상'. Set null if the text states no such restriction. "
+        "If there are no plans, return [].\n"
         "Return ONLY JSON: {\"plans\":[{\"name\":...,\"provider\":...,\"currency\":...,"
-        "\"monthly\":...,\"annual\":...,\"choose\":...,\"price_note\":...,\"services\":"
+        "\"monthly\":...,\"annual\":...,\"choose\":...,\"price_note\":...,\"conditions\":...,"
+        "\"services\":"
         "[{\"name\":...,\"category\":...,\"choice\":false,\"list_price\":null}]}]}. No prose, no code fences.\n\n"
         f"PAGE TEXT:\n{text}\n"
     )
@@ -431,6 +437,7 @@ def extract_bundles_ai(company: str, raw_text: str, anchor: str | None = None) -
             "annual": _num(p.get("annual")),
             "choose": _int(p.get("choose")),
             "price_note": (str(p.get("price_note")).strip() if p.get("price_note") else None),
+            "conditions": (str(p.get("conditions")).strip() if p.get("conditions") else None),
             "services": services,
         })
 

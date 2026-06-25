@@ -1015,6 +1015,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 "annual_orig": _fmt_money(p.get("annual"), cur) if cur != "USD" else None,
                 "choose": p.get("choose"),
                 "price_note": p.get("price_note"),
+                "conditions": p.get("conditions"),
                 "services": svcs,
                 "standalone_usd": standalone,
                 "standalone_parts": parts,
