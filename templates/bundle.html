@@ -318,14 +318,25 @@
     var byProv = db.querySelector('.db-view-provider');
     var bySave = db.querySelector('.db-view-save');
     if (!byProv || !bySave) return;
+    // 영역보다 긴 라벨만 자동으로 흐르게(.db-flow). 숨겨진 뷰는 폭이 0이라 측정 제외.
+    function markFlow(view) {
+      if (!view || view.hidden) return;
+      view.querySelectorAll('.db-label').forEach(function (lbl) {
+        var t = lbl.querySelector('.db-ltext');
+        if (t) lbl.classList.toggle('db-flow', t.scrollWidth > lbl.clientWidth + 1);
+      });
+    }
     function apply(mode) {
       var prov = mode !== 'save';
       byProv.hidden = !prov;
       bySave.hidden = prov;
+      markFlow(prov ? byProv : bySave);
     }
     radios.forEach(function (r) {
       r.addEventListener('change', function () { if (r.checked) apply(r.value); });
     });
+    markFlow(byProv);
+    window.addEventListener('resize', function () { markFlow(byProv.hidden ? bySave : byProv); });
   });
   document.querySelectorAll('canvas.bundle-bar').forEach(function (cv) {
     var cb; try { cb = JSON.parse(cv.getAttribute('data-catvalue') || '[]'); } catch (e) { return; }

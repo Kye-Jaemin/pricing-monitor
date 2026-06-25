@@ -659,12 +659,14 @@ a.btn-primary:hover { text-decoration: none; }
 .dumbbell-row { display: flex; align-items: center; gap: 10px; margin: 5px 0; }
 .db-label { --dbw: 180px; flex: 0 0 var(--dbw); min-width: 0; font-size: .83rem; overflow: hidden; white-space: nowrap; }
 .db-label .db-ltext { display: inline-block; white-space: nowrap; will-change: transform; }
-.db-label:hover .db-ltext { animation: db-marquee 5s linear infinite alternate; }
+/* 영역보다 긴 라벨만 자동으로 흐른다(JS가 .db-flow 부여). hover 하면 멈춰 읽기. */
+.db-label.db-flow .db-ltext { animation: db-marquee 7s ease-in-out infinite alternate; }
+.db-label.db-flow:hover .db-ltext { animation-play-state: paused; }
 @keyframes db-marquee {
-  0%, 12% { transform: translateX(0); }
-  88%, 100% { transform: translateX(min(0px, calc(var(--dbw) - 100% - 8px))); }
+  0%, 14% { transform: translateX(0); }
+  86%, 100% { transform: translateX(min(0px, calc(var(--dbw) - 100% - 8px))); }
 }
-@media (prefers-reduced-motion: reduce) { .db-label:hover .db-ltext { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .db-label.db-flow .db-ltext { animation: none; } }
 .db-track { position: relative; flex: 1; height: 16px; }
 .db-track::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--line); }
 .db-line { position: absolute; top: 50%; height: 3px; transform: translateY(-50%); background: #cbd5e1; border-radius: 2px; }
@@ -688,7 +690,7 @@ a.btn-primary:hover { text-decoration: none; }
   background: #eef2ff; border-radius: 5px; padding: 0 5px; margin-right: 3px;
 }
 .svc-icon { width: 14px; height: 14px; border-radius: 3px; object-fit: cover; vertical-align: -2px; margin: 0 3px; background: #fff; }
-.bundle-svc { display: inline-block; margin: 2px 8px 2px 0; font-size: .85rem; white-space: nowrap; }
+.bundle-svc { display: inline-block; margin: 2px 8px 2px 0; font-size: .85rem; white-space: normal; overflow-wrap: anywhere; vertical-align: top; }
 .bundle-svc-anchor { font-weight: 700; }
 .bundle-svc-anchor .bundle-item-cat { background: #fae8ff; color: #86198f; }
 .bundle-svc-choice { font-style: italic; }
