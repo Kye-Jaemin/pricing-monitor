@@ -336,7 +336,10 @@
         datasets: [{ data: cb.map(function (x) { return x.usd; }), backgroundColor: '#7c3aed', borderRadius: 4 }] },
       options: { indexAxis: 'y', maintainAspectRatio: false,
         plugins: { legend: { display: false },
-          tooltip: { callbacks: { label: function (ctx) { return money(ctx.parsed.x); } } } },
+          tooltip: { callbacks: { label: function (ctx) {
+            var n = cb[ctx.dataIndex] && cb[ctx.dataIndex].n;
+            return money(ctx.parsed.x) + (n ? ' · n=' + n : '');
+          } } } },
         scales: { x: { beginAtZero: true, ticks: { callback: function (v) { return money(v); } } } } }
     });
   });

@@ -969,13 +969,18 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 fixed_buckets = set(best.keys())
             k = p.get("choose") or 1
             chosen_pool = sorted(pool, key=lambda x: (not x["is_anchor"], -x["list_usd"]))[:k]
-            # 카테고리별 정가 기여($): 실제 정가 합계에 들어가는 구성요소를
-            #   카테고리로 묶어 list_usd 합산(앵커 제외, 택1/pickone 반영분만).
+            # 카테고리별 평균 정가($/건): 정가 합계에 실제 반영되는 구성요소를
+            #   카테고리로 묶어 정가 합/출현수를 모은다(앵커 제외, 택1/pickone 반영분).
+            #   빈도와 독립적인 '건당 가치'를 보여주려 합산이 아닌 평균을 쓴다.
             for s in fixed + chosen_pool:
                 if s["is_anchor"]:
                     continue
                 cv = s.get("category") or "기타"
-                g["cat_value"][cv] = g["cat_value"].get(cv, 0.0) + s["list_usd"]
+                e = g["cat_value"].get(cv)
+                if e is None:
+                    e = g["cat_value"][cv] = {"sum": 0.0, "n": 0}
+                e["sum"] += s["list_usd"]
+                e["n"] += 1
             parts = (
                 [{"name": s["name"], "usd": round(s["list_usd"], 2), "choice": False,
                   "key": s["key"], "manual": s["manual"], "override_raw": s["override_raw"],
@@ -1067,7 +1072,8 @@ def bundle_view(names: list[str] | None = None) -> dict:
             key=lambda x: -x["count"],
         )
         g["category_values"] = sorted(
-            ({"category": k, "usd": round(v, 2)} for k, v in cat_value.items()),
+            ({"category": k, "usd": round(v["sum"] / v["n"], 2), "n": v["n"]}
+             for k, v in cat_value.items() if v["n"]),
             key=lambda x: -x["usd"],
         )
         groups.append(g)
