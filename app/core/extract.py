@@ -343,7 +343,8 @@ def extract_bundles_ai(company: str, raw_text: str, anchor: str | None = None) -
         return float(m.group()) if m else None
 
     client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
-    text = raw_text[:18000]
+    # 번들 검색 결과는 길 수 있어, 뒤쪽 요금제(예: SKT 5GX)가 잘리지 않도록 넉넉히.
+    text = raw_text[:40000]
     anchor_line = (
         f"This page is about bundles built around '{anchor}'. Extract EVERY plan that "
         f"includes '{anchor}' as a benefit — BOTH dedicated bundle/pass products AND larger "
