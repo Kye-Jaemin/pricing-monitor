@@ -1275,7 +1275,7 @@ def _auto_register_components(names, exclude_name: str, category_id) -> None:
         existing.add(key)
 
 
-def diag_bundle_price(q: str = "mybox") -> str:
+def diag_bundle_price(q: str = "mybox", grep: str | None = None) -> str:
     """특정 서비스의 정가가 합산에 안 들어가는 원인을 텍스트로 진단.
     CLI 스크립트와 웹 라우트가 공용으로 사용."""
     from pathlib import Path
@@ -1315,6 +1315,13 @@ def diag_bundle_price(q: str = "mybox") -> str:
             out.append("  snap    : src=%s conf=%s cur=%s raw_len=%d"
                        % (r["source_type"], r["confidence"], r["currency"], len(rt)))
             out.append("    raw[:400]= %r" % rt[:400])
+            if grep:
+                low = rt.lower()
+                gl = grep.lower()
+                idx = low.find(gl)
+                out.append("    grep(%r): %d회%s" % (
+                    grep, low.count(gl),
+                    ("  …%r…" % rt[max(0, idx - 60):idx + 60]) if idx >= 0 else " (없음)"))
         tiers = _company_plan_tiers(c["name"])
         if not tiers:
             out.append("  tiers   : (none)  <-- 수집/추출에서 가격 티어가 안 나옴")

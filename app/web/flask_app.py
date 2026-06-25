@@ -256,7 +256,7 @@ def diag_bundle_price():
         return ("코드가 필요합니다: /diag/bundle-price?q=mybox&code=액세스코드", 403,
                 {"Content-Type": "text/plain; charset=utf-8"})
     q = request.args.get("q") or "mybox"
-    report = presenters.diag_bundle_price(q)
+    report = presenters.diag_bundle_price(q, grep=request.args.get("grep"))
     return (report, 200, {"Content-Type": "text/plain; charset=utf-8"})
 
 
