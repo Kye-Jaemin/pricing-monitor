@@ -146,10 +146,13 @@
   <div class="dumbbell">
     <div class="db-controls">
       <div class="db-legend"><span class="db-dot db-bundle"></span>{{ t('bundle.db_bundle') }}<span class="db-dot db-list"></span>{{ t('bundle.db_list') }}</div>
-      <div class="db-sort">
-        <span class="db-sort-label">{{ t('bundle.db_sort') }}</span>
-        <label><input type="radio" name="dbsort-{{ g.id }}" value="provider" checked> {{ t('bundle.db_by_provider') }}</label>
-        <label><input type="radio" name="dbsort-{{ g.id }}" value="save"> {{ t('bundle.db_by_save') }}</label>
+      <div class="db-right">
+        <div class="db-sort">
+          <span class="db-sort-label">{{ t('bundle.db_sort') }}</span>
+          <label><input type="radio" name="dbsort-{{ g.id }}" value="provider" checked> {{ t('bundle.db_by_provider') }}</label>
+          <label><input type="radio" name="dbsort-{{ g.id }}" value="save"> {{ t('bundle.db_by_save') }}</label>
+        </div>
+        <button type="button" class="btn-secondary btn-sm db-full-btn" title="{{ t('bundle.fullscreen') }}">⛶ {{ t('bundle.fullscreen') }}</button>
       </div>
     </div>
     <div class="db-rows db-view db-view-provider">
@@ -372,6 +375,13 @@
     });
     markFlow(byProv);
     window.addEventListener('resize', function () { markFlow(byProv.hidden ? bySave : byProv); });
+    var fullBtn = db.querySelector('.db-full-btn');
+    if (fullBtn) fullBtn.addEventListener('click', function () {
+      if (document.fullscreenElement) { document.exitFullscreen(); }
+      else if (db.requestFullscreen) { db.requestFullscreen(); }
+      else { db.classList.toggle('pseudo-full'); }
+      setTimeout(function () { markFlow(byProv.hidden ? bySave : byProv); }, 150);
+    });
   });
   document.querySelectorAll('canvas.bundle-bar').forEach(function (cv) {
     var cb; try { cb = JSON.parse(cv.getAttribute('data-catvalue') || '[]'); } catch (e) { return; }
