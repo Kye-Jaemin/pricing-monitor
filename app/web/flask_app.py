@@ -63,6 +63,18 @@ _progress = {
     "error": 0,
 }
 
+# 번들 AI 분석(추출) 진행 상태 — 수집과 별개 트랙.
+_bundle_lock = threading.Lock()
+_bundle_progress = {
+    "running": False,
+    "total": 0,
+    "done": 0,
+    "current": "",
+    "n": 0,          # 추출 시도 업체 수(완료 시)
+    "names": [],     # 분석 대상(완료 후 결과 필터·리다이렉트용)
+    "error": "",
+}
+
 
 # ── 다국어(한/영) ────────────────────────────────────────────
 def _current_lang() -> str:
@@ -125,6 +137,7 @@ def bundle_page():
         contact=config.ACCESS_CONTACT,
         error=request.args.get("error"),
         notice=request.args.get("notice"),
+        bundle_running=_bundle_progress["running"] or request.args.get("analyzing") == "1",
     )
 
 
@@ -187,13 +200,43 @@ def bundle_run():
     if request.form.get("ai_analyze"):
         if config.ACCESS_CODE and (request.form.get("access_code") or "").strip() != config.ACCESS_CODE:
             return redirect(_bundle_url(names, error="bad_code"))
-        try:
-            n = presenters.run_bundle_extraction(names or None)
-        except Exception:  # noqa: BLE001
-            log.exception("[bundle] AI 번들 추출 실패")
-            return redirect(_bundle_url(names, error="ai_failed"))
-        return redirect(_bundle_url(names, notice=("analyzed" if n else "no_raw")))
+        # 백그라운드로 추출 실행 → 즉시 번들 페이지로 복귀(진행바가 폴링하며 표시).
+        if not _bundle_progress["running"]:
+            with _bundle_lock:
+                if not _bundle_progress["running"]:
+                    _bundle_progress.update(
+                        {"running": True, "total": 0, "done": 0,
+                         "current": "시작 중…", "n": 0, "names": names, "error": ""}
+                    )
+                    threading.Thread(
+                        target=_background_bundle_run,
+                        kwargs={"names": names or None},
+                        daemon=True,
+                    ).start()
+        return redirect(_bundle_url(names, analyzing="1"))
     return redirect(_bundle_url(names))
+
+
+def _bundle_progress_cb(done: int, total: int, current: str) -> None:
+    _bundle_progress.update({"done": done, "total": total, "current": current})
+
+
+def _background_bundle_run(names=None) -> None:
+    try:
+        log.info("[bundle-run] AI 번들 추출 시작 (names=%s)", names)
+        n = presenters.run_bundle_extraction(names, progress_cb=_bundle_progress_cb)
+        _bundle_progress.update({"n": n})
+        log.info("[bundle-run] 완료: %d곳 분석", n)
+    except Exception:  # noqa: BLE001
+        log.exception("[bundle-run] 실패")
+        _bundle_progress.update({"error": "ai_failed"})
+    finally:
+        _bundle_progress.update({"running": False, "current": ""})
+
+
+@app.route("/bundle-progress")
+def bundle_progress():
+    return jsonify(_bundle_progress)
 
 
 @app.route("/diag/bundle-price")

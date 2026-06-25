@@ -173,6 +173,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "bundle.not_analyzed": "분석 안 됨",
         "bundle.stale": "데이터 변경됨",
         "bundle.analyzed_notice": "번들 구조를 분석했습니다.",
+        "bundle.analyzing": "번들 구조 분석 중… 업체별로 AI가 추출합니다(이 창을 열어 두세요).",
         "bundle.no_raw": "분석할 수집 원문이 없습니다. 먼저 해당 업체를 수집하세요.",
         "footer.note": "USD 기준 · 공식 US Pricing 페이지 수집 · 주 1회",
         # common columns / words
@@ -510,6 +511,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "bundle.not_analyzed": "not analyzed",
         "bundle.stale": "data changed",
         "bundle.analyzed_notice": "Bundles analyzed.",
+        "bundle.analyzing": "Analyzing bundles… AI extracts per company (keep this tab open).",
         "bundle.no_raw": "No collected page text to analyze. Collect the company first.",
         "footer.note": "USD · official US pricing pages · weekly",
         # common

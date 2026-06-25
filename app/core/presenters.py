@@ -1122,24 +1122,30 @@ def load_bundle_card(card_id: int) -> dict | None:
     return {"id": row["id"], "title": row["title"], "created_at": row["created_at"], "data": data}
 
 
-def run_bundle_extraction(names: list[str] | None = None, only_stale: bool = False) -> int:
+def run_bundle_extraction(
+    names: list[str] | None = None, only_stale: bool = False, progress_cb=None
+) -> int:
     """번들 업체의 대표 출처 원문에서 번들 요금제를 AI로 구조화 추출·저장.
 
     names 가 주어지면 그 업체만(없으면 전체 번들 업체).
     only_stale=True 면 원문이 직전 추출 이후 바뀐 업체만(수집 파이프라인용).
+    progress_cb(done, total, current) 가 주어지면 업체별 진행률을 보고한다.
     반환: 추출을 시도한 업체 수.
     """
     from . import extract
 
     _cl, _n2i, id_to_name = _category_context()
     want = set(names) if names else None
+    targets = [
+        c for c in store.list_companies(active_only=True)
+        if c["is_bundle"] and (want is None or c["name"] in want)
+    ]
+    total = len(targets)
     n = 0
-    for c in store.list_companies(active_only=True):
-        if not c["is_bundle"]:
-            continue
-        if want is not None and c["name"] not in want:
-            continue
+    for i, c in enumerate(targets):
         name = c["name"]
+        if progress_cb:
+            progress_cb(i, total, name)
         rt, sig = _primary_raw_text(name)
         if not rt:
             continue
@@ -1161,6 +1167,8 @@ def run_bundle_extraction(names: list[str] | None = None, only_stale: bool = Fal
             if s.get("list_price") in (None, "", 0) and not _is_junk_component(s.get("name") or "")
         ]
         _auto_register_components(needs, exclude_name=name, category_id=c["category_id"])
+    if progress_cb:
+        progress_cb(total, total, "")
     return n
 
 

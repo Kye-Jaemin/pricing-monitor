@@ -84,6 +84,14 @@
 </details>
 {% endif %}
 
+{% if bundle_running %}
+<div class="card bundle-prog" id="bundleProg">
+  <div class="bundle-prog-head">🤖 {{ t('bundle.analyzing') }}</div>
+  <div class="progress-bar"><div id="bundleProgBar" class="progress-fill" style="width:0%"></div></div>
+  <p class="muted" id="bundleProgText">{{ t('bundle.analyzing') }}</p>
+</div>
+{% endif %}
+
 {% if data.groups and not saved_view %}
 <section class="card">
   <div class="card-head">
@@ -293,6 +301,33 @@
 {% endblock %}
 
 {% block scripts %}
+{% if bundle_running %}
+<script>
+(function () {
+  var url = "{{ url_for('bundle_progress') }}";
+  var bar = document.getElementById('bundleProgBar');
+  var txt = document.getElementById('bundleProgText');
+  var names = {{ data.selected | tojson }};
+  function done(p) {
+    var q = (names || []).map(function (n) { return 'company=' + encodeURIComponent(n); });
+    q.push('notice=' + (p && p.error ? '' : 'analyzed'));
+    if (p && p.error) q[q.length - 1] = 'error=' + p.error;
+    location.href = "{{ url_for('bundle_page') }}?" + q.join('&');
+  }
+  function poll() {
+    fetch(url, {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (p) {
+      if (!p.running) { done(p); return; }
+      var pct = p.total > 0 ? Math.round(p.done / p.total * 100) : 0;
+      if (bar) bar.style.width = pct + '%';
+      if (txt) txt.textContent = p.done + ' / ' + p.total
+        + (p.current ? (' · ' + p.current) : '') + ' (' + pct + '%)';
+      setTimeout(poll, 1200);
+    }).catch(function () { setTimeout(poll, 2500); });
+  }
+  poll();
+})();
+</script>
+{% endif %}
 {% if data.groups %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
