@@ -42,6 +42,17 @@ def _google_blocked_or_empty(text: str) -> bool:
     return any(m in low for m in _GOOGLE_BLOCK_MARKERS)
 
 
+def _merge_sources(*texts: str) -> str:
+    """여러 수집 본문(SerpAPI·Playwright 등)을 빈/중복 제거 후 합친다."""
+    parts, seen = [], set()
+    for t in texts:
+        t = (t or "").strip()
+        if t and t not in seen:
+            seen.add(t)
+            parts.append(t)
+    return "\n\n===== (추가 출처) =====\n\n".join(parts)
+
+
 @dataclass
 class SourceResult:
     company: str
@@ -140,15 +151,22 @@ def _process_source(
 
     # b. 페이지 렌더링 → 본문 텍스트
     if source_type == "google_search" and is_bundle and config.SERPAPI_KEY:
-        # 번들 검색: 결합/혜택·앵커(예: Netflix) 정보가 핵심인데 헤드리스 구글은
-        # 일반 홍보문만 주기 일쑤라, SerpAPI 를 우선 사용한다(번들은 수가 적어
-        # 월 100회 쿼터 부담이 적음). SerpAPI 가 비거나 실패하면 Playwright 로 폴백.
+        # 번들 검색: SerpAPI(AI Overview·정확하지만 좁음)와 Playwright(구글 SERP·
+        # 넓지만 지저분/차단 가능)를 둘 다 모아 합친다 — 한쪽만 고르면 어떤 번들은
+        # 좁아지고(예: SKT 5GX 누락) 어떤 번들은 junk 가 되던 문제를 동시에 해소.
+        # Playwright 가 차단/빈 결과면 그것만 버리고 SerpAPI 만 쓴다.
+        sp = pw = ""
         try:
-            page_text = fetch.fetch_google_via_serpapi(source_url)
+            sp = fetch.fetch_google_via_serpapi(source_url)
         except Exception:  # noqa: BLE001
-            page_text = ""
-        if _google_blocked_or_empty(page_text):
-            page_text = fetch.fetch_page_text(source_url)
+            sp = ""
+        try:
+            pw = fetch.fetch_page_text(source_url)
+        except Exception:  # noqa: BLE001
+            pw = ""
+        if _google_blocked_or_empty(pw):
+            pw = ""
+        page_text = _merge_sources(sp, pw)
     elif source_type == "google_search":
         # 일반 주간 수집: 무료 Playwright 먼저, 비었거나 봇 차단으로 보이면 그때만
         # SerpAPI 로 폴백(월 100회 무료 쿼터 절약).
