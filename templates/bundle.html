@@ -138,7 +138,7 @@
   {% set dmax = g.dmax or 1 %}
   {% macro db_row(d) %}
     {% set bp = (d.bundle / dmax * 100)|round(1) %}
-    <div class="dumbbell-row">
+    <div class="dumbbell-row"{% if d.anchor %} data-jump="{{ d.anchor }}" role="link" tabindex="0" title="{{ t('bundle.jump_detail') }}"{% endif %}>
       <span class="db-label" title="{{ d.company }} · {{ d.plan }}"><span class="db-ltext">{% if d.icon %}<img class="svc-icon" src="{{ d.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ d.company }} · {{ d.plan }}</span></span>
       <span class="db-track">
         {% if d.list is not none %}
@@ -251,7 +251,7 @@
         <thead><tr><th>{{ t('bundle.plan') }}</th><th>{{ t('bundle.provider') }}</th><th>{{ t('col.monthly') }}</th><th>{{ t('col.annual') }}</th><th>{{ t('bundle.standalone_col') }}</th><th>{{ t('bundle.included') }}</th></tr></thead>
         <tbody>
           {% for pl in co.plans %}
-          <tr>
+          <tr id="{{ pl.anchor }}" class="bundle-plan-row">
             <td class="tier-name">{{ pl.name }}{% if pl.choose %} <span class="tag tag-choose">{{ t('bundle.choose', n=pl.choose) }}</span>{% endif %}
               {% if pl.conditions %}<div class="bundle-cond" title="{{ t('bundle.conditions') }}">⚠ {{ pl.conditions }}</div>{% endif %}</td>
             <td class="muted nowrap">{{ pl.provider }}</td>
@@ -370,6 +370,32 @@
 <script>
 (function () {
   function hue(i) { return (i * 57) % 360; }
+  // 덤벨 행 클릭 → 해당 번들 요금제 상세 행으로 이동(상위 details 펼치고 강조).
+  function openAndScroll(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var p = el.parentElement;
+    while (p) { if (p.tagName === 'DETAILS') p.open = true; p = p.parentElement; }
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('bp-flash');
+    setTimeout(function () { el.classList.remove('bp-flash'); }, 1700);
+  }
+  document.querySelectorAll('.dumbbell-row[data-jump]').forEach(function (row) {
+    function go() {
+      var id = row.getAttribute('data-jump');
+      if (document.fullscreenElement) {
+        document.exitFullscreen().then(function () { setTimeout(function () { openAndScroll(id); }, 120); });
+      } else {
+        var pf = row.closest('.pseudo-full');
+        if (pf) { pf.classList.remove('pseudo-full'); setTimeout(function () { openAndScroll(id); }, 60); }
+        else { openAndScroll(id); }
+      }
+    }
+    row.addEventListener('click', go);
+    row.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
+    });
+  });
   document.querySelectorAll('canvas.bundle-pie').forEach(function (cv) {
     var cats; try { cats = JSON.parse(cv.getAttribute('data-cats') || '[]'); } catch (e) { return; }
     if (!cats.length) return;

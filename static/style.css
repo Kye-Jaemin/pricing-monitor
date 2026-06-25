@@ -684,6 +684,11 @@ a.btn-primary:hover { text-decoration: none; }
 .db-provider:first-child > .db-provider-head { border-top: none; padding-top: 0; }
 /* .db-rows: 내부 스크롤 없이(스크롤바 제거) 아래로 계속 표시 */
 .dumbbell-row { display: flex; align-items: center; gap: 14px; margin: 9px 0; }
+.dumbbell-row[data-jump] { cursor: pointer; border-radius: 6px; padding: 2px 4px; margin: 7px -4px; transition: background .12s ease; }
+.dumbbell-row[data-jump]:hover { background: #f1f5f9; }
+.dumbbell-row[data-jump]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+@keyframes bpFlash { 0%, 100% { background-color: transparent; } 25% { background-color: #fef08a; } }
+.bp-flash > td { animation: bpFlash 1.7s ease; }
 .db-label { --dbw: 220px; flex: 0 0 var(--dbw); min-width: 0; font-size: .92rem; overflow: hidden; white-space: nowrap; }
 .db-label .db-ltext { display: inline-block; white-space: nowrap; will-change: transform; }
 /* 영역보다 긴 라벨만 자동으로 흐른다(JS가 .db-flow 부여). hover 하면 멈춰 읽기. */

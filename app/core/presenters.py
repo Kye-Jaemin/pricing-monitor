@@ -834,6 +834,12 @@ def _cat_bucket(category: str, name: str = "") -> str:
     return (category or "기타").strip().lower()
 
 
+def _bundle_anchor_id(company: str, plan: str) -> str:
+    """덤벨 행 → 해당 번들 요금제 상세 행으로 점프하기 위한 안정적 앵커 id."""
+    base = re.sub(r"[^a-z0-9]+", "-", (str(company) + "-" + str(plan)).lower()).strip("-")
+    return "bp-" + (base or "x")
+
+
 # 같은 서비스의 '티어 변형'(Netflix Standard/Premium/4K 등)을 묶기 위한 브랜드 키.
 def _brand_key(name: str) -> str:
     """서비스의 브랜드(선행 토큰) 키 — 같은 서비스의 티어 변형 묶기용.
@@ -1071,6 +1077,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 "choose": p.get("choose"),
                 "price_note": p.get("price_note"),
                 "conditions": p.get("conditions"),
+                "anchor": _bundle_anchor_id(name, p.get("name")),
                 "services": svcs,
                 "standalone_usd": standalone,
                 "standalone_parts": parts,
@@ -1082,6 +1089,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 g["dumbbell"].append({
                     "company": name, "plan": p.get("name"), "icon": co_icon,
                     "bundle": eff, "list": standalone, "save": savings_pct,
+                    "anchor": _bundle_anchor_id(name, p.get("name")),
                 })
         g["companies"].append({
             "name": name,
