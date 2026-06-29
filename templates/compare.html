@@ -459,7 +459,10 @@
     if (!all.length) return;
     var xmax = Math.max.apply(null, all.map(function (p) { return p.x || 0; })) || 1;
     var ymax = Math.max.apply(null, all.map(function (p) { return p.y || 0; })) || 1;
-    var rx = Math.max(0.4, xmax * 0.022), ry = Math.max(0.4, ymax * 0.022);
+    // 겹친 아이콘만 살짝 흩는 용도 — 비싼 이상치(큰 xmax) 때문에 지터가 커져
+    // 싼 점이 엉뚱한 위치로 튕기지 않도록 작은 값으로 상한(툴팁=원본값과 어긋남 방지).
+    var rx = Math.min(Math.max(0.4, xmax * 0.022), 1.2);
+    var ry = Math.min(Math.max(0.4, ymax * 0.022), 1.2);
     var buckets = {};
     all.forEach(function (p) {
       var k = Math.round(p.x) + ',' + Math.round(p.y);
