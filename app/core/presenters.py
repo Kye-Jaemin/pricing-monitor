@@ -1856,12 +1856,19 @@ def compare(names: list[str]) -> dict:
     cheap_usd = get_cheap_threshold()  # '저렴(무료에 준함)' 판정 가격 임계값
     band_usd = get_band_width()        # 가격대별/기능별 분석의 가격 묶음 단위
 
-    def _canon_key(f: str) -> str:
+    def _good_alias(f: str):
+        # 별칭(통합명)이 노이즈(제약/부정/포함안내 등)면 신뢰하지 않고 무시 →
+        # AI가 무관한 기능을 잘못 묶어둔 옛 별칭(예: Stealth Mode→'Watermarked
+        # outputs')이 그대로 남아 오분류되는 것을 방지(원본 이름으로 되돌림).
         a = alias_map.get(f)
+        return a if (a and not _skip_feature(a)) else None
+
+    def _canon_key(f: str) -> str:
+        a = _good_alias(f)
         return ("ALIAS::" + a) if a else _normalize_feature(f)
 
     def _canon_disp(f: str) -> str:
-        return alias_map.get(f) or f
+        return _good_alias(f) or f
 
     # 0) 기능(canonical) 보급률·해금가 집계 → 커머디티/차별화 분류 (무료 기능 포함)
     agg: dict[str, dict] = {}
@@ -1878,8 +1885,8 @@ def compare(names: list[str]) -> dict:
                 if a is None:
                     a = agg[key] = {"display": _canon_disp(f), "companies": set(),
                                     "prices": [], "detail": {}}
-                elif alias_map.get(f):
-                    a["display"] = alias_map[f]  # 별칭이 있으면 대표명으로 승격
+                elif _good_alias(f):
+                    a["display"] = _good_alias(f)  # 유효 별칭이 있으면 대표명으로 승격
                 a["companies"].add(pc["company"])
                 if eff is not None:
                     a["prices"].append(eff)
