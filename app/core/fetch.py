@@ -213,8 +213,9 @@ def _merge_billing_toggle_text(page, base_text: str) -> str:
         return bool(toks & _BILLING_TOGGLE_LABELS)
 
     clicked = 0
+    total = len(base_text)
     for el in els:
-        if clicked >= 5:
+        if clicked >= 3 or total > 200000:   # 저메모리 보호: 클릭·누적 길이 상한
             break
         try:
             label = (el.inner_text() or "").strip()
@@ -229,7 +230,9 @@ def _merge_billing_toggle_text(page, base_text: str) -> str:
             clicked += 1
             if t and t not in seen:
                 seen.add(t)
-                parts.append("\n\n===== (" + label + " 결제 보기) =====\n\n" + t)
+                chunk = "\n\n===== (" + label + " 결제 보기) =====\n\n" + t
+                parts.append(chunk)
+                total += len(chunk)
         except Exception:  # noqa: BLE001
             continue
     return "".join(parts) if len(parts) > 1 else base_text
@@ -252,7 +255,18 @@ def fetch_page_text(url: str) -> str:
             with sync_playwright() as p:
                 browser = p.chromium.launch(
                     headless=True,
-                    args=["--disable-blink-features=AutomationControlled"],
+                    # Render 등 메모리 작은 컨테이너(예: 500MB)에서 Chromium OOM 방지용 플래그.
+                    args=[
+                        "--disable-blink-features=AutomationControlled",
+                        "--disable-dev-shm-usage",   # /dev/shm 작음 → 메모리/디스크 절약
+                        "--no-sandbox",
+                        "--disable-gpu",
+                        "--no-zygote",
+                        "--single-process",          # 프로세스 분리 안 함 → RAM 절약
+                        "--disable-extensions",
+                        "--disable-background-networking",
+                        "--js-flags=--max-old-space-size=256",
+                    ],
                 )
                 context = browser.new_context(
                     locale=config.LOCALE,
@@ -261,6 +275,23 @@ def fetch_page_text(url: str) -> str:
                     extra_http_headers={"Accept-Language": config.ACCEPT_LANGUAGE},
                 )
                 page = context.new_page()
+                # 이미지/미디어/폰트는 가격 텍스트와 무관 — 차단해 메모리/대역폭 절약
+                # (저메모리 컨테이너에서 Chromium OOM 완화).
+                def _block(route):
+                    try:
+                        if route.request.resource_type in ("image", "media", "font"):
+                            route.abort()
+                        else:
+                            route.continue_()
+                    except Exception:  # noqa: BLE001
+                        try:
+                            route.continue_()
+                        except Exception:  # noqa: BLE001
+                            pass
+                try:
+                    page.route("**/*", _block)
+                except Exception:  # noqa: BLE001
+                    pass
                 try:
                     # domcontentloaded 로 기본 로드를 끝낸다.
                     # (networkidle 은 분석/폴링 스크립트가 계속 도는 사이트·구글 검색에서
