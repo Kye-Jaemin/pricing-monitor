@@ -113,6 +113,7 @@
     </div>
   </div>
   <p class="muted zoom-hint">{{ t('compare.zoom_hint') }} · {{ t('compare.legend_hint') }}</p>
+  <div id="scatterLegend" class="scatter-legend"></div>
   <div id="scatterWrap" class="scatter-wrap">
     <canvas id="scatter"></canvas>
   </div>
@@ -481,20 +482,7 @@
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: {
-          labels: { usePointStyle: true, pointStyleWidth: 20, boxHeight: 16 },
-          // 범례의 업체명을 클릭하면 그 업체만 표시(다시 누르면 전체 복원)
-          onClick: function (e, item, legend) {
-            var ci = legend.chart;
-            var idx = item.datasetIndex;
-            var onlyThis = ci.isDatasetVisible(idx) && ci.data.datasets.every(
-              function (_, i) { return i === idx ? ci.isDatasetVisible(i) : !ci.isDatasetVisible(i); });
-            ci.data.datasets.forEach(function (_, i) {
-              ci.setDatasetVisibility(i, onlyThis ? true : (i === idx));
-            });
-            ci.update();
-          }
-        },
+        legend: { display: false },   // 커스텀 체크박스 범례(#scatterLegend) 사용
         tooltip: { callbacks: { label: function (ctx) {
           var p = ctx.raw;
           var mx = (p._mx != null ? p._mx : p.x), my = (p._my != null ? p._my : p.y);
@@ -516,6 +504,59 @@
       }
     }
   });
+
+  // 커스텀 체크박스 범례 — 표시할 업체를 다중 선택(기본 전체 체크).
+  (function buildScatterLegend() {
+    var box = document.getElementById('scatterLegend');
+    if (!box) return;
+    var allLab = document.createElement('label');
+    allLab.className = 'sl-all';
+    var allCb = document.createElement('input');
+    allCb.type = 'checkbox'; allCb.checked = true;
+    allLab.appendChild(allCb);
+    allLab.appendChild(document.createTextNode(' ' + {{ t('compare.legend_all') | tojson }}));
+    box.appendChild(allLab);
+
+    function syncAll() {
+      var bs = box.querySelectorAll('.sl-item input');
+      var n = 0;
+      bs.forEach(function (b) { if (b.checked) n++; });
+      allCb.checked = n === bs.length;
+      allCb.indeterminate = n > 0 && n < bs.length;
+    }
+    sc.datasets.forEach(function (d, i) {
+      var hue = (i * 67) % 360;
+      var lab = document.createElement('label');
+      lab.className = 'sl-item';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = true;
+      cb.addEventListener('change', function () {
+        scatterChart.setDatasetVisibility(i, cb.checked);
+        scatterChart.update();
+        syncAll();
+      });
+      lab.appendChild(cb);
+      if (d.icon) {
+        var im = document.createElement('img');
+        im.className = 'sl-icon'; im.src = d.icon; im.alt = '';
+        im.onerror = function () { this.style.display = 'none'; };
+        lab.appendChild(im);
+      } else {
+        var dot = document.createElement('span');
+        dot.className = 'sl-dot'; dot.style.background = 'hsl(' + hue + ',70%,50%)';
+        lab.appendChild(dot);
+      }
+      lab.appendChild(document.createTextNode(d.label));
+      box.appendChild(lab);
+    });
+    allCb.addEventListener('change', function () {
+      box.querySelectorAll('.sl-item input').forEach(function (b, i) {
+        b.checked = allCb.checked;
+        scatterChart.setDatasetVisibility(i, allCb.checked);
+      });
+      scatterChart.update();
+    });
+  })();
 
   // 확대/이동 컨트롤
   var zr = document.getElementById('zoomReset');
