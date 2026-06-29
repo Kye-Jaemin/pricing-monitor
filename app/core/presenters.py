@@ -137,9 +137,14 @@ def _is_trial_feature(f: str) -> bool:
 _NEGATIVE_RE = re.compile(
     r"^\s*no\s+"                                   # No advanced AI models / No image generation
     r"|^\s*without\s+"                             # Without …
-    r"|\bnot\s+(included|available|supported|offered|provided)\b"  # … not available
+    r"|\bdoes(?:n['’]?t|\s+not)\b"                 # does not include … / doesn't …
+    r"|\bdo(?:n['’]?t|\s+not)\b"                   # do not … / don't …
+    r"|\bnot\s+(includ\w*|available|supported|offered|provided)\b"  # not include(d)/available …
+    r"|\bexclud(es|ing|ed)\b"                      # excludes / excluding / excluded
+    r"|\bno\s+access\b"
     r"|\b(unavailable|unsupported)\b"
-    r"|미지원|미제공|지원하지\s*않|제공하지\s*않|지원\s*안\s*함|제공\s*안\s*함",
+    r"|미지원|미제공|미포함|지원하지\s*않|제공하지\s*않|포함하지\s*않"
+    r"|지원\s*안\s*함|제공\s*안\s*함|포함\s*안\s*",
     re.IGNORECASE,
 )
 
