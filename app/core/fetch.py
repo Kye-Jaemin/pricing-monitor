@@ -29,8 +29,8 @@ def build_google_search_url(company: str) -> str:
     from urllib.parse import quote_plus
 
     q = quote_plus(
-        f"{company} pricing plans and what features are included "
-        f"in each paid tier, plus free trial"
+        f"{company} pricing plans: the MONTHLY price AND the YEARLY (annual) price "
+        f"for each paid tier (both billing periods), included features, plus free trial"
     )
     return f"https://www.google.com/search?q={q}&hl=en&gl=us"
 
