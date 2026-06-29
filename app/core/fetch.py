@@ -5,6 +5,7 @@ JS 렌더링 후 본문 텍스트를 확보한다. 사이트별 전용 파서는
 """
 from __future__ import annotations
 
+import re
 import time
 from urllib.parse import parse_qs, parse_qsl, urlencode, urlparse, urlunparse
 
@@ -202,15 +203,24 @@ def _merge_billing_toggle_text(page, base_text: str) -> str:
         els = page.query_selector_all("button, [role=tab], label, [role=button]")
     except Exception:  # noqa: BLE001
         return base_text
+    def _is_billing_label(text: str) -> bool:
+        # 'Yearly -34%', 'Monthly -12%', 'Annual 30% OFF' 처럼 할인 배지가 붙어도
+        # 짧은 라벨 안에 결제주기 단어가 토큰으로 있으면 토글로 본다(문단 오탐 방지).
+        t = (text or "").strip().lower()
+        if not t or len(t) > 24:
+            return False
+        toks = set(re.findall(r"[a-z가-힣]+", t))
+        return bool(toks & _BILLING_TOGGLE_LABELS)
+
     clicked = 0
     for el in els:
-        if clicked >= 4:
+        if clicked >= 5:
             break
         try:
-            label = (el.inner_text() or "").strip().lower()
+            label = (el.inner_text() or "").strip()
         except Exception:  # noqa: BLE001
             continue
-        if label not in _BILLING_TOGGLE_LABELS:
+        if not _is_billing_label(label):
             continue
         try:
             el.click(timeout=1200)
