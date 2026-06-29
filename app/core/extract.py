@@ -43,6 +43,16 @@ Rules:
   offered), annual_price_per_month = annual total / 12, and note the other terms
   (weekly/6-month) in price_note. Do NOT create separate
   "Weekly"/"Monthly"/"Annual" tiers for one plan.
+- Pricing pages often have a Monthly/Annual TOGGLE and show a struck-through
+  original next to the discounted price (e.g. "PLUS $59 $47 per month, billed
+  annually", "$129 $99 per month, billed annually", plus "Save $144 compared to
+  monthly"). Here the SMALLER "$47 per month, billed annually" is the
+  ANNUAL-billing per-month -> annual_price_per_month = 47, and the struck-through
+  "$59" is the MONTHLY-billing per-month -> monthly_price = 59. Capture BOTH on
+  ONE tier so the annual discount is preserved (do NOT keep only the displayed
+  annual price). If only the annual per-month price P is shown together with
+  "Save $X compared to monthly", infer monthly_price = P + X/12. If a plan says
+  "no difference compared to monthly", set monthly_price = annual_price_per_month.
 {source_hint}- "company" must be exactly: {company}
 - "source_url" must be exactly: {source_url}
 - "collected_at" must be exactly: {collected_at}
