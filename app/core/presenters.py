@@ -154,13 +154,29 @@ def _is_negative_feature(f: str) -> bool:
     return bool(_NEGATIVE_RE.search(f or ""))
 
 
+# 워터마크가 '붙는다'는 제약 표현(무료 출력에 워터마크)은 기능이 아님 → 제외.
+# 단, '워터마크 제거/없음/무료'는 유료 기능이므로 유지한다.
+_WATERMARK_OK_RE = re.compile(
+    r"\b(no|without|remove[sd]?|removal|free)\b|watermark[-\s]?free|제거|없",
+    re.IGNORECASE,
+)
+
+
+def _is_limitation_feature(f: str) -> bool:
+    """'Watermarked outputs'처럼 제약(한계)을 뜻하는 항목인지 판별(워터마크 부착 등)."""
+    s = f or ""
+    if re.search(r"watermark|워터마크", s, re.IGNORECASE) and not _WATERMARK_OK_RE.search(s):
+        return True
+    return False
+
+
 def _skip_feature(f: str) -> bool:
     """기능 포지셔닝/분석 집계에서 제외할 노이즈
-    (포함 안내·광고·플랜 이름·체험 안내·부정/부재 표현)."""
+    (포함 안내·광고·플랜 이름·체험 안내·부정/부재·제약 표현)."""
     return (
         _is_inclusion_phrase(f) or _is_ad_feature(f)
         or _is_plan_name(f) or _is_trial_feature(f)
-        or _is_negative_feature(f)
+        or _is_negative_feature(f) or _is_limitation_feature(f)
     )
 
 
