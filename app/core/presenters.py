@@ -218,6 +218,27 @@ def set_band_width(value: float) -> None:
     store.set_setting(BAND_WIDTH_KEY, str(float(value)))
 
 
+COMMODITY_PEN_KEY = "classify.commodity_pen"  # 커머디티로 보는 최소 보급률(%)
+
+
+def get_commodity_pen() -> int:
+    """커머디티 판정의 최소 보급률(%). DB 설정 우선, 없으면 60."""
+    raw = store.get_setting(COMMODITY_PEN_KEY)
+    if raw is not None:
+        try:
+            v = int(float(raw))
+            if 1 <= v <= 100:
+                return v
+        except (TypeError, ValueError):
+            pass
+    return 60
+
+
+def set_commodity_pen(value) -> None:
+    v = max(1, min(100, int(float(value))))
+    store.set_setting(COMMODITY_PEN_KEY, str(v))
+
+
 _CONF_RANK = {"low": 0, "medium": 1, "high": 2}
 _STORE_HOSTS = ("apple.com", "play.google.com", "google.com")
 PRIORITY_SETTING_KEY = "source_priority"
@@ -1855,6 +1876,7 @@ def compare(names: list[str]) -> dict:
     alias_map = store.get_feature_aliases()
     cheap_usd = get_cheap_threshold()  # '저렴(무료에 준함)' 판정 가격 임계값
     band_usd = get_band_width()        # 가격대별/기능별 분석의 가격 묶음 단위
+    commodity_pen = get_commodity_pen() / 100.0  # 커머디티 최소 보급률(설정값)
 
     def _good_alias(f: str):
         # 별칭(통합명)이 노이즈(제약/부정/포함안내 등)면 신뢰하지 않고 무시 →
@@ -1928,7 +1950,7 @@ def compare(names: list[str]) -> dict:
             and dd["price"] > cheap_usd
         )
         paid_ratio = (paid / providers) if providers else 0.0
-        if pen >= 0.6 and entry >= 0.5:
+        if pen >= commodity_pen and entry >= 0.5:
             label = "commodity"
         elif n_co >= 3 and pen <= 0.34 and paid_ratio >= 0.5:
             label = "differentiated"
@@ -2089,6 +2111,7 @@ def compare(names: list[str]) -> dict:
         "editable": editable,
         "cheap_usd": cheap_usd,
         "band_usd": band_usd,
+        "commodity_pen": get_commodity_pen(),
         "all_companies": all_company_names,
         "category_chips": cat_chips,
         "company_cat": company_cat,
@@ -2206,6 +2229,8 @@ def load_comparison_card(card_id: int) -> dict | None:
         data["cheap_usd"] = get_cheap_threshold()
     if data.get("band_usd") is None:
         data["band_usd"] = get_band_width()
+    if data.get("commodity_pen") is None:
+        data["commodity_pen"] = get_commodity_pen()
     # 선택 목록(체크박스)은 현재 업체 기준으로 갱신해 새 비교 시작이 가능하도록.
     data["all_companies"] = sorted(
         c["name"] for c in store.list_companies(active_only=True)

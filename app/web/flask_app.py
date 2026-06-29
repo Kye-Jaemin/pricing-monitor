@@ -547,6 +547,17 @@ def compare_set_band():
     return redirect(_compare_url(names))
 
 
+@app.route("/compare/set-commodity-pen", methods=["POST"])
+def compare_set_commodity_pen():
+    """커머디티로 보는 최소 보급률(%)을 조정(전역 설정, AI/외부호출 아님)."""
+    names = [n for n in request.form.getlist("company") if n]
+    try:
+        presenters.set_commodity_pen(request.form.get("commodity_pen") or "")
+    except (TypeError, ValueError):
+        pass
+    return redirect(_compare_url(names))
+
+
 @app.route("/compare/find-feature", methods=["POST"])
 def compare_find_feature():
     """입력한 기능과 유사한 기능들을 AI가 골라 카테고리별로 묶어 반환(JSON).

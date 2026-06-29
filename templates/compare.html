@@ -125,9 +125,10 @@
   <summary><h2>{{ t('compare.pos_title') }}</h2></summary>
   <p class="muted">{{ t('compare.pos_help') }}</p>
   {% set usd = '%g'|format(data.cheap_usd if data.cheap_usd is not none else 5) %}
+  {% set pen = data.commodity_pen if data.commodity_pen is not none else 60 %}
   <p class="pos-threshold">💲 {{ t('compare.threshold_current', usd=usd) }}</p>
   <ul class="class-criteria">
-    <li><span class="feat-badge badge-commodity">{{ t('compare.class_commodity') }}</span> {{ t('compare.class_commodity_help') }} <span class="muted">— {{ t('compare.class_commodity_rule', usd=usd) }}</span></li>
+    <li><span class="feat-badge badge-commodity">{{ t('compare.class_commodity') }}</span> {{ t('compare.class_commodity_help') }} <span class="muted">— {{ t('compare.class_commodity_rule', usd=usd, pen=pen) }}</span></li>
     <li><span class="feat-badge badge-standard">{{ t('compare.class_standard') }}</span> {{ t('compare.class_standard_help') }} <span class="muted">— {{ t('compare.class_standard_rule') }}</span></li>
     <li><span class="feat-badge badge-differentiated">{{ t('compare.class_differentiated') }}</span> {{ t('compare.class_differentiated_help') }} <span class="muted">— {{ t('compare.class_differentiated_rule', usd=usd) }}</span></li>
   </ul>
@@ -139,6 +140,14 @@
     </label>
     <button type="submit" class="btn-secondary btn-sm">{{ t('compare.threshold_save') }}</button>
     <span class="muted">{{ t('compare.threshold_help') }}</span>
+  </form>
+  <form method="post" action="{{ url_for('compare_set_commodity_pen') }}" class="threshold-form">
+    {% for n in data.companies %}<input type="hidden" name="company" value="{{ n }}">{% endfor %}
+    <label>{{ t('compare.pen_label') }}
+      <input type="number" name="commodity_pen" min="1" max="100" step="1" value="{{ pen }}" class="sched-num">
+    </label>
+    <button type="submit" class="btn-secondary btn-sm">{{ t('compare.threshold_save') }}</button>
+    <span class="muted">{{ t('compare.pen_help') }}</span>
   </form>
   {% endif %}
   <div class="scatter-wrap" style="height:340px"><canvas id="posScatter"></canvas></div>
