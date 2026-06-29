@@ -1885,13 +1885,21 @@ def compare(names: list[str]) -> dict:
             return {"label": "standard", "providers": 0, "penetration": 0.0}
         providers = len(a["companies"])
         pen = providers / n_co
-        # 제공 업체 중 '무료/기준가 이하(저렴)' 비율 — 가격 미공개(비공개)는 유료로 간주
+        # 제공 업체 중 '무료/기준가 이하(저렴)' 비율 — 커머디티 판정용.
         cheap = sum(
             1 for dd in a["detail"].values()
             if dd["is_free"] or (dd["price"] is not None and dd["price"] <= cheap_usd)
         )
         entry = (cheap / providers) if providers else 0.0
-        paid_ratio = 1.0 - entry  # 무료/$5 초과(유료)로 제공하는 업체 비율
+        # 유료 비율 — 차별화 판정용. '가격이 실제로 확인된 + 기준가 초과'인 업체만
+        #   유료로 센다. 가격 미상(None, 화면 $0)·무료·기준가 이하는 유료가 아님.
+        paid = sum(
+            1 for dd in a["detail"].values()
+            if not dd["is_free"]
+            and dd["price"] is not None
+            and dd["price"] > cheap_usd
+        )
+        paid_ratio = (paid / providers) if providers else 0.0
         if pen >= 0.6 and entry >= 0.5:
             label = "commodity"
         elif n_co >= 3 and pen <= 0.34 and paid_ratio >= 0.5:
