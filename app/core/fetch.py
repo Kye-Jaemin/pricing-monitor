@@ -185,6 +185,46 @@ def normalize_us_url(source_type: str, url: str) -> str:
     return url
 
 
+# 결제주기 토글에 흔히 쓰이는 라벨(한·영). 정확히 이 텍스트인 클릭요소만 누른다.
+_BILLING_TOGGLE_LABELS = {
+    "weekly", "monthly", "yearly", "annual", "annually", "year", "month",
+    "주간", "월간", "연간", "월", "연", "연결제", "월결제",
+}
+
+
+def _merge_billing_toggle_text(page, base_text: str) -> str:
+    """결제주기 토글(Weekly/Monthly/Yearly 등)을 차례로 눌러 각 상태의 본문을
+    base_text 에 합친다. CSS 로 숨겨진 다른 결제주기 가격을 확보하기 위함.
+    버튼/탭/라벨만 대상으로 하고(링크 제외해 페이지 이탈 방지), best-effort."""
+    parts = [base_text]
+    seen = {base_text}
+    try:
+        els = page.query_selector_all("button, [role=tab], label, [role=button]")
+    except Exception:  # noqa: BLE001
+        return base_text
+    clicked = 0
+    for el in els:
+        if clicked >= 4:
+            break
+        try:
+            label = (el.inner_text() or "").strip().lower()
+        except Exception:  # noqa: BLE001
+            continue
+        if label not in _BILLING_TOGGLE_LABELS:
+            continue
+        try:
+            el.click(timeout=1200)
+            page.wait_for_timeout(700)
+            t = (page.evaluate("() => document.body.innerText") or "").strip()
+            clicked += 1
+            if t and t not in seen:
+                seen.add(t)
+                parts.append("\n\n===== (" + label + " 결제 보기) =====\n\n" + t)
+        except Exception:  # noqa: BLE001
+            continue
+    return "".join(parts) if len(parts) > 1 else base_text
+
+
 def fetch_page_text(url: str) -> str:
     """주어진 URL 을 US 로케일로 렌더링하고 본문 텍스트를 돌려준다.
 
@@ -228,6 +268,13 @@ def fetch_page_text(url: str) -> str:
                         pass
                     page.wait_for_timeout(2000)
                     text = page.evaluate("() => document.body.innerText")
+                    # 결제주기 토글(Weekly/Monthly/Yearly/Annual 등) 페이지는 기본
+                    # 뷰만 보이므로, 그런 토글을 차례로 눌러 각 상태의 본문을 합친다
+                    # (숨겨진 월/연 가격 누락 방지, best-effort — 실패해도 무시).
+                    try:
+                        text = _merge_billing_toggle_text(page, text)
+                    except Exception:  # noqa: BLE001
+                        pass
                 finally:
                     context.close()
                     browser.close()
