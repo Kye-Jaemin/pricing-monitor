@@ -80,7 +80,7 @@
     <button type="submit" class="btn-primary" id="compareBtn">{{ t('compare.run') }}</button>
     <div class="progress-wrap" id="compareProg" hidden>
       <div class="progress-bar"><div class="progress-fill indeterminate"></div></div>
-      <span class="muted">{{ t('compare.ai_running') }}</span>
+      <span class="muted" id="compareProgText">{{ t('compare.ai_running') }}</span>
     </div>
   </form>
   <p class="muted">{{ t('compare.ai_opts_help') }}</p>
@@ -820,20 +820,43 @@
 </script>
 {% endif %}
 <script>
-  // 비교하기: AI 분석 체크 시에만 진행 바 표시(완료되면 서버가 리다이렉트)
+  // 비교하기: AI 분석은 백그라운드로 실행되고, 진행바가 폴링하다 완료 시 새로고침.
   (function () {
     var form = document.getElementById('compareForm');
-    if (!form) return;
-    form.addEventListener('submit', function () {
+    var prog = document.getElementById('compareProg');
+    var btn = document.getElementById('compareBtn');
+    function showRunning() {
+      if (prog) prog.hidden = false;
+      if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+    }
+    if (form) form.addEventListener('submit', function () {
       var ai = form.querySelector('input[name="ai_categorize"]:checked')
             || form.querySelector('input[name="ai_pricing"]:checked')
             || form.querySelector('input[name="ai_dedupe"]:checked');
-      if (!ai) return;
-      var prog = document.getElementById('compareProg');
-      var btn = document.getElementById('compareBtn');
-      if (prog) prog.hidden = false;
-      if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+      if (ai) showRunning();
     });
+    // 분석이 진행 중인 채로 로드된 경우(analyzing=1): 진행상황 폴링 → 완료 시 결과로 새로고침
+    var running = {{ compare_running | default(false) | tojson }};
+    if (running) {
+      showRunning();
+      var purl = "{{ url_for('compare_progress') }}";
+      var txt = document.getElementById('compareProgText');
+      (function poll() {
+        fetch(purl, { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (p) {
+          if (!p.running) {
+            var u = new URL(window.location.href);
+            u.searchParams.delete('analyzing');
+            if (p.error) u.searchParams.set('error', p.error);
+            window.location.replace(u.toString());
+            return;
+          }
+          if (txt) {
+            txt.textContent = (p.current || '') + (p.total ? ' (' + p.done + '/' + p.total + ')' : '');
+          }
+          setTimeout(poll, 1500);
+        }).catch(function () { setTimeout(poll, 2500); });
+      })();
+    }
   })();
 </script>
 {% endblock %}
