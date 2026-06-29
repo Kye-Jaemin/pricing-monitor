@@ -76,6 +76,14 @@ _bundle_progress = {
 }
 
 
+# 비교 AI 분석 진행 상태 — 동기 실행이 gunicorn 타임아웃(120s)을 넘겨 워커가 죽던
+# 문제(ERR_HTTP2_PROTOCOL_ERROR)로 백그라운드화. 수집/번들과 별개 트랙.
+_compare_lock = threading.Lock()
+_compare_progress = {
+    "running": False, "total": 0, "done": 0, "current": "", "error": "",
+}
+
+
 # ── 다국어(한/영) ────────────────────────────────────────────
 def _current_lang() -> str:
     lang = request.cookies.get("lang", DEFAULT_LANG)
@@ -311,6 +319,7 @@ def compare_page():
         contact=config.ACCESS_CONTACT,
         error=request.args.get("error"),
         notice=request.args.get("notice"),
+        compare_running=_compare_progress["running"] or request.args.get("analyzing") == "1",
     )
 
 
@@ -410,17 +419,58 @@ def compare_run():
     if do_cat or do_price or do_dedupe:
         if config.ACCESS_CODE and (request.form.get("access_code") or "").strip() != config.ACCESS_CODE:
             return redirect(_compare_url(names, error="bad_code"))
-        try:
-            if do_dedupe:
-                _apply_dedupe(names)
-            if do_cat:
-                _apply_categorize(names)
-            if do_price:
-                _apply_pricing(names)
-        except Exception:  # noqa: BLE001
-            log.exception("[compare] AI 분석 실패")
-            return redirect(_compare_url(names, error="ai_failed"))
+        # 백그라운드로 실행 → 즉시 복귀(진행바가 폴링). 동기 실행은 다수 AI 호출이
+        # gunicorn 요청 타임아웃을 넘겨 워커가 죽어 ERR_HTTP2_PROTOCOL_ERROR 가 났음.
+        if not _compare_progress["running"]:
+            with _compare_lock:
+                if not _compare_progress["running"]:
+                    _compare_progress.update(
+                        {"running": True, "total": 0, "done": 0,
+                         "current": "시작 중…", "error": ""}
+                    )
+                    threading.Thread(
+                        target=_background_compare_run,
+                        kwargs={"names": names, "do_dedupe": do_dedupe,
+                                "do_cat": do_cat, "do_price": do_price},
+                        daemon=True,
+                    ).start()
+        return redirect(_compare_url(names, analyzing="1"))
     return redirect(_compare_url(names))
+
+
+def _background_compare_run(names, do_dedupe, do_cat, do_price) -> None:
+    try:
+        total = ((1 if do_dedupe else 0) + (1 if do_cat else 0)
+                 + (len(names) if do_price else 0))
+        _compare_progress.update({"total": total, "done": 0})
+        done = 0
+        if do_dedupe:
+            _compare_progress.update({"current": "유사 기능 통합…"})
+            _apply_dedupe(names)
+            done += 1
+            _compare_progress.update({"done": done})
+        if do_cat:
+            _compare_progress.update({"current": "AI 카테고리 분류…"})
+            _apply_categorize(names)
+            done += 1
+            _compare_progress.update({"done": done})
+        if do_price:
+            for nm in names:
+                _compare_progress.update({"current": "가격 분석: " + nm})
+                _apply_pricing([nm])
+                done += 1
+                _compare_progress.update({"done": done})
+        log.info("[compare-run] AI 분석 완료 (%d단계)", total)
+    except Exception:  # noqa: BLE001
+        log.exception("[compare-run] AI 분석 실패")
+        _compare_progress.update({"error": "ai_failed"})
+    finally:
+        _compare_progress.update({"running": False, "current": ""})
+
+
+@app.route("/compare-progress")
+def compare_progress():
+    return jsonify(_compare_progress)
 
 
 @app.route("/compare/categorize", methods=["POST"])

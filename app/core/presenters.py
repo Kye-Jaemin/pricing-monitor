@@ -137,9 +137,14 @@ def _is_trial_feature(f: str) -> bool:
 _NEGATIVE_RE = re.compile(
     r"^\s*no\s+"                                   # No advanced AI models / No image generation
     r"|^\s*without\s+"                             # Without …
-    r"|\bnot\s+(included|available|supported|offered|provided)\b"  # … not available
+    r"|\bdoes(?:n['’]?t|\s+not)\b"                 # does not include … / doesn't …
+    r"|\bdo(?:n['’]?t|\s+not)\b"                   # do not … / don't …
+    r"|\bnot\s+(includ\w*|available|supported|offered|provided)\b"  # not include(d)/available …
+    r"|\bexclud(es|ing|ed)\b"                      # excludes / excluding / excluded
+    r"|\bno\s+access\b"
     r"|\b(unavailable|unsupported)\b"
-    r"|미지원|미제공|지원하지\s*않|제공하지\s*않|지원\s*안\s*함|제공\s*안\s*함",
+    r"|미지원|미제공|미포함|지원하지\s*않|제공하지\s*않|포함하지\s*않"
+    r"|지원\s*안\s*함|제공\s*안\s*함|포함\s*안\s*",
     re.IGNORECASE,
 )
 
@@ -149,13 +154,29 @@ def _is_negative_feature(f: str) -> bool:
     return bool(_NEGATIVE_RE.search(f or ""))
 
 
+# 워터마크가 '붙는다'는 제약 표현(무료 출력에 워터마크)은 기능이 아님 → 제외.
+# 단, '워터마크 제거/없음/무료'는 유료 기능이므로 유지한다.
+_WATERMARK_OK_RE = re.compile(
+    r"\b(no|without|remove[sd]?|removal|free)\b|watermark[-\s]?free|제거|없",
+    re.IGNORECASE,
+)
+
+
+def _is_limitation_feature(f: str) -> bool:
+    """'Watermarked outputs'처럼 제약(한계)을 뜻하는 항목인지 판별(워터마크 부착 등)."""
+    s = f or ""
+    if re.search(r"watermark|워터마크", s, re.IGNORECASE) and not _WATERMARK_OK_RE.search(s):
+        return True
+    return False
+
+
 def _skip_feature(f: str) -> bool:
     """기능 포지셔닝/분석 집계에서 제외할 노이즈
-    (포함 안내·광고·플랜 이름·체험 안내·부정/부재 표현)."""
+    (포함 안내·광고·플랜 이름·체험 안내·부정/부재·제약 표현)."""
     return (
         _is_inclusion_phrase(f) or _is_ad_feature(f)
         or _is_plan_name(f) or _is_trial_feature(f)
-        or _is_negative_feature(f)
+        or _is_negative_feature(f) or _is_limitation_feature(f)
     )
 
 
@@ -1835,12 +1856,19 @@ def compare(names: list[str]) -> dict:
     cheap_usd = get_cheap_threshold()  # '저렴(무료에 준함)' 판정 가격 임계값
     band_usd = get_band_width()        # 가격대별/기능별 분석의 가격 묶음 단위
 
-    def _canon_key(f: str) -> str:
+    def _good_alias(f: str):
+        # 별칭(통합명)이 노이즈(제약/부정/포함안내 등)면 신뢰하지 않고 무시 →
+        # AI가 무관한 기능을 잘못 묶어둔 옛 별칭(예: Stealth Mode→'Watermarked
+        # outputs')이 그대로 남아 오분류되는 것을 방지(원본 이름으로 되돌림).
         a = alias_map.get(f)
+        return a if (a and not _skip_feature(a)) else None
+
+    def _canon_key(f: str) -> str:
+        a = _good_alias(f)
         return ("ALIAS::" + a) if a else _normalize_feature(f)
 
     def _canon_disp(f: str) -> str:
-        return alias_map.get(f) or f
+        return _good_alias(f) or f
 
     # 0) 기능(canonical) 보급률·해금가 집계 → 커머디티/차별화 분류 (무료 기능 포함)
     agg: dict[str, dict] = {}
@@ -1857,8 +1885,8 @@ def compare(names: list[str]) -> dict:
                 if a is None:
                     a = agg[key] = {"display": _canon_disp(f), "companies": set(),
                                     "prices": [], "detail": {}}
-                elif alias_map.get(f):
-                    a["display"] = alias_map[f]  # 별칭이 있으면 대표명으로 승격
+                elif _good_alias(f):
+                    a["display"] = _good_alias(f)  # 유효 별칭이 있으면 대표명으로 승격
                 a["companies"].add(pc["company"])
                 if eff is not None:
                     a["prices"].append(eff)
@@ -1885,13 +1913,21 @@ def compare(names: list[str]) -> dict:
             return {"label": "standard", "providers": 0, "penetration": 0.0}
         providers = len(a["companies"])
         pen = providers / n_co
-        # 제공 업체 중 '무료/기준가 이하(저렴)' 비율 — 가격 미공개(비공개)는 유료로 간주
+        # 제공 업체 중 '무료/기준가 이하(저렴)' 비율 — 커머디티 판정용.
         cheap = sum(
             1 for dd in a["detail"].values()
             if dd["is_free"] or (dd["price"] is not None and dd["price"] <= cheap_usd)
         )
         entry = (cheap / providers) if providers else 0.0
-        paid_ratio = 1.0 - entry  # 무료/$5 초과(유료)로 제공하는 업체 비율
+        # 유료 비율 — 차별화 판정용. '가격이 실제로 확인된 + 기준가 초과'인 업체만
+        #   유료로 센다. 가격 미상(None, 화면 $0)·무료·기준가 이하는 유료가 아님.
+        paid = sum(
+            1 for dd in a["detail"].values()
+            if not dd["is_free"]
+            and dd["price"] is not None
+            and dd["price"] > cheap_usd
+        )
+        paid_ratio = (paid / providers) if providers else 0.0
         if pen >= 0.6 and entry >= 0.5:
             label = "commodity"
         elif n_co >= 3 and pen <= 0.34 and paid_ratio >= 0.5:

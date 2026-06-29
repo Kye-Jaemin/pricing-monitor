@@ -80,7 +80,7 @@
     <button type="submit" class="btn-primary" id="compareBtn">{{ t('compare.run') }}</button>
     <div class="progress-wrap" id="compareProg" hidden>
       <div class="progress-bar"><div class="progress-fill indeterminate"></div></div>
-      <span class="muted">{{ t('compare.ai_running') }}</span>
+      <span class="muted" id="compareProgText">{{ t('compare.ai_running') }}</span>
     </div>
   </form>
   <p class="muted">{{ t('compare.ai_opts_help') }}</p>
@@ -112,8 +112,9 @@
       <button type="button" class="btn-secondary btn-sm" id="zoomFull">⛶ {{ t('compare.zoom_full') }}</button>
     </div>
   </div>
-  <p class="muted zoom-hint">{{ t('compare.zoom_hint') }} · {{ t('compare.legend_hint') }}</p>
+  <p class="muted zoom-hint">{{ t('compare.zoom_hint') }} · {{ t('compare.legend_hint') }} · {{ t('compare.hide_hint') }}</p>
   <div id="scatterLegend" class="scatter-legend"></div>
+  <div id="scatterHidden" class="scatter-hidden" style="display:none"></div>
   <div id="scatterWrap" class="scatter-wrap">
     <canvas id="scatter"></canvas>
   </div>
@@ -579,6 +580,57 @@
     setTimeout(function () { scatterChart.resize(); }, 120);
   });
 
+  // ── 점(요금제) 개별 숨기기/복원 — 고가 이상치 때문에 분포가 안 보일 때 ──
+  (function () {
+    var canvas = document.getElementById('scatter');
+    var bar = document.getElementById('scatterHidden');
+    if (!canvas || !bar) return;
+    var LBL_HIDDEN = {{ t('compare.hidden_pts') | tojson }};
+    var LBL_SHOW_ALL = {{ t('compare.show_all_pts') | tojson }};
+    // 원본 데이터 보존(라벨|티어 키). 지터된 점 객체 그대로 참조.
+    var orig = scatterChart.data.datasets.map(function (ds) {
+      return (ds.data || []).map(function (p) {
+        p._key = ds.label + '|' + (p.tier || '') + '|' + (p._mx != null ? p._mx : p.x);
+        return p;
+      });
+    });
+    var hidden = {};  // key -> {label, tier}
+    function apply() {
+      scatterChart.data.datasets.forEach(function (ds, i) {
+        ds.data = orig[i].filter(function (p) { return !hidden[p._key]; });
+      });
+      scatterChart.update();
+      renderBar();
+    }
+    function renderBar() {
+      var keys = Object.keys(hidden);
+      if (!keys.length) { bar.innerHTML = ''; bar.style.display = 'none'; return; }
+      bar.style.display = '';
+      var html = '<span class="muted">' + LBL_HIDDEN + ' (' + keys.length + '): </span>';
+      keys.forEach(function (k) {
+        var h = hidden[k];
+        html += '<button type="button" class="hidden-chip" data-k="' +
+          encodeURIComponent(k) + '">' + h.label + (h.tier ? ' · ' + h.tier : '') + ' ✕</button>';
+      });
+      html += '<button type="button" class="btn-secondary btn-sm" id="showAllPts">' + LBL_SHOW_ALL + '</button>';
+      bar.innerHTML = html;
+    }
+    canvas.addEventListener('click', function (evt) {
+      var els = scatterChart.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true);
+      if (!els.length) return;
+      var ds = scatterChart.data.datasets[els[0].datasetIndex];
+      var p = ds.data[els[0].index];
+      if (!p) return;
+      hidden[p._key] = { label: ds.label, tier: p.tier || '' };
+      apply();
+    });
+    bar.addEventListener('click', function (e) {
+      var chip = e.target.closest ? e.target.closest('.hidden-chip') : null;
+      if (chip) { delete hidden[decodeURIComponent(chip.getAttribute('data-k'))]; apply(); return; }
+      if (e.target.id === 'showAllPts') { hidden = {}; apply(); }
+    });
+  })();
+
   // 기능 포지셔닝 2×2 (보급률 × 해금가), 색=커머디티/표준/차별화
   var pos = {{ data.feature_positioning | tojson }};
   var posCanvas = document.getElementById('posScatter');
@@ -809,20 +861,43 @@
 </script>
 {% endif %}
 <script>
-  // 비교하기: AI 분석 체크 시에만 진행 바 표시(완료되면 서버가 리다이렉트)
+  // 비교하기: AI 분석은 백그라운드로 실행되고, 진행바가 폴링하다 완료 시 새로고침.
   (function () {
     var form = document.getElementById('compareForm');
-    if (!form) return;
-    form.addEventListener('submit', function () {
+    var prog = document.getElementById('compareProg');
+    var btn = document.getElementById('compareBtn');
+    function showRunning() {
+      if (prog) prog.hidden = false;
+      if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+    }
+    if (form) form.addEventListener('submit', function () {
       var ai = form.querySelector('input[name="ai_categorize"]:checked')
             || form.querySelector('input[name="ai_pricing"]:checked')
             || form.querySelector('input[name="ai_dedupe"]:checked');
-      if (!ai) return;
-      var prog = document.getElementById('compareProg');
-      var btn = document.getElementById('compareBtn');
-      if (prog) prog.hidden = false;
-      if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+      if (ai) showRunning();
     });
+    // 분석이 진행 중인 채로 로드된 경우(analyzing=1): 진행상황 폴링 → 완료 시 결과로 새로고침
+    var running = {{ compare_running | default(false) | tojson }};
+    if (running) {
+      showRunning();
+      var purl = "{{ url_for('compare_progress') }}";
+      var txt = document.getElementById('compareProgText');
+      (function poll() {
+        fetch(purl, { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (p) {
+          if (!p.running) {
+            var u = new URL(window.location.href);
+            u.searchParams.delete('analyzing');
+            if (p.error) u.searchParams.set('error', p.error);
+            window.location.replace(u.toString());
+            return;
+          }
+          if (txt) {
+            txt.textContent = (p.current || '') + (p.total ? ' (' + p.done + '/' + p.total + ')' : '');
+          }
+          setTimeout(poll, 1500);
+        }).catch(function () { setTimeout(poll, 2500); });
+      })();
+    }
   })();
 </script>
 {% endblock %}
