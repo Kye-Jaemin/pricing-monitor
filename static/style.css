@@ -708,14 +708,14 @@ a.btn-primary:hover { text-decoration: none; }
 .bp-flash > td { animation: bpFlash 1.7s ease; }
 .db-label { --dbw: 220px; flex: 0 0 var(--dbw); min-width: 0; font-size: .92rem; overflow: hidden; white-space: nowrap; }
 .db-label .db-ltext { display: inline-block; white-space: nowrap; will-change: transform; }
-/* 영역보다 긴 라벨만 자동으로 흐른다(JS가 .db-flow 부여). hover 하면 멈춰 읽기. */
-.db-label.db-flow .db-ltext { animation: db-marquee 7s ease-in-out infinite alternate; }
-.db-label.db-flow:hover .db-ltext { animation-play-state: paused; }
+/* 영역보다 긴 라벨(JS가 .db-flow 부여)은 평소엔 가만히 있다가 커서를 올리면 흐른다. */
+.db-label.db-flow { cursor: pointer; }
+.db-label.db-flow:hover .db-ltext { animation: db-marquee 7s ease-in-out infinite alternate; }
 @keyframes db-marquee {
   0%, 14% { transform: translateX(0); }
   86%, 100% { transform: translateX(min(0px, calc(var(--dbw) - 100% - 8px))); }
 }
-@media (prefers-reduced-motion: reduce) { .db-label.db-flow .db-ltext { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .db-label.db-flow:hover .db-ltext { animation: none; } }
 .db-track { position: relative; flex: 1; height: 24px; }
 .db-track::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: var(--line); }
 .db-line { position: absolute; top: 50%; height: 5px; transform: translateY(-50%); background: #cbd5e1; border-radius: 3px; }
