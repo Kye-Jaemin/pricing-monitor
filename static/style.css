@@ -557,6 +557,9 @@ a.btn-primary:hover { text-decoration: none; }
 
 /* ── 가격 산점도 확대/전체화면 ── */
 .scatter-wrap { position: relative; height: 440px; }
+.scatter-hidden { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0 10px; }
+.hidden-chip { font-size: .8rem; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; border-radius: 999px; padding: 2px 9px; cursor: pointer; }
+.hidden-chip:hover { background: #fee2e2; }
 .scatter-wrap canvas { width: 100% !important; height: 100% !important; }
 .scatter-wrap:fullscreen { background: var(--card); padding: 24px; height: 100vh; }
 .scatter-wrap.pseudo-full {

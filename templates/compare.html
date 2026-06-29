@@ -112,7 +112,8 @@
       <button type="button" class="btn-secondary btn-sm" id="zoomFull">⛶ {{ t('compare.zoom_full') }}</button>
     </div>
   </div>
-  <p class="muted zoom-hint">{{ t('compare.zoom_hint') }} · {{ t('compare.legend_hint') }}</p>
+  <p class="muted zoom-hint">{{ t('compare.zoom_hint') }} · {{ t('compare.legend_hint') }} · {{ t('compare.hide_hint') }}</p>
+  <div id="scatterHidden" class="scatter-hidden" style="display:none"></div>
   <div id="scatterWrap" class="scatter-wrap">
     <canvas id="scatter"></canvas>
   </div>
@@ -537,6 +538,57 @@
   document.addEventListener('fullscreenchange', function () {
     setTimeout(function () { scatterChart.resize(); }, 120);
   });
+
+  // ── 점(요금제) 개별 숨기기/복원 — 고가 이상치 때문에 분포가 안 보일 때 ──
+  (function () {
+    var canvas = document.getElementById('scatter');
+    var bar = document.getElementById('scatterHidden');
+    if (!canvas || !bar) return;
+    var LBL_HIDDEN = {{ t('compare.hidden_pts') | tojson }};
+    var LBL_SHOW_ALL = {{ t('compare.show_all_pts') | tojson }};
+    // 원본 데이터 보존(라벨|티어 키). 지터된 점 객체 그대로 참조.
+    var orig = scatterChart.data.datasets.map(function (ds) {
+      return (ds.data || []).map(function (p) {
+        p._key = ds.label + '|' + (p.tier || '') + '|' + (p._mx != null ? p._mx : p.x);
+        return p;
+      });
+    });
+    var hidden = {};  // key -> {label, tier}
+    function apply() {
+      scatterChart.data.datasets.forEach(function (ds, i) {
+        ds.data = orig[i].filter(function (p) { return !hidden[p._key]; });
+      });
+      scatterChart.update();
+      renderBar();
+    }
+    function renderBar() {
+      var keys = Object.keys(hidden);
+      if (!keys.length) { bar.innerHTML = ''; bar.style.display = 'none'; return; }
+      bar.style.display = '';
+      var html = '<span class="muted">' + LBL_HIDDEN + ' (' + keys.length + '): </span>';
+      keys.forEach(function (k) {
+        var h = hidden[k];
+        html += '<button type="button" class="hidden-chip" data-k="' +
+          encodeURIComponent(k) + '">' + h.label + (h.tier ? ' · ' + h.tier : '') + ' ✕</button>';
+      });
+      html += '<button type="button" class="btn-secondary btn-sm" id="showAllPts">' + LBL_SHOW_ALL + '</button>';
+      bar.innerHTML = html;
+    }
+    canvas.addEventListener('click', function (evt) {
+      var els = scatterChart.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true);
+      if (!els.length) return;
+      var ds = scatterChart.data.datasets[els[0].datasetIndex];
+      var p = ds.data[els[0].index];
+      if (!p) return;
+      hidden[p._key] = { label: ds.label, tier: p.tier || '' };
+      apply();
+    });
+    bar.addEventListener('click', function (e) {
+      var chip = e.target.closest ? e.target.closest('.hidden-chip') : null;
+      if (chip) { delete hidden[decodeURIComponent(chip.getAttribute('data-k'))]; apply(); return; }
+      if (e.target.id === 'showAllPts') { hidden = {}; apply(); }
+    });
+  })();
 
   // 기능 포지셔닝 2×2 (보급률 × 해금가), 색=커머디티/표준/차별화
   var pos = {{ data.feature_positioning | tojson }};
