@@ -145,10 +145,29 @@ def _loads_loose(raw: str):
     raise json.JSONDecodeError("no JSON object found", s, 0)
 
 
-def categorize_features_ai(features: list[str]) -> dict:
-    """기능 목록을 보고 해당 서비스에 맞는 카테고리를 동적으로 생성·할당한다.
+# 고정 대분류(12개 + 기타). AI가 자유 생성하지 않고 반드시 이 안에서 고른다 → 일관성.
+FEATURE_CATEGORIES = [
+    "생성", "편집·후처리", "품질·해상도", "내보내기", "크레딧·사용량",
+    "속도·성능", "협업·팀", "저장·자산", "통합·API", "보안·관리",
+    "라이선스·상업이용", "지원", "기타",
+]
+_FEATURE_CATEGORY_SET = set(FEATURE_CATEGORIES)
+_CATEGORY_GUIDE = (
+    "생성=creating/generating new content; 편집·후처리=editing or enhancing existing "
+    "content; 품질·해상도=resolution, quality, fidelity of output; 내보내기=export, "
+    "download, output formats, watermark-free output; 크레딧·사용량=credits, tokens, "
+    "usage quotas & limits; 속도·성능=speed, priority, concurrency, GPU; 협업·팀=team, "
+    "sharing, seats, permissions; 저장·자산=storage, library, history, assets; "
+    "통합·API=API, integrations, plugins, webhooks; 보안·관리=SSO/SAML, audit, admin, "
+    "security, compliance; 라이선스·상업이용=commercial license, usage rights, "
+    "ownership; 지원=support, onboarding, SLA. If truly none fit, use 기타."
+)
 
-    반환: {기능 문자열: 카테고리명}. JSON 파싱 실패 시 ExtractError.
+
+def categorize_features_ai(features: list[str]) -> dict:
+    """기능 목록을 '고정 대분류 12개' 중 하나로 분류한다(자유 생성 금지 → 일관성).
+
+    반환: {기능 문자열: 카테고리명}. 목록 밖 값은 '기타'로 흡수. 파싱 실패 시 ExtractError.
     """
     if not config.ANTHROPIC_API_KEY:
         raise ExtractError("ANTHROPIC_API_KEY 가 설정되지 않았습니다 (.env 확인).")
@@ -160,26 +179,19 @@ def categorize_features_ai(features: list[str]) -> dict:
     client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
 
     # 기능이 많으면 응답 JSON 이 max_tokens 에서 잘려 파싱 실패하므로 묶음 처리.
-    # 1차 묶음에서 만들어진 카테고리를 이후 묶음에 알려줘 일관성 유지.
     BATCH = 40
+    cat_list_str = ", ".join(FEATURE_CATEGORIES)
     result: dict = {}
-    known: list[str] = []
     for i in range(0, len(features), BATCH):
         chunk = features[i:i + BATCH]
         feat_list = "\n".join(f"- {f}" for f in chunk)
-        known_hint = (
-            f"Prefer reusing these existing categories when they fit: "
-            f"{', '.join(known)}.\n" if known else ""
-        )
         prompt = (
-            "You are organizing subscription product features into categories. "
-            "Invent a small set (about 4-10) of clear, descriptive category names "
-            "that fit THESE services (not a generic fixed list). Use the same "
-            "language as the features (Korean or English). Assign every feature to "
-            "exactly one category.\n"
-            + known_hint +
-            "Return ONLY a JSON object mapping each feature (verbatim) to its "
-            "category name. No prose, no code fences.\n\n"
+            "Assign each subscription feature to EXACTLY ONE of these FIXED categories "
+            "(copy the Korean category name verbatim — do NOT invent new categories):\n"
+            f"{cat_list_str}\n"
+            f"Guide — {_CATEGORY_GUIDE}\n"
+            "Return ONLY a JSON object mapping each feature (verbatim) to its category "
+            "(the value MUST be exactly one of the list above). No prose, no code fences.\n\n"
             f"FEATURES:\n{feat_list}\n"
         )
         resp = client.messages.create(
@@ -196,10 +208,10 @@ def categorize_features_ai(features: list[str]) -> dict:
             raise ExtractError("카테고리 응답이 객체(JSON object)가 아닙니다.")
         for k, v in data.items():
             if v:
-                cat = str(v)
+                cat = str(v).strip()
+                if cat not in _FEATURE_CATEGORY_SET:
+                    cat = "기타"     # 목록 밖 값은 흡수(일관성 유지)
                 result[str(k)] = cat
-                if cat not in known:
-                    known.append(cat)
     return result
 
 

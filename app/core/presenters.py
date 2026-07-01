@@ -1996,6 +1996,28 @@ def compare(names: list[str]) -> dict:
         key=lambda x: (_label_rank.get(x["label"], 9), -x["penetration"], x["unlock_price"])
     )
 
+    # 카테고리 × 커머디티/차별화 교차표 — '어떤 종류의 기능에서 차별화가 나오나'
+    from .extract import FEATURE_CATEGORIES
+    _cat_order = {c: i for i, c in enumerate(FEATURE_CATEGORIES)}
+    cross: dict[str, dict] = {}
+    for e in feature_positioning:
+        cat = e["category"] or "미분류"
+        row = cross.get(cat)
+        if row is None:
+            row = cross[cat] = {"category": cat, "commodity": 0,
+                                "standard": 0, "differentiated": 0, "total": 0}
+        row[e["label"]] += 1
+        row["total"] += 1
+    for row in cross.values():
+        t = row["total"] or 1
+        row["diff_pct"] = round(row["differentiated"] / t * 100)
+        row["comm_pct"] = round(row["commodity"] / t * 100)
+    # 고정 대분류 순서 → 그 외(미분류 등)는 뒤로, 차별화 비율 높은 순 보조정렬
+    positioning_cross = sorted(
+        cross.values(),
+        key=lambda r: (_cat_order.get(r["category"], 99), -r["diff_pct"], -r["total"]),
+    )
+
     # 1) 같은 기능(canonical)이 여러 업체·가격대에 나타나면 '가장 싼' 한 곳만 남긴다
     best: dict[str, dict] = {}
     for pc in per_company:
@@ -2108,6 +2130,7 @@ def compare(names: list[str]) -> dict:
         "price_bands": price_bands,
         "feature_analysis": feature_analysis,
         "feature_positioning": feature_positioning,
+        "positioning_cross": positioning_cross,
         "matrix": matrix_rows,
         "ranking": ranking,
         "editable": editable,
@@ -2219,6 +2242,7 @@ def load_comparison_card(card_id: int) -> dict | None:
         "price_bands": [],
         "feature_analysis": [],
         "feature_positioning": [],
+        "positioning_cross": [],
         "matrix": [],
         "ranking": [],
         "editable": [],

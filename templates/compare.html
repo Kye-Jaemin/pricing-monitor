@@ -200,6 +200,40 @@
 </details>
 {% endif %}
 
+{% if data.positioning_cross %}
+<details class="card" id="crossSection" open>
+  <summary><h2>{{ t('compare.cross_title') }}</h2></summary>
+  <p class="muted">{{ t('compare.cross_help') }}</p>
+  <table class="cross-table">
+    <thead>
+      <tr>
+        <th>{{ t('compare.category') }}</th>
+        <th class="cross-num"><span class="feat-badge badge-commodity">{{ t('compare.class_commodity') }}</span></th>
+        <th class="cross-num"><span class="feat-badge badge-standard">{{ t('compare.class_standard') }}</span></th>
+        <th class="cross-num"><span class="feat-badge badge-differentiated">{{ t('compare.class_differentiated') }}</span></th>
+        <th class="cross-num">{{ t('compare.cross_total') }}</th>
+        <th>{{ t('compare.cross_diff_ratio') }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in data.positioning_cross %}
+      <tr>
+        <td class="cross-cat">{{ r.category }}</td>
+        <td class="cross-num">{% if r.commodity %}<strong>{{ r.commodity }}</strong>{% else %}<span class="muted">·</span>{% endif %}</td>
+        <td class="cross-num">{% if r.standard %}<strong>{{ r.standard }}</strong>{% else %}<span class="muted">·</span>{% endif %}</td>
+        <td class="cross-num">{% if r.differentiated %}<strong>{{ r.differentiated }}</strong>{% else %}<span class="muted">·</span>{% endif %}</td>
+        <td class="cross-num muted">{{ r.total }}</td>
+        <td class="cross-bar-cell">
+          <span class="cross-bar"><span class="cross-bar-fill" style="width: {{ r.diff_pct }}%"></span></span>
+          <span class="muted">{{ r.diff_pct }}%</span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</details>
+{% endif %}
+
 <details class="card">
   <summary><h2>{{ t('compare.per_company_title') }}</h2></summary>
   {% for pc in data.per_company %}

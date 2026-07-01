@@ -562,6 +562,14 @@ a.btn-primary:hover { text-decoration: none; }
 .scatter-legend .sl-icon { width: 16px; height: 16px; border-radius: 3px; object-fit: cover; }
 .scatter-legend .sl-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
 .scatter-wrap { position: relative; height: 440px; }
+.cross-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.cross-table th, .cross-table td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+.cross-table th { font-weight: 600; }
+.cross-table .cross-num { text-align: center; }
+.cross-table .cross-cat { font-weight: 600; }
+.cross-bar-cell { white-space: nowrap; }
+.cross-bar { display: inline-block; width: 110px; height: 8px; background: #eef0f2; border-radius: 4px; overflow: hidden; vertical-align: middle; margin-right: 6px; }
+.cross-bar-fill { display: block; height: 100%; background: #16a34a; }
 .scatter-hidden { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0 10px; }
 .hidden-chip { font-size: .8rem; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; border-radius: 999px; padding: 2px 9px; cursor: pointer; }
 .hidden-chip:hover { background: #fee2e2; }
