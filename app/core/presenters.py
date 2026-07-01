@@ -726,6 +726,7 @@ def companies_admin() -> dict:
                 "category": id_to_name.get(c["category_id"]),
                 "is_bundle": bool(c["is_bundle"]),
                 "is_component": bool(c["is_component"]),
+                "krsearch": store.get_setting("search.kr:" + c["name"]) == "1",
                 "sources": [
                     {
                         "id": s["id"],

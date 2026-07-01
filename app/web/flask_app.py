@@ -290,6 +290,8 @@ def bundle_krsearch():
     if company:
         val = "1" if request.form.get("krsearch") else "0"
         store.set_setting("search.kr:" + company, val)
+    if request.form.get("back") == "runs":
+        return redirect(url_for("runs"))
     names = [n for n in request.form.getlist("sel") if n]
     return redirect(_bundle_url(names))
 
