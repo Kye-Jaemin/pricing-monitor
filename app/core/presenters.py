@@ -51,12 +51,14 @@ def _normalize_feature(text: str) -> str:
     return " ".join(sorted(set(toks))) or s.strip()
 
 # "이전 티어/플랜의 모든 기능 포함" 류 안내 문구(실제 기능이 아님)
+#   포함을 뜻하는 명사: features / capabilities / plans (예: 'All Pro plan capabilities')
+_INCL_NOUN = r"(?:features?|capabilit(?:y|ies)|plans?)"
 _INCLUSION_RE = re.compile(
     r"everything\s+(in|from|plus|else)\b"             # everything in/from Pro …
     r"|includ\w*\s+(all|everything)\b"                # includes all / including everything
-    r"|all\b.{0,40}\bfeatures?\b.{0,25}\b(includ\w+|plus)\b"  # All X features included
-    r"|^all\b.{0,40}\bfeatures?\b[\s.)\]]*$"          # 'All Cronometer Gold features' (동사 없는 번들)
-    r"|\ball\s+features?\b\s*(of|in|from|across)\b"   # 'All features of AI Ultra $100 tier'
+    r"|all\b.{0,40}\b" + _INCL_NOUN + r"\b.{0,25}\b(includ\w+|plus)\b"  # All X features included
+    r"|^all\b.{0,40}\b" + _INCL_NOUN + r"\b[\s.)\]]*$"  # 'All Pro plan capabilities' (동사 없는 번들)
+    r"|\ball\s+" + _INCL_NOUN + r"\b\s*(of|in|from|across)\b"  # 'All features of AI Ultra $100 tier'
     r"|\b(all|everything)\b.{0,30}\b(previous|prior|lower|preceding)\b"  # all previous tier
     r"|모든\s*기능.{0,12}포함"                         # 모든 기능 … 포함
     r"|포함.{0,12}모든\s*기능"                         # … 모든 기능 포함
