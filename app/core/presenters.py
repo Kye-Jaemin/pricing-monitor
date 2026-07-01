@@ -971,6 +971,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
         # 기본: 수집된 포함 서비스 정가를 전부 합산(수집 결과 그대로). Naver 같은
         # 택1 멤버십만 pickone 토글을 켜서 같은 종류는 하나만 센다.
         pickone = store.get_setting("bundle.pickone:" + name) == "1"
+        krsearch = store.get_setting("search.kr:" + name) == "1"
         _rt, cur_sig = _primary_raw_text(name)
         row = store.get_bundle_analysis(name)
         analyzed = row is not None
@@ -1146,6 +1147,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
             "stale": bool(stale),
             "anchor": anchor,
             "pickone": pickone,
+            "krsearch": krsearch,
         })
 
     groups = []

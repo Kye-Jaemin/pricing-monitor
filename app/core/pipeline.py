@@ -150,6 +150,11 @@ def _process_source(
     label = SOURCE_TYPE_LABELS.get(source_type, source_type)
 
     # b. 페이지 렌더링 → 본문 텍스트
+    #    한국 시장 번들(KT·SKT 등)은 US 로케일 검색이 회사 개요만 주므로, 업체별
+    #    '한국 검색' 설정 시 gl=kr&hl=ko 로 검색한다.
+    kr = source_type == "google_search" and store.get_setting("search.kr:" + company) == "1"
+    gl, hl = ("kr", "ko") if kr else ("us", "en")
+    g_url = fetch.localize_google_url(source_url, gl, hl) if source_type == "google_search" else source_url
     if source_type == "google_search" and is_bundle and config.SERPAPI_KEY:
         # 번들 검색: SerpAPI(AI Overview·정확하지만 좁음)와 Playwright(구글 SERP·
         # 넓지만 지저분/차단 가능)를 둘 다 모아 합친다 — 한쪽만 고르면 어떤 번들은
@@ -157,11 +162,11 @@ def _process_source(
         # Playwright 가 차단/빈 결과면 그것만 버리고 SerpAPI 만 쓴다.
         sp = pw = ""
         try:
-            sp = fetch.fetch_google_via_serpapi(source_url)
+            sp = fetch.fetch_google_via_serpapi(g_url, gl=gl, hl=hl)
         except Exception:  # noqa: BLE001
             sp = ""
         try:
-            pw = fetch.fetch_page_text(source_url)
+            pw = fetch.fetch_page_text(g_url)
         except Exception:  # noqa: BLE001
             pw = ""
         if _google_blocked_or_empty(pw):
@@ -171,11 +176,11 @@ def _process_source(
         # 일반 주간 수집: 무료 Playwright 먼저, 비었거나 봇 차단으로 보이면 그때만
         # SerpAPI 로 폴백(월 100회 무료 쿼터 절약).
         try:
-            page_text = fetch.fetch_page_text(source_url)
+            page_text = fetch.fetch_page_text(g_url)
         except Exception:  # noqa: BLE001  (차단/타임아웃 → 폴백 판단으로)
             page_text = ""
         if config.SERPAPI_KEY and _google_blocked_or_empty(page_text):
-            page_text = fetch.fetch_google_via_serpapi(source_url)
+            page_text = fetch.fetch_google_via_serpapi(g_url, gl=gl, hl=hl)
     else:
         page_text = fetch.fetch_page_text(source_url)
 

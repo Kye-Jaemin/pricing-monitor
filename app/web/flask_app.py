@@ -282,6 +282,18 @@ def bundle_svcprice():
     return redirect(_bundle_url(names))
 
 
+@app.route("/bundle/krsearch", methods=["POST"])
+def bundle_krsearch():
+    """번들 업체의 구글 검색을 한국 로케일(gl=kr&hl=ko)로 지정/해제.
+    KT·SKT 등 한국 시장 번들은 켜고 다시 수집하면 결합상품 정보가 제대로 나온다."""
+    company = (request.form.get("company") or "").strip()
+    if company:
+        val = "1" if request.form.get("krsearch") else "0"
+        store.set_setting("search.kr:" + company, val)
+    names = [n for n in request.form.getlist("sel") if n]
+    return redirect(_bundle_url(names))
+
+
 @app.route("/bundle/pickone", methods=["POST"])
 def bundle_pickone():
     """번들을 '택1 멤버십'으로 지정/해제. 기본은 포함 서비스를 전부 합산하지만,

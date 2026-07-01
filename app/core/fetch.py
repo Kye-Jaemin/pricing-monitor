@@ -121,11 +121,24 @@ def _ai_overview_text(ai: dict) -> str:
     return _flatten_ai_overview(ai)
 
 
-def fetch_google_via_serpapi(url: str) -> str:
+def localize_google_url(url: str, gl: str = "us", hl: str = "en") -> str:
+    """구글 URL 의 지역/언어(gl/hl) 파라미터를 지정 값으로 교체.
+    한국 시장 번들(KT·SKT 등)은 gl=kr&hl=ko 로 검색해야 결합상품 정보가 나온다."""
+    try:
+        p = urlparse(url)
+        q = dict(parse_qsl(p.query))
+        q["gl"] = gl
+        q["hl"] = hl
+        return urlunparse(p._replace(query=urlencode(q)))
+    except Exception:  # noqa: BLE001
+        return url
+
+
+def fetch_google_via_serpapi(url: str, gl: str = "us", hl: str = "en") -> str:
     """구글 검색을 SerpAPI로 가져온다(헤드리스 봇 차단 회피).
 
     URL 의 q 파라미터로 검색하고, answer_box / AI Overview 본문 / 상위 오가닉
-    스니펫을 합쳐 텍스트로 돌려준다. config.SERPAPI_KEY 필요.
+    스니펫을 합쳐 텍스트로 돌려준다. config.SERPAPI_KEY 필요. gl/hl 로 지역·언어 지정.
     AI Overview 가 page_token 형태면 2차 호출로 실제 본문을 받아온다.
     """
     import json
@@ -134,7 +147,7 @@ def fetch_google_via_serpapi(url: str) -> str:
     if not q:
         raise FetchError(f"검색어(q) 없음: {url}")
 
-    data = _serpapi_get({"engine": "google", "q": q, "hl": "en", "gl": "us"})
+    data = _serpapi_get({"engine": "google", "q": q, "hl": hl, "gl": gl})
 
     parts: list[str] = []
     if data.get("answer_box"):
