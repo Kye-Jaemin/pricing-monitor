@@ -712,6 +712,10 @@ a.btn-primary:hover { text-decoration: none; }
 .db-provider:first-child > .db-provider-head { border-top: none; padding-top: 0; }
 /* .db-rows: 내부 스크롤 없이(스크롤바 제거) 아래로 계속 표시 */
 .dumbbell-row { display: flex; align-items: center; gap: 14px; margin: 9px 0; }
+.db-del { flex: 0 0 auto; order: 9; width: 20px; height: 20px; line-height: 1; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: #fff; color: #9ca3af; font-size: .72rem; cursor: pointer; opacity: .4; transition: opacity .12s, color .12s, border-color .12s; }
+.dumbbell-row:hover .db-del { opacity: 1; }
+.db-del:hover { color: #b91c1c; border-color: #fecaca; background: #fef2f2; }
+.db-restore { font-size: .82rem; color: var(--muted); margin-right: 4px; }
 .dumbbell-row[data-jump] { cursor: pointer; border-radius: 6px; padding: 2px 4px; margin: 7px -4px; transition: background .12s ease; }
 .dumbbell-row[data-jump]:hover { background: #f1f5f9; }
 .dumbbell-row[data-jump]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

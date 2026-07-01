@@ -139,7 +139,8 @@
   {% set dmax = g.dmax or 1 %}
   {% macro db_row(d) %}
     {% set bp = (d.bundle / dmax * 100)|round(1) %}
-    <div class="dumbbell-row"{% if d.anchor %} data-jump="{{ d.anchor }}" role="link" tabindex="0" title="{{ t('bundle.jump_detail') }}"{% endif %}>
+    <div class="dumbbell-row" data-dbkey="{{ d.company }}|{{ d.plan }}"{% if d.anchor %} data-jump="{{ d.anchor }}" role="link" tabindex="0" title="{{ t('bundle.jump_detail') }}"{% endif %}>
+      <button type="button" class="db-del" title="{{ t('bundle.db_hide') }}" aria-label="{{ t('bundle.db_hide') }}">✕</button>
       <span class="db-label" title="{{ d.company }} · {{ d.plan }}"><span class="db-ltext">{% if d.icon %}<img class="svc-icon" src="{{ d.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ d.company }} · {{ d.plan }}</span></span>
       <span class="db-track">
         {% if d.list is not none %}
@@ -164,6 +165,7 @@
           <label><input type="radio" name="dbsort-{{ g.id }}" value="provider" checked> {{ t('bundle.db_by_provider') }}</label>
           <label><input type="radio" name="dbsort-{{ g.id }}" value="save"> {{ t('bundle.db_by_save') }}</label>
         </div>
+        <span class="db-restore" hidden>{{ t('bundle.db_hidden') }} <span class="db-restore-n">0</span> · <button type="button" class="btn-secondary btn-sm db-restore-btn">{{ t('bundle.db_restore_all') }}</button></span>
         <button type="button" class="btn-secondary btn-sm db-full-btn" title="{{ t('bundle.fullscreen') }}">⛶ {{ t('bundle.fullscreen') }}</button>
       </div>
     </div>
@@ -396,6 +398,30 @@
     row.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
     });
+  });
+
+  // 덤벨 각 요금제 숨기기(✕)/복원 — 차트가 너무 많을 때 원하는 것만 보기
+  document.querySelectorAll('.dumbbell').forEach(function (db) {
+    var restore = db.querySelector('.db-restore');
+    var restoreN = db.querySelector('.db-restore-n');
+    var hidden = {};
+    function apply() {
+      db.querySelectorAll('.dumbbell-row').forEach(function (row) {
+        row.style.display = hidden[row.getAttribute('data-dbkey')] ? 'none' : '';
+      });
+      var n = Object.keys(hidden).length;
+      if (restore) restore.hidden = (n === 0);
+      if (restoreN) restoreN.textContent = n;
+    }
+    db.querySelectorAll('.db-del').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation(); e.preventDefault();
+        var r = btn.closest('.dumbbell-row');
+        if (r) { hidden[r.getAttribute('data-dbkey')] = true; apply(); }
+      });
+    });
+    var rb = db.querySelector('.db-restore-btn');
+    if (rb) rb.addEventListener('click', function () { hidden = {}; apply(); });
   });
   document.querySelectorAll('canvas.bundle-pie').forEach(function (cv) {
     var cats; try { cats = JSON.parse(cv.getAttribute('data-cats') || '[]'); } catch (e) { return; }
