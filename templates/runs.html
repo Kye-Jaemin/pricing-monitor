@@ -96,11 +96,7 @@
         <label class="src-check"><input type="checkbox" name="source_ids" value="{{ s.id }}" {% if not running or running_ids is none or s.id in running_ids %}checked{% endif %}> <span class="tag tag-src-{{ s.source_type }}">{{ s.source_label }}</span></label>
         {% endfor %}
         {% if c.sources | selectattr('source_type', 'equalto', 'google_search') | list | length %}
-        <form method="post" action="{{ url_for('bundle_krsearch') }}" class="krsearch-inline">
-          <input type="hidden" name="company" value="{{ c.name }}">
-          <input type="hidden" name="back" value="runs">
-          <label class="src-check" title="{{ t('bundle.krsearch_help') }}"><input type="checkbox" name="krsearch" value="1" {% if c.krsearch %}checked{% endif %} onchange="this.form.submit()"> {{ t('bundle.krsearch') }}</label>
-        </form>
+        <label class="src-check krsearch-lbl" title="{{ t('bundle.krsearch_help') }}"><input type="checkbox" class="krsearch-toggle" data-company="{{ c.name }}" {% if c.krsearch %}checked{% endif %}> {{ t('bundle.krsearch') }}</label>
         {% endif %}
         {% if not c.sources %}<span class="muted">{{ t('runs.no_sources') }}</span>{% endif %}
       </div>
@@ -159,6 +155,20 @@
     if (all) all.addEventListener('change', function (e) {
       // 분류 탭으로 숨겨진(비활성) 체크박스는 제외 — 보이는 대상만 선택/해제
       document.querySelectorAll('input[name="source_ids"]:not(:disabled)').forEach(function (cb) { cb.checked = e.target.checked; });
+    });
+    // 한국 검색 토글 — 폼 중첩 없이 fetch 로 설정만 저장(수집 폼과 독립)
+    document.querySelectorAll('.krsearch-toggle').forEach(function (cb) {
+      cb.addEventListener('change', function () {
+        var body = new URLSearchParams();
+        body.set('company', cb.getAttribute('data-company'));
+        body.set('back', 'runs');
+        if (cb.checked) body.set('krsearch', '1');
+        fetch("{{ url_for('bundle_krsearch') }}", {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: body.toString()
+        }).catch(function () {});
+      });
     });
   })();
 </script>
