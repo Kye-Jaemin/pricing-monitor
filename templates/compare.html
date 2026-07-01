@@ -178,6 +178,7 @@
       {% endfor %}
       <button type="button" class="pos-tab pos-tab-all" data-poscls="all">{{ t('filter.all') }} <span class="cat-count">{{ data.feature_positioning|length }}</span></button>
     </div>
+    <p class="pos-hint muted" id="posHint">{{ t('compare.pos_pick_hint') }}</p>
     {% for fp in data.feature_positioning %}
     <details class="pos-feat" id="posfeat-{{ loop.index0 }}" data-poscls="{{ fp.label }}">
       <summary>
@@ -743,7 +744,9 @@
     // 커머디티/표준/차별화 탭 — 선택 시 리스트 + 산점도를 해당 분류만 표시('all'=전체)
     var posTabs = document.querySelectorAll('.pos-tab');
     var posFeats = document.querySelectorAll('.pos-feat');
+    var posHint = document.getElementById('posHint');
     function showPosClass(cls) {
+      if (posHint) posHint.style.display = 'none';
       posTabs.forEach(function (t) { t.classList.toggle('on', t.getAttribute('data-poscls') === cls); });
       posFeats.forEach(function (f) {
         f.style.display = (cls === 'all' || f.getAttribute('data-poscls') === cls) ? '' : 'none';
@@ -758,14 +761,17 @@
     posTabs.forEach(function (t) {
       t.addEventListener('click', function () { showPosClass(t.getAttribute('data-poscls')); });
     });
+    // 기본은 아무 기능도 안 보임 — 탭을 눌러야 표시(안내 문구만 노출)
+    posFeats.forEach(function (f) { f.style.display = 'none'; });
 
     function gotoFeature(i) {
       var el = document.getElementById('posfeat-' + i);
       if (!el) return;
       var cls = el.getAttribute('data-poscls');
       var active = document.querySelector('.pos-tab.on');
-      var cur = active ? active.getAttribute('data-poscls') : 'all';
-      if (cur !== 'all' && cur !== cls) showPosClass(cls);   // 숨겨진 탭이면 그 탭 활성화
+      var cur = active ? active.getAttribute('data-poscls') : null;
+      // 아무 탭도 안 켜졌거나(기본 숨김) 다른 분류면 그 분류 탭을 활성화해 표시
+      if (!active || (cur !== 'all' && cur !== cls)) showPosClass(cls);
       el.open = true;
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       el.classList.add('flash');
