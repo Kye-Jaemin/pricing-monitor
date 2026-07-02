@@ -300,8 +300,20 @@
               {%- else %}<span class="muted">—</span>{% endif %}
             </td>
             <td>
-              {%- if pl.services %}{% for s in pl.services %}<span class="bundle-svc{% if s.is_anchor %} bundle-svc-anchor{% endif %}{% if s.choice %} bundle-svc-choice{% endif %}{% if s.tier_alt %} bundle-svc-tier{% endif %}"><span class="bundle-item-cat">{{ s.category }}</span>{% if s.icon %}<img class="svc-icon" src="{{ s.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ s.name }}{% if s.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}{% if s.tier_alt %} <span class="choose-mark" title="{{ t('bundle.tier_help') }}">{{ t('bundle.tier_mark') }}</span>{% endif %}</span> {% endfor %}
+              {%- if pl.services %}{% for s in pl.services %}<span class="bundle-svc{% if s.is_anchor %} bundle-svc-anchor{% endif %}{% if s.choice %} bundle-svc-choice{% endif %}{% if s.tier_alt %} bundle-svc-tier{% endif %}{% if s.added %} bundle-svc-added{% endif %}"><span class="bundle-item-cat">{{ s.category }}</span>{% if s.icon %}<img class="svc-icon" src="{{ s.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ s.name }}{% if s.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}{% if s.tier_alt %} <span class="choose-mark" title="{{ t('bundle.tier_help') }}">{{ t('bundle.tier_mark') }}</span>{% endif %}{% if s.added %} <button type="button" class="chip-x" data-company="{{ co.name }}" data-plan="{{ pl.name }}" data-name="{{ s.name }}" title="{{ t('bundle.remove') }}">✕</button>{% endif %}</span> {% endfor %}
               {%- else %}<span class="muted">{{ pl.price_note or '—' }}</span>{% endif %}
+              <details class="addsvc">
+                <summary>＋ {{ t('bundle.add_svc') }}</summary>
+                <form method="post" action="{{ url_for('bundle_addsvc') }}" class="addsvc-form">
+                  <input type="hidden" name="company" value="{{ co.name }}">
+                  <input type="hidden" name="plan" value="{{ pl.name }}">
+                  {% for n in data.selected %}<input type="hidden" name="sel" value="{{ n }}">{% endfor %}
+                  <input type="text" name="name" class="addsvc-name" placeholder="{{ t('bundle.add_svc_ph') }}" required>
+                  <input type="number" step="any" name="price" class="svcprice-input" placeholder="{{ t('bundle.enter_price', cur=pl.currency) }}">
+                  <label class="src-check"><input type="checkbox" name="choice" value="1"> {{ t('bundle.choice_mark') }}1</label>
+                  <button type="submit" class="btn-secondary btn-sm">{{ t('bundle.add') }}</button>
+                </form>
+              </details>
             </td>
           </tr>
           {% endfor %}
@@ -434,6 +446,22 @@
       var company = btn.getAttribute('data-company');
       var plan = btn.getAttribute('data-plan');
       if (company && plan) bundlePost('hide', { company: company, plan: plan });
+    });
+  });
+  // 직접 추가한 서비스 삭제(✕)
+  document.querySelectorAll('.chip-x').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation(); e.preventDefault();
+      var body = new URLSearchParams();
+      (BSEL || []).forEach(function (n) { body.append('sel', n); });
+      body.set('company', btn.getAttribute('data-company'));
+      body.set('plan', btn.getAttribute('data-plan'));
+      body.set('name', btn.getAttribute('data-name'));
+      body.set('remove', '1');
+      fetch("{{ url_for('bundle_addsvc') }}", {
+        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      }).then(function () { location.reload(); }).catch(function () {});
     });
   });
   document.querySelectorAll('canvas.bundle-pie').forEach(function (cv) {

@@ -1023,6 +1023,14 @@ def bundle_view(names: list[str] | None = None) -> dict:
         except (ValueError, TypeError):
             hidden_plans = set()
         g["hidden_n"] = g.get("hidden_n", 0) + len(hidden_plans)
+        # 사용자가 직접 추가한 서비스(AI가 놓친 것) — 플랜명 → [{name,category,price,choice}]
+        try:
+            _added = json.loads(store.get_setting("bundle.addsvc:" + name) or "[]")
+        except (ValueError, TypeError):
+            _added = []
+        manual_add: dict = {}
+        for a in _added:
+            manual_add.setdefault(a.get("plan") or "", []).append(a)
         co_prices = []
         co_plans = []
         for p in plans:
@@ -1066,6 +1074,28 @@ def bundle_view(names: list[str] | None = None) -> dict:
                     continue  # 앵커 자신은 연계 집계에서 제외
                 cat = s.get("category") or "기타"
                 g["cat_count"][cat] = g["cat_count"].get(cat, 0) + 1
+            # 직접 추가한 서비스 병합(포함 목록·정가·집계에 함께 반영)
+            for ms in manual_add.get(p.get("name") or "", []):
+                sname = (ms.get("name") or "").strip()
+                if not sname:
+                    continue
+                is_anchor = bool(anchor and anchor.lower() in sname.lower())
+                skey = _normalize_feature(sname)
+                lp = _to_usd(ms.get("price"), cur)
+                if lp is None:
+                    lp = _match_standalone(sname, smap)
+                mcat = ms.get("category") or "기타"
+                svcs.append({
+                    "name": sname, "category": mcat,
+                    "is_anchor": is_anchor, "choice": bool(ms.get("choice")),
+                    "list_usd": lp, "bucket": _cat_bucket(mcat, sname),
+                    "brand": _brand_key(sname), "tier_alt": False,
+                    "key": skey, "manual": ms.get("price") is not None,
+                    "added": True, "override_raw": "",
+                    "icon": _service_icon(sname, comp_icons),
+                })
+                if not is_anchor:
+                    g["cat_count"][mcat] = g["cat_count"].get(mcat, 0) + 1
             # ── 정가 합계 ─────────────────────────────────────────
             # 핵심: AI가 매긴 choice(택1) 표시를 그대로 존중.
             #   choice=true → 택1 대안(여럿 중 choose개만, 앵커 우선) — 나머지는 제외.

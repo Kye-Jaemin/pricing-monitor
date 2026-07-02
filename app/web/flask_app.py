@@ -282,6 +282,33 @@ def bundle_svcprice():
     return redirect(_bundle_url(names))
 
 
+@app.route("/bundle/addsvc", methods=["POST"])
+def bundle_addsvc():
+    """번들 요금제에 빠진 서비스를 직접 추가/삭제(업체별 목록에 저장).
+    add: company/plan/name(+price/category/choice). remove: company/plan/name + remove=1."""
+    names = [n for n in request.form.getlist("sel") if n]
+    company = (request.form.get("company") or "").strip()
+    if company:
+        try:
+            cur = json.loads(store.get_setting("bundle.addsvc:" + company) or "[]")
+        except (ValueError, TypeError):
+            cur = []
+        plan = (request.form.get("plan") or "").strip()
+        nm = (request.form.get("name") or "").strip()
+        if request.form.get("remove"):
+            cur = [a for a in cur if not (a.get("plan") == plan and a.get("name") == nm)]
+        elif plan and nm:
+            raw = "".join(ch for ch in (request.form.get("price") or "") if ch.isdigit() or ch == ".")
+            cur.append({
+                "plan": plan, "name": nm,
+                "category": (request.form.get("category") or "기타").strip(),
+                "price": float(raw) if raw else None,
+                "choice": bool(request.form.get("choice")),
+            })
+        store.set_setting("bundle.addsvc:" + company, json.dumps(cur, ensure_ascii=False))
+    return redirect(_bundle_url(names))
+
+
 @app.route("/bundle/hideplan", methods=["POST"])
 def bundle_hideplan():
     """번들 요금제를 분석에서 영구 제외/복원(업체별 이름 목록으로 저장)."""
