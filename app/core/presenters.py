@@ -1041,12 +1041,17 @@ def bundle_view(names: list[str] | None = None) -> dict:
             plan_rename = json.loads(store.get_setting("bundle.planname:" + name) or "{}") or {}
         except (ValueError, TypeError):
             plan_rename = {}
-        # 검색으로 못 구한 빈칸을 AI가 추정한 값(폴백) — {plan: {monthly:{...}, svc:{키:{...}}}}
+        # AI가 독립 추정한 값(검색값과 비교·선택용) — {plan: {monthly:{...}, svc:{키:{...}}}}
         try:
             aiest_map = (json.loads(store.get_setting("bundle.aiest:" + name) or "{}")
                          or {}).get("plans", {}) or {}
         except (ValueError, TypeError):
             aiest_map = {}
+        # 사용자가 고른 가격 원천 — {"플랜\x1f서비스키" 또는 "플랜\x1fMONTHLY": "ai"|"search"}
+        try:
+            price_pick = json.loads(store.get_setting("bundle.pricepick:" + name) or "{}") or {}
+        except (ValueError, TypeError):
+            price_pick = {}
         co_prices = []
         co_plans = []
         for p in plans:
@@ -1057,15 +1062,30 @@ def bundle_view(names: list[str] | None = None) -> dict:
             cur = (p.get("currency") or "USD").upper()
             ae_plan = aiest_map.get(orig_name, {}) if isinstance(aiest_map, dict) else {}
             ae_svc = ae_plan.get("svc", {}) or {}
-            m_usd = _to_usd(p.get("monthly"), cur)
             a_usd = _to_usd(p.get("annual"), cur)
-            # 월정가 빈칸 → AI 추정 폴백(검색·수동 값은 위에서 이미 반영됨)
+            # 월 요금: 검색값 ↔ AI 추정값 중 사용자가 고른 것(기본=검색값 우선).
+            search_m = _to_usd(p.get("monthly"), cur)
+            em = ae_plan.get("monthly")
+            ai_m = _to_usd(em.get("v"), cur) if em else None
+            mkey = orig_name + "\x1fMONTHLY"
+            mpick = price_pick.get(mkey)     # "ai" | "search" | None
             m_ai = None
-            if m_usd is None and a_usd is None and ae_plan.get("monthly"):
-                em = ae_plan["monthly"]
-                m_usd = _to_usd(em.get("v"), cur)
-                if m_usd is not None:
-                    m_ai = em
+            if mpick == "ai" and ai_m is not None:
+                m_usd, m_ai = ai_m, em
+            elif mpick == "search" and search_m is not None:
+                m_usd = search_m
+            elif search_m is not None:
+                m_usd = search_m
+            elif ai_m is not None:
+                m_usd, m_ai = ai_m, em
+            else:
+                m_usd = None
+            # 토글용 대안(두 원천 모두 있을 때)
+            m_alt_src, m_alt_usd = "", None
+            if m_ai is None and ai_m is not None and m_usd is not None:
+                m_alt_src, m_alt_usd = "ai", round(ai_m, 2)
+            elif m_ai is not None and search_m is not None:
+                m_alt_src, m_alt_usd = "search", round(search_m, 2)
             eff = m_usd if m_usd is not None else a_usd   # 분포·집계는 USD 기준
             if eff is not None:
                 co_prices.append(eff)
@@ -1083,19 +1103,36 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 ov = (store.get_setting("bundle.svc:" + name + ":" + (p.get("name") or "") + "\x1f" + skey)
                       or store.get_setting("bundle.svc:" + name + ":" + skey))
                 ov_num = re.sub(r"[^\d.]", "", ov) if ov else ""
-                lp = None
-                if ov_num:
-                    lp = _to_usd(float(ov_num), cur)
-                if lp is None:
-                    lp = _to_usd(s.get("list_price"), cur)
-                if lp is None and not krsearch:
-                    lp = _match_standalone(sname, smap)  # KR 번들은 US 컴포넌트 정가 폴백 금지
-                # 그래도 빈칸이면 AI 추정 폴백(있을 때만)
+                # 원천별 값을 각각 계산: 수동 / 검색(추출·US매칭) / AI 추정
+                manual_lp = _to_usd(float(ov_num), cur) if ov_num else None
+                search_lp = _to_usd(s.get("list_price"), cur)
+                if search_lp is None and not krsearch:
+                    search_lp = _match_standalone(sname, smap)  # KR 번들은 US 폴백 금지
+                ai_cell = ae_svc.get(skey)
+                ai_lp = _to_usd(ai_cell.get("v"), cur) if ai_cell else None
+                # 사용자 선택 반영(수동값이 있으면 무조건 수동 우선)
+                pkey = (p.get("name") or "") + "\x1f" + skey
+                pick = price_pick.get(pkey)     # "ai" | "search" | None
                 svc_ai = None
-                if lp is None and skey in ae_svc:
-                    lp = _to_usd(ae_svc[skey].get("v"), cur)
-                    if lp is not None:
-                        svc_ai = ae_svc[skey]
+                if manual_lp is not None:
+                    lp, src = manual_lp, "manual"
+                elif pick == "ai" and ai_lp is not None:
+                    lp, src, svc_ai = ai_lp, "ai", ai_cell
+                elif pick == "search" and search_lp is not None:
+                    lp, src = search_lp, "search"
+                elif search_lp is not None:
+                    lp, src = search_lp, "search"          # 기본: 검색값 우선
+                elif ai_lp is not None:
+                    lp, src, svc_ai = ai_lp, "ai", ai_cell  # 검색값 없으면 AI로 채움
+                else:
+                    lp, src = None, "none"
+                # 토글용 대안값(수동이 아니고, 두 원천이 모두 있을 때만)
+                alt_src, alt_usd = "", None
+                if manual_lp is None:
+                    if src == "search" and ai_lp is not None:
+                        alt_src, alt_usd = "ai", round(ai_lp, 2)
+                    elif src == "ai" and search_lp is not None:
+                        alt_src, alt_usd = "search", round(search_lp, 2)
                 ckey = (p.get("name") or "") + "\x1f" + skey
                 ch = bool(s.get("choice"))
                 if ckey in choice_ov:      # 사용자 택1↔포함 보정
@@ -1108,6 +1145,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
                     "key": skey, "manual": bool(ov), "override_raw": ov_num,
                     "ai_est": bool(svc_ai),
                     "ai_basis": (svc_ai.get("conf", "") + " · " + svc_ai.get("basis", "")) if svc_ai else "",
+                    "pkey": pkey, "alt_src": alt_src, "alt_usd": alt_usd,
                     "icon": _service_icon(sname, comp_icons),
                 })
                 if is_anchor:
@@ -1133,6 +1171,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
                     "key": skey, "manual": ms.get("price") is not None,
                     "added": True, "override_raw": "",
                     "ai_est": False, "ai_basis": "",
+                    "pkey": "", "alt_src": "", "alt_usd": None,
                     "icon": _service_icon(sname, comp_icons),
                 })
                 if not is_anchor:
@@ -1186,16 +1225,16 @@ def bundle_view(names: list[str] | None = None) -> dict:
                     e = g["cat_value"][cv] = {"sum": 0.0, "n": 0}
                 e["sum"] += s["list_usd"]
                 e["n"] += 1
+            def _part(s, choice):
+                return {"name": s["name"], "usd": round(s["list_usd"], 2), "choice": choice,
+                        "key": s["key"], "manual": s["manual"], "override_raw": s["override_raw"],
+                        "ai_est": s.get("ai_est", False), "ai_basis": s.get("ai_basis", ""),
+                        "pkey": s.get("pkey", ""), "alt_src": s.get("alt_src", ""),
+                        "alt_usd": s.get("alt_usd"),
+                        "icon": _service_icon(s["name"], comp_icons)}
             parts = (
-                [{"name": s["name"], "usd": round(s["list_usd"], 2), "choice": False,
-                  "key": s["key"], "manual": s["manual"], "override_raw": s["override_raw"],
-                  "ai_est": s.get("ai_est", False), "ai_basis": s.get("ai_basis", ""),
-                  "icon": _service_icon(s["name"], comp_icons)}
-                 for s in sorted(fixed, key=lambda x: (not x["is_anchor"], -x["list_usd"]))]
-                + [{"name": s["name"], "usd": round(s["list_usd"], 2), "choice": True,
-                    "key": s["key"], "manual": s["manual"], "override_raw": s["override_raw"],
-                    "ai_est": s.get("ai_est", False), "ai_basis": s.get("ai_basis", ""),
-                    "icon": _service_icon(s["name"], comp_icons)} for s in chosen_pool]
+                [_part(s, False) for s in sorted(fixed, key=lambda x: (not x["is_anchor"], -x["list_usd"]))]
+                + [_part(s, True) for s in chosen_pool]
             )
             standalone = round(sum(pt["usd"] for pt in parts), 2) if parts else None
             # '정가 미확인': 가격 미상이면서 '항상 포함(choice=false)'인 것만.
@@ -1218,11 +1257,12 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 "currency": cur,
                 "monthly": p.get("monthly"), "annual": p.get("annual"),
                 "monthly_usd": m_usd, "annual_usd": a_usd,
-                "monthly_orig": (_fmt_money(p.get("monthly"), cur) if cur != "USD" else None)
-                    or (_fmt_money(m_ai.get("v"), cur) if m_ai else None),
+                "monthly_orig": (_fmt_money(m_ai.get("v"), cur) if m_ai
+                    else (_fmt_money(p.get("monthly"), cur) if cur != "USD" else None)),
                 "annual_orig": _fmt_money(p.get("annual"), cur) if cur != "USD" else None,
                 "monthly_ai": bool(m_ai),
                 "monthly_ai_basis": (m_ai.get("conf", "") + " · " + m_ai.get("basis", "")) if m_ai else "",
+                "monthly_pkey": mkey, "monthly_alt_src": m_alt_src, "monthly_alt_usd": m_alt_usd,
                 "choose": p.get("choose"),
                 "price_note": p.get("price_note"),
                 "conditions": p.get("conditions"),

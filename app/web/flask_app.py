@@ -334,6 +334,23 @@ def bundle_svcchoice():
     return redirect(_bundle_url(names))
 
 
+@app.route("/bundle/pricepick", methods=["POST"])
+def bundle_pricepick():
+    """가격 원천 선택(검색값↔AI 추정값). key=플랜\\x1f서비스키 또는 플랜\\x1fMONTHLY, value=ai|search."""
+    company = (request.form.get("company") or "").strip()
+    key = (request.form.get("key") or "").strip()
+    val = request.form.get("value")
+    if company and key and val in ("ai", "search"):
+        try:
+            cur = json.loads(store.get_setting("bundle.pricepick:" + company) or "{}") or {}
+        except (ValueError, TypeError):
+            cur = {}
+        cur[key] = val
+        store.set_setting("bundle.pricepick:" + company, json.dumps(cur, ensure_ascii=False))
+    names = [n for n in request.form.getlist("sel") if n]
+    return redirect(_bundle_url(names))
+
+
 @app.route("/bundle/addsvc", methods=["POST"])
 def bundle_addsvc():
     """번들 요금제에 빠진 서비스를 직접 추가/삭제(업체별 목록에 저장).

@@ -260,7 +260,7 @@
             <td class="tier-name"><button type="button" class="plan-del" title="{{ t('bundle.db_hide') }}" aria-label="{{ t('bundle.db_hide') }}" data-company="{{ co.name }}" data-plan="{{ pl.key }}">✕</button> {{ pl.name }} <button type="button" class="plan-rename" data-company="{{ co.name }}" data-plan="{{ pl.key }}" data-name="{{ pl.name }}" title="{{ t('bundle.plan_rename') }}">✎</button>{% if pl.choose %} <span class="tag tag-choose">{{ t('bundle.choose', n=pl.choose) }}</span>{% endif %}
               {% if pl.conditions %}<div class="bundle-cond" title="{{ t('bundle.conditions') }}">⚠ {{ pl.conditions }}</div>{% endif %}</td>
             <td class="muted nowrap">{{ pl.provider }}</td>
-            <td class="nowrap">{% if pl.monthly_usd is not none %}${{ '%g'|format(pl.monthly_usd) }}{% if pl.monthly_orig %} <span class="muted">({{ pl.monthly_orig }})</span>{% endif %}{% if pl.monthly_ai %} <span class="badge badge-ai" title="{{ pl.monthly_ai_basis }}">{{ t('bundle.ai_est_tag') }}</span>{% endif %}{% elif pl.monthly_orig %}<span class="muted">{{ pl.monthly_orig }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+            <td class="nowrap">{% if pl.monthly_usd is not none %}${{ '%g'|format(pl.monthly_usd) }}{% if pl.monthly_orig %} <span class="muted">({{ pl.monthly_orig }})</span>{% endif %}{% if pl.monthly_ai %} <span class="badge badge-ai" title="{{ pl.monthly_ai_basis }}">{{ t('bundle.ai_est_tag') }}</span>{% endif %}{% if pl.monthly_alt_usd is not none %} <button type="button" class="price-pick" data-company="{{ co.name }}" data-key="{{ pl.monthly_pkey }}" data-next="{{ pl.monthly_alt_src }}" title="{{ t('bundle.price_pick') }}">⇄{{ t('bundle.src_' + pl.monthly_alt_src) }} ${{ '%g'|format(pl.monthly_alt_usd) }}</button>{% endif %}{% elif pl.monthly_orig %}<span class="muted">{{ pl.monthly_orig }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
             <td class="nowrap">{% if pl.annual_usd is not none %}${{ '%g'|format(pl.annual_usd) }}{% if pl.annual_orig %} <span class="muted">({{ pl.annual_orig }})</span>{% endif %}{% elif pl.annual_orig %}<span class="muted">{{ pl.annual_orig }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
             <td>
               {%- if pl.standalone_usd or pl.unpriced %}
@@ -269,7 +269,7 @@
                     {% if pl.savings_pct is not none and pl.savings_pct > 0 %}<span class="save-badge">−{{ pl.savings_pct }}%</span>{% endif %}</summary>
                   <ul class="standalone-parts">
                     {% for sp in pl.standalone_parts %}
-                    <li>{% if sp.icon %}<img class="svc-icon" src="{{ sp.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ sp.name }} <span class="muted">${{ '%g'|format(sp.usd) }}</span>{% if sp.manual %} <span class="badge badge-manual">{{ t('bundle.manual_tag') }}</span>{% endif %}{% if sp.ai_est %} <span class="badge badge-ai" title="{{ sp.ai_basis }}">{{ t('bundle.ai_est_tag') }}</span>{% endif %}{% if sp.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}
+                    <li>{% if sp.icon %}<img class="svc-icon" src="{{ sp.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ sp.name }} <span class="muted">${{ '%g'|format(sp.usd) }}</span>{% if sp.manual %} <span class="badge badge-manual">{{ t('bundle.manual_tag') }}</span>{% endif %}{% if sp.ai_est %} <span class="badge badge-ai" title="{{ sp.ai_basis }}">{{ t('bundle.ai_est_tag') }}</span>{% endif %}{% if sp.alt_usd is not none %} <button type="button" class="price-pick" data-company="{{ co.name }}" data-key="{{ sp.pkey }}" data-next="{{ sp.alt_src }}" title="{{ t('bundle.price_pick') }}">⇄{{ t('bundle.src_' + sp.alt_src) }} ${{ '%g'|format(sp.alt_usd) }}</button>{% endif %}{% if sp.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}
                       {% if sp.key %}
                       <details class="svcprice-edit">
                         <summary title="{{ t('bundle.edit_price') }}">✎</summary>
@@ -497,10 +497,12 @@
   }
   document.addEventListener('click', function (e) {
     if (!e.target.closest) return;
-    var b = e.target.closest('.plan-del, .plan-rename, .db-del, .db-restore-btn, .chip-x, .svc-choice-toggle');
+    var b = e.target.closest('.plan-del, .plan-rename, .price-pick, .db-del, .db-restore-btn, .chip-x, .svc-choice-toggle');
     if (!b) return;
     e.preventDefault(); e.stopPropagation();
-    if (b.classList.contains('plan-rename')) {
+    if (b.classList.contains('price-pick')) {
+      post("{{ url_for('bundle_pricepick') }}", { company: b.getAttribute('data-company'), key: b.getAttribute('data-key'), value: b.getAttribute('data-next') });
+    } else if (b.classList.contains('plan-rename')) {
       var cur = b.getAttribute('data-name') || '';
       var nn = window.prompt("{{ t('bundle.plan_rename_prompt') }}", cur);
       if (nn === null) return;              // 취소

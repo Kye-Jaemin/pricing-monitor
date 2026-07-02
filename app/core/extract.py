@@ -530,27 +530,24 @@ def extract_bundles_ai(company: str, raw_text: str, anchor: str | None = None) -
 def estimate_bundle_gaps_ai(
     company: str, anchor: str | None, plans: list[dict], market_kr: bool = False
 ) -> list[dict]:
-    """검색으로 못 구한 '빈칸' 가격만 AI의 지식으로 추정(폴백).
+    """번들 요금제의 모든 가격을 AI 지식으로 독립 추정(검색값과 비교·선택용).
 
     입력 plans: 저장된 분석의 요금제들
-        [{name, currency, monthly(None이면 빈칸), services:[{name, choice, list_price}]}]
+        [{name, currency, monthly, services:[{name, choice, list_price}]}]
     반환: plans 와 같은 순서의
         [{"name", "monthly": {v,conf,basis}|None,
           "services": [{"name", "list_price": {v,conf,basis}|None}]}]
-    - 이미 값이 있는 항목(검색/수동)은 절대 건드리지 않음 → 빈칸(None)만 추정.
+    - 검색값이 이미 있어도 AI 값을 함께 뽑아, 사용자가 골라 적용할 수 있게 한다.
     - 모르면 지어내지 말고 v=null. 값마다 확신도(high/med/low)+한 줄 근거.
     - 개별 서비스 정가는 비교적 안정적, 번들 할인가는 변동 커서 보수적으로.
     """
     if not config.ANTHROPIC_API_KEY:
         raise ExtractError("ANTHROPIC_API_KEY 가 설정되지 않았습니다 (.env 확인).")
-    # 빈칸이 하나도 없으면 호출하지 않는다(비용 절약).
+    # 모든 요금제·서비스를 대상으로 추정(검색값 유무와 무관 — 비교용 대안값 제공).
     gaps = []
     for p in plans:
-        miss_m = p.get("monthly") in (None, "", 0)
-        miss_s = [s.get("name") for s in (p.get("services") or [])
-                  if s.get("list_price") in (None, "", 0) and (s.get("name") or "").strip()]
-        if miss_m or miss_s:
-            gaps.append((p, miss_m, miss_s))
+        all_s = [s.get("name") for s in (p.get("services") or []) if (s.get("name") or "").strip()]
+        gaps.append((p, True, all_s))
     if not gaps:
         return []
 
@@ -567,12 +564,13 @@ def estimate_bundle_gaps_ai(
         })
     anchor_line = f"These bundles are built around '{anchor}'. " if anchor else ""
     prompt = (
-        "You estimate MISSING subscription/bundle prices from your own knowledge, ONLY as a "
-        "fallback because a live search could not find them. Provider: " + company + ". "
+        "You INDEPENDENTLY estimate CURRENT retail prices from your own knowledge, so a user "
+        "can COMPARE them with values found by live search and choose which to trust. "
+        "Provider: " + company + ". "
         + anchor_line +
         "Estimate prices in " + cur_hint + ". Give the CURRENT typical retail price you know.\n"
         "STRICT RULES:\n"
-        "1) Fill ONLY the fields listed as needed below. Return the SAME plan names.\n"
+        "1) Estimate EVERY field listed below (monthly and each service). Return the SAME plan names.\n"
         "2) If you do NOT confidently know a value, return v=null. NEVER invent a plausible "
         "number — a null is far better than a wrong price.\n"
         "3) For each value give conf = 'high' | 'med' | 'low' and basis = one short phrase "
