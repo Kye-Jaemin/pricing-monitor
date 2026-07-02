@@ -189,23 +189,33 @@ def _process_source(
             )
 
     # d. Claude 추출 → e. Pydantic 검증 (실패 시 1회 재시도)
+    #    번들 업체는 티어 추출(extract_pricing)을 생략한다: /compare 에서 제외되고
+    #    번들 분석(bundle_analysis)만 쓰므로 스냅샷 티어가 중복 → Claude 1콜 절약.
+    #    원문(raw_text)만 담은 최소 스냅샷을 저장해 번들 추출이 읽게 한다.
     snapshot: PricingSnapshot | None = None
-    last_err: Exception | None = None
-    for _ in range(2):
-        try:
-            raw = extract.extract_pricing(
-                company=company,
-                source_url=source_url,
-                collected_at=collected_at,
-                page_text=page_text,
-                source_type=source_type,
-            )
-            snapshot = PricingSnapshot.model_validate(raw)
-            break
-        except Exception as exc:  # noqa: BLE001  (추출/검증 실패 모두 포함)
-            last_err = exc
-    if snapshot is None:
-        raise RuntimeError(f"추출/검증 실패(2회): {last_err}")
+    if is_bundle:
+        cur = "KRW" if ("₩" in page_text or "원" in page_text) else "USD"
+        snapshot = PricingSnapshot(
+            company=company, source_url=source_url, collected_at=collected_at,
+            currency=cur, tiers=[], free_trial=None, extraction_confidence="low",
+        )
+    else:
+        last_err: Exception | None = None
+        for _ in range(2):
+            try:
+                raw = extract.extract_pricing(
+                    company=company,
+                    source_url=source_url,
+                    collected_at=collected_at,
+                    page_text=page_text,
+                    source_type=source_type,
+                )
+                snapshot = PricingSnapshot.model_validate(raw)
+                break
+            except Exception as exc:  # noqa: BLE001  (추출/검증 실패 모두 포함)
+                last_err = exc
+        if snapshot is None:
+            raise RuntimeError(f"추출/검증 실패(2회): {last_err}")
 
     # f. currency != USD → confidence=low (임의 환산 금지)
     note = ""
