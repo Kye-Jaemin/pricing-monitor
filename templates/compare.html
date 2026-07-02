@@ -186,6 +186,11 @@
         <strong>{{ fp.feature }}</strong>
         <span class="muted">— {{ t('compare.pos_providers', n=fp.providers, total=fp.total) }}{% if fp.unlock_price %} · ${{ '%g'|format(fp.unlock_price) }}{% endif %}</span>
       </summary>
+      <p class="pos-why"><span class="why-label">{{ t('compare.why_label') }}</span>
+        {% if fp.label == 'differentiated' %}{{ t('compare.why_differentiated', total=fp.total, providers=fp.providers, pen=fp.pen_pct, paid=fp.paid_cnt) }}
+        {% elif fp.label == 'commodity' %}{{ t('compare.why_commodity', total=fp.total, providers=fp.providers, pen=fp.pen_pct, free=fp.free_cnt) }}
+        {% else %}{{ t('compare.why_standard', total=fp.total, providers=fp.providers, pen=fp.pen_pct) }}{% endif %}</p>
+      <p class="pos-what muted">{{ t('compare.pos_what_hint') }}</p>
       <ul class="pos-providers">
         {% for pv in fp.providers_list %}
         <li>
@@ -684,6 +689,8 @@
   if (posCanvas && pos && pos.length) {
     var COLORS = { commodity: '#2563eb', standard: '#f59e0b', differentiated: '#16a34a' };
     var cheapUsd = {{ data.cheap_usd if data.cheap_usd is not none else 5 }};
+    var commodityPen = ({{ data.commodity_pen if data.commodity_pen is not none else 50 }}) / 100;
+    var diffPen = 0.34;   // 차별화 보급률 상한(⅓)
     var KLABEL = {
       commodity: {{ t('compare.class_commodity') | tojson }},
       standard: {{ t('compare.class_standard') | tojson }},
@@ -735,6 +742,19 @@
         p.y = Math.max(0, p.y + ry * ring * Math.sin(ang));
       });
     });
+    // 세로축 상한: 소수의 고가 이상치가 아래 뭉치를 눌러버리지 않도록 컷하고,
+    //   초과분은 값은 보존한 채 상단(▲)에 고정 표시.
+    var priceVals = pts.map(function (p) { return p.price; })
+                       .filter(function (v) { return v > 0; }).sort(function (a, b) { return a - b; });
+    var p85 = priceVals.length ? priceVals[Math.floor(priceVals.length * 0.85)] : 0;
+    var actualMax = Math.max.apply(null, pts.map(function (p) { return p.price; })) || 0;
+    var yCap = Math.max(cheapUsd * 2, Math.ceil((p85 || cheapUsd * 2) / 10) * 10);
+    if (actualMax <= yCap) yCap = 0;   // 컷 불필요
+    pts.forEach(function (p) {
+      p.capped = yCap > 0 && p.price > yCap;
+      if (p.capped) p.y = yCap * 0.97;
+      else if (yCap > 0) p.y = Math.min(p.y, yCap * 0.97);
+    });
     var groups = { commodity: [], standard: [], differentiated: [] };
     pts.forEach(function (p) { (groups[p.label] || (groups[p.label] = [])).push(p); });
     var clsOrder = Object.keys(groups);   // 데이터셋 인덱스 ↔ 분류 매핑
@@ -777,16 +797,44 @@
       el.classList.add('flash');
       setTimeout(function () { el.classList.remove('flash'); }, 1600);
     }
+    // 배경 구역·기준선: 우하단=커머디티, 좌상단=차별화. 규칙(보급률·기준가)을 눈에 보이게.
+    var posZones = {
+      id: 'posZones',
+      beforeDatasetsDraw: function (chart) {
+        var a = chart.chartArea, sx = chart.scales.x, sy = chart.scales.y, ctx = chart.ctx;
+        if (!a) return;
+        var xC = sx.getPixelForValue(commodityPen), xD = sx.getPixelForValue(diffPen);
+        var yT = Math.max(a.top, Math.min(a.bottom, sy.getPixelForValue(cheapUsd)));
+        ctx.save();
+        ctx.fillStyle = 'rgba(37,99,235,0.09)';
+        ctx.fillRect(xC, yT, a.right - xC, a.bottom - yT);        // 커머디티(우하단)
+        ctx.fillStyle = 'rgba(22,163,74,0.09)';
+        ctx.fillRect(a.left, a.top, xD - a.left, yT - a.top);     // 차별화(좌상단)
+        ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(100,116,139,0.5)';
+        ctx.beginPath();
+        ctx.moveTo(xC, a.top); ctx.lineTo(xC, a.bottom);
+        ctx.moveTo(xD, a.top); ctx.lineTo(xD, a.bottom);
+        ctx.moveTo(a.left, yT); ctx.lineTo(a.right, yT);
+        ctx.stroke(); ctx.setLineDash([]);
+        ctx.font = '500 11px sans-serif'; ctx.textBaseline = 'top';
+        ctx.fillStyle = 'rgba(21,128,61,0.95)'; ctx.textAlign = 'left';
+        ctx.fillText(KLABEL.differentiated + ' · 소수·고가', a.left + 6, a.top + 4);
+        ctx.fillStyle = 'rgba(29,78,216,0.95)'; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+        ctx.fillText(KLABEL.commodity + ' · 다수·저가', a.right - 6, a.bottom - 4);
+        ctx.restore();
+      }
+    };
     posChart = new Chart(posCanvas, {
       type: 'scatter',
       data: { datasets: clsOrder.map(function (k) {
         return { label: KLABEL[k] || k, data: groups[k], backgroundColor: COLORS[k] || '#9ca3af',
                  borderColor: '#fff', borderWidth: 1.5,
                  hoverBorderColor: '#fff', hoverBorderWidth: 2,
+                 pointStyle: function (ctx) { var p = ctx.raw; return p && p.capped ? 'triangle' : 'circle'; },
                  pointRadius: function (ctx) { var p = ctx.raw; return p ? 5 + Math.min(9, (p.prov - 1) * 1.6) : 6; },
                  pointHoverRadius: function (ctx) { var p = ctx.raw; return (p ? 5 + Math.min(9, (p.prov - 1) * 1.6) : 6) + 4; } };
       }) },
-      plugins: [posCrosshair],
+      plugins: [posCrosshair, posZones],
       options: {
         maintainAspectRatio: false,
         animation: { duration: 800, easing: 'easeOutQuart' },
@@ -807,15 +855,17 @@
             title: function (items) { return items.length ? items[0].raw.f : ''; },
             label: function (ctx) {
               var p = ctx.raw;
-              return [(KLABEL[p.label] || p.label),
+              var arr = [(KLABEL[p.label] || p.label),
                       '보급률: ' + p.prov + '/' + p.total,
                       '해금가: $' + p.price + '/mo'];
+              if (p.capped) arr.push('(축 상한 초과 · 상단 ▲ 표시)');
+              return arr;
             }
           }
         } },
         scales: {
           x: { min: 0, max: 1, title: { display: true, text: '보급률 / Penetration →' } },
-          y: { beginAtZero: true, title: { display: true, text: '해금가 / Unlock $ ↑' } }
+          y: { beginAtZero: true, max: (yCap > 0 ? yCap : undefined), title: { display: true, text: '해금가 / Unlock $ ↑' } }
         }
       }
     });

@@ -2219,7 +2219,8 @@ def compare(names: list[str]) -> dict:
         else:
             label = "standard"
         return {"label": label, "providers": providers,
-                "penetration": round(pen, 3)}
+                "penetration": round(pen, 3),
+                "free_cnt": cheap, "paid_cnt": paid}
 
     feature_positioning = []
     pos_by_key: dict[str, dict] = {}
@@ -2253,8 +2254,11 @@ def compare(names: list[str]) -> dict:
             "providers": cls["providers"],
             "total": n_co,
             "penetration": cls["penetration"],
+            "pen_pct": round(cls["penetration"] * 100),
             "unlock_price": round(price, 2),
             "label": cls["label"],
+            "free_cnt": cls.get("free_cnt", 0),
+            "paid_cnt": cls.get("paid_cnt", 0),
             "providers_list": providers_list,
         }
         feature_positioning.append(entry)
