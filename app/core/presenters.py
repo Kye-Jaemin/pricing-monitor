@@ -2275,6 +2275,8 @@ def compare(names: list[str]) -> dict:
     feature_positioning.sort(
         key=lambda x: (_label_rank.get(x["label"], 9), -x["penetration"], x["unlock_price"])
     )
+    for _i, _e in enumerate(feature_positioning):
+        _e["idx"] = _i   # 목록 위치(막대→상세 점프용)
 
     # 카테고리 × 커머디티/차별화 교차표 — '어떤 종류의 기능에서 차별화가 나오나'
     from .extract import FEATURE_CATEGORIES

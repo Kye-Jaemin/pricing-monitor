@@ -824,6 +824,24 @@ a.btn-primary:hover { text-decoration: none; }
 .pos-feat { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; margin: 4px 0; background: #fff; }
 .pos-feat > summary { cursor: pointer; font-size: .9rem; }
 .pos-feat > summary:hover { color: var(--accent); }
+.pos-bars { margin: 8px 0 12px; }
+.pos-bars-legend { display: flex; gap: 14px; font-size: .75rem; color: var(--muted); margin-bottom: 10px; }
+.pos-bars-legend span { display: flex; align-items: center; gap: 5px; }
+.pos-sw { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+.sw-commodity { background: #2a78d6; } .sw-standard { background: #eda100; } .sw-differentiated { background: #1baf7a; }
+.pos-bar-group { margin: 10px 0; }
+.pos-bar-head { font-size: .8rem; font-weight: 600; margin: 6px 0 4px; }
+.head-commodity { color: #1d4ed8; } .head-standard { color: #b45309; } .head-differentiated { color: #15803d; }
+.pos-bar-row { display: grid; grid-template-columns: 190px 1fr 96px; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 6px; cursor: pointer; }
+.pos-bar-row:hover { background: #f8fafc; }
+.pos-bar-name { min-width: 0; }
+.pos-bar-name strong { font-weight: 500; font-size: .88rem; }
+.pos-bar-desc { display: block; font-size: .72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pos-bar-track { height: 15px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.pos-bar-fill { height: 15px; border-radius: 4px; }
+.fill-commodity { background: #2a78d6; } .fill-standard { background: #eda100; } .fill-differentiated { background: #1baf7a; }
+.pos-bar-val { text-align: right; font-size: .8rem; white-space: nowrap; }
+.pos-scatter-wrap > summary { cursor: pointer; font-size: .85rem; color: var(--accent); margin: 4px 0; }
 .pos-list-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .pos-desc-form { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
 .pos-desc { display: block; font-size: .86rem; margin: 3px 0 0; color: #334155; font-style: italic; }

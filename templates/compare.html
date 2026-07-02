@@ -150,8 +150,63 @@
     <span class="muted">{{ t('compare.pen_help') }}</span>
   </form>
   {% endif %}
-  <div class="scatter-wrap" style="height:340px"><canvas id="posScatter"></canvas></div>
-  <p class="muted">{{ t('compare.pos_axes') }} · {{ t('compare.pos_click_hint') }}</p>
+
+  <div class="pos-bars">
+    <div class="pos-bars-legend">
+      <span><span class="pos-sw sw-commodity"></span>{{ t('compare.class_commodity') }}</span>
+      <span><span class="pos-sw sw-standard"></span>{{ t('compare.class_standard') }}</span>
+      <span><span class="pos-sw sw-differentiated"></span>{{ t('compare.class_differentiated') }}</span>
+    </div>
+    {% for cls in ['commodity', 'standard', 'differentiated'] %}
+    {% set items = data.feature_positioning | selectattr('label', 'equalto', cls) | list %}
+    {% if items %}
+    <div class="pos-bar-group">
+      <div class="pos-bar-head head-{{ cls }}">{{ t('compare.class_' ~ cls) }} <span class="muted">· {{ t('compare.class_' ~ cls ~ '_help') }}</span></div>
+      {% for fp in items %}
+      <div class="pos-bar-row" role="button" tabindex="0" data-jump="{{ fp.idx }}" title="{{ t('compare.pos_click_hint') }}">
+        <div class="pos-bar-name">
+          <strong>{{ fp.feature }}</strong>
+          {% if fp.desc %}<span class="pos-bar-desc">{{ fp.desc }}</span>{% endif %}
+        </div>
+        <div class="pos-bar-track"><div class="pos-bar-fill fill-{{ cls }}" style="width: {{ fp.pen_pct }}%"></div></div>
+        <div class="pos-bar-val">{{ fp.pen_pct }}% · {% if fp.unlock_price %}${{ '%g'|format(fp.unlock_price) }}{% else %}{{ t('word.free') }}{% endif %}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+
+  <details class="pos-scatter-wrap">
+    <summary>{{ t('compare.pos_scatter_toggle') }}</summary>
+    <div class="scatter-wrap" style="height:340px"><canvas id="posScatter"></canvas></div>
+    <p class="muted">{{ t('compare.pos_axes') }} · {{ t('compare.pos_click_hint') }}</p>
+  </details>
+  <script>
+  // 막대 행 클릭 → 해당 기능 상세(왜 이 분류 · 업체 원문)로 이동. 차트 유무와 무관하게 동작.
+  (function () {
+    function jump(row) {
+      var el = document.getElementById('posfeat-' + row.getAttribute('data-jump'));
+      if (!el) return;
+      el.style.display = ''; el.open = true;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('flash'); setTimeout(function () { el.classList.remove('flash'); }, 1600);
+    }
+    document.addEventListener('click', function (e) {
+      var row = e.target.closest && e.target.closest('.pos-bar-row');
+      if (row) jump(row);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      var row = e.target.closest && e.target.closest('.pos-bar-row');
+      if (row) { e.preventDefault(); jump(row); }
+    });
+    var sd = document.querySelector('.pos-scatter-wrap');
+    if (sd) sd.addEventListener('toggle', function () {
+      if (this.open && window.__posChart) setTimeout(function () { window.__posChart.resize(); }, 60);
+    });
+  })();
+  </script>
 
   <div class="pos-finder">
     <label class="pos-finder-label">🔎 {{ t('compare.pos_find_label') }}
@@ -733,23 +788,8 @@
       return { x: p.penetration, y: p.unlock_price, price: p.unlock_price,
                f: p.feature, prov: p.providers, total: p.total, i: idx, label: p.label };
     });
-    // 같은 (보급률, 해금가) 좌표의 점들을 작은 원형으로 흩어 겹침 방지(지터)
-    var ymax = Math.max.apply(null, pts.map(function (p) { return p.y; })) || 1;
-    var coord = {};
-    pts.forEach(function (p) {
-      var k = p.x.toFixed(4) + ',' + p.y.toFixed(4);
-      (coord[k] || (coord[k] = [])).push(p);
-    });
-    Object.keys(coord).forEach(function (k) {
-      var arr = coord[k];
-      if (arr.length < 2) return;
-      var rx = 0.014, ry = Math.max(0.5, ymax * 0.02);
-      arr.forEach(function (p, j) {
-        var ring = Math.floor(j / 8) + 1, ang = (Math.PI * 2 * (j % 8)) / 8;
-        p.x = Math.min(1, Math.max(0, p.x + rx * ring * Math.cos(ang)));
-        p.y = Math.max(0, p.y + ry * ring * Math.sin(ang));
-      });
-    });
+    // 지터(흩뿌리기) 없이 실제 좌표에 표시 — 겹치는 점은 반투명으로 겹쳐 보이게.
+    //   (정확한 값은 아래 '막대 목록'에서 확인)
     // 세로축 상한: 소수의 고가 이상치가 아래 뭉치를 눌러버리지 않도록 컷하고,
     //   초과분은 값은 보존한 채 상단(▲)에 고정 표시.
     var priceVals = pts.map(function (p) { return p.price; })
@@ -835,7 +875,7 @@
     posChart = new Chart(posCanvas, {
       type: 'scatter',
       data: { datasets: clsOrder.map(function (k) {
-        return { label: KLABEL[k] || k, data: groups[k], backgroundColor: COLORS[k] || '#9ca3af',
+        return { label: KLABEL[k] || k, data: groups[k], backgroundColor: (COLORS[k] || '#9ca3af') + 'B3',
                  borderColor: '#fff', borderWidth: 1.5,
                  hoverBorderColor: '#fff', hoverBorderWidth: 2,
                  pointStyle: function (ctx) { var p = ctx.raw; return p && p.capped ? 'triangle' : 'circle'; },
@@ -878,6 +918,7 @@
       }
     });
     showPosClass('all');   // 기본은 전체 표시
+    window.__posChart = posChart;   // 산점도 접기/펼치기 시 리사이즈용
 
     // ── 기능 검색: 입력하면 커머디티↔차별화 어느 쪽에 가까운지 게이지로 표시 ──
     // 커머디티 지수 = 0.6·보급률 + 0.4·가격저렴도(해금가가 기준가 이하=1, 비쌀수록 0).
