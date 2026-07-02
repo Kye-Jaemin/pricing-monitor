@@ -630,6 +630,56 @@ def estimate_bundle_gaps_ai(
     return out
 
 
+def describe_features_ai(items: list[dict], lang: str = "ko") -> dict:
+    """기능마다 '이 기능은 무엇을 하는지' 한 줄 설명을 생성(업체 원문을 근거로).
+
+    items: [{"key": 고유키, "name": 대표명, "samples": [업체 원문 기능 문구...]}]
+    반환: {key: "한 줄 설명"}  — 근거가 부족하면 이름에서 일반적으로 기술.
+    """
+    if not config.ANTHROPIC_API_KEY:
+        raise ExtractError("ANTHROPIC_API_KEY 가 설정되지 않았습니다 (.env 확인).")
+    items = [it for it in (items or []) if (it.get("name") or "").strip()][:120]
+    if not items:
+        return {}
+
+    from anthropic import Anthropic
+
+    spec = [
+        {"key": it["key"], "name": it["name"], "samples": (it.get("samples") or [])[:5]}
+        for it in items
+    ]
+    lang_line = ("Write each description in Korean." if lang == "ko"
+                 else "Write each description in English.")
+    prompt = (
+        "For each software/subscription FEATURE below, write ONE short plain-language "
+        "sentence describing what it is / what it does, so a non-expert understands it. "
+        + lang_line + " Ground it in the name and the sample descriptions from real "
+        "provider pages; if samples are thin, describe generically from the name. Keep it "
+        "concise (about 12 words), no marketing fluff, no price, no company names. "
+        "If the name is too vague to describe, return an empty string for that key.\n\n"
+        "FEATURES (JSON):\n" + json.dumps(spec, ensure_ascii=False) + "\n\n"
+        "Return ONLY JSON: {\"desc\":{\"<key>\":\"<one sentence>\", ...}}. No prose, no code fences."
+    )
+    client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
+    resp = client.messages.create(
+        model=config.ANTHROPIC_MODEL,
+        max_tokens=8192,
+        temperature=0,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    raw = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
+    try:
+        data = _loads_loose(raw)
+    except json.JSONDecodeError as exc:
+        raise ExtractError(f"기능 설명 JSON 파싱 실패: {exc}") from exc
+    out = {}
+    for k, v in (data.get("desc") or {}).items():
+        s = str(v or "").strip()
+        if s:
+            out[str(k)] = s[:200]
+    return out
+
+
 def analyze_pricing_ai(company: str, groups: list[dict]) -> list[dict]:
     """가격대별 '처음 풀리는 기능'(결정적 증분)을 AI가 분석해 테마·요약을 붙인다.
 

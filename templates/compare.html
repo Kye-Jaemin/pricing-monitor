@@ -168,7 +168,14 @@
   </div>
 
   <div class="pos-list">
-    <div class="pos-list-title muted">{{ t('compare.pos_providers_title') }}</div>
+    <div class="pos-list-head">
+      <span class="pos-list-title muted">{{ t('compare.pos_providers_title') }}</span>
+      <form method="post" action="{{ url_for('compare_describe_features') }}" class="pos-desc-form">
+        {% for n in data.companies %}<input type="hidden" name="company" value="{{ n }}">{% endfor %}
+        {% if access_required %}<input type="password" name="access_code" class="access-input" placeholder="{{ t('runs.access_label') }}" autocomplete="off">{% endif %}
+        <button type="submit" class="btn-secondary btn-sm" title="{{ t('compare.desc_gen_help') }}">🤖 {{ t('compare.desc_gen') }}</button>
+      </form>
+    </div>
     <div class="pos-tabs" role="tablist">
       {% for cls in ['commodity', 'standard', 'differentiated'] %}
       {% set n = data.feature_positioning | selectattr('label', 'equalto', cls) | list | length %}
@@ -186,6 +193,7 @@
         <strong>{{ fp.feature }}</strong>
         <span class="muted">— {{ t('compare.pos_providers', n=fp.providers, total=fp.total) }}{% if fp.unlock_price %} · ${{ '%g'|format(fp.unlock_price) }}{% endif %}</span>
       </summary>
+      {% if fp.desc %}<p class="pos-desc">{{ fp.desc }}</p>{% endif %}
       <p class="pos-why"><span class="why-label">{{ t('compare.why_label') }}</span>
         {% if fp.label == 'differentiated' %}{{ t('compare.why_differentiated', total=fp.total, providers=fp.providers, pen=fp.pen_pct, paid=fp.paid_cnt) }}
         {% elif fp.label == 'commodity' %}{{ t('compare.why_commodity', total=fp.total, providers=fp.providers, pen=fp.pen_pct, free=fp.free_cnt) }}

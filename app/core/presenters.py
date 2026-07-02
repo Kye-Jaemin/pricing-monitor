@@ -2222,6 +2222,11 @@ def compare(names: list[str]) -> dict:
                 "penetration": round(pen, 3),
                 "free_cnt": cheap, "paid_cnt": paid}
 
+    # AI가 생성한 '이 기능은 ~하는 기능' 한 줄 설명(있으면 붙임) — canon 키로 저장됨.
+    try:
+        feat_descs = json.loads(store.get_setting("feature.descriptions") or "{}") or {}
+    except (ValueError, TypeError):
+        feat_descs = {}
     feature_positioning = []
     pos_by_key: dict[str, dict] = {}
     for key, a in agg.items():
@@ -2259,6 +2264,8 @@ def compare(names: list[str]) -> dict:
             "label": cls["label"],
             "free_cnt": cls.get("free_cnt", 0),
             "paid_cnt": cls.get("paid_cnt", 0),
+            "key": key,
+            "desc": feat_descs.get(key, ""),
             "providers_list": providers_list,
         }
         feature_positioning.append(entry)
@@ -2414,6 +2421,41 @@ def compare(names: list[str]) -> dict:
         "category_chips": cat_chips,
         "company_cat": company_cat,
     }
+
+
+def generate_feature_descriptions(names: list[str] | None = None, only_new: bool = True) -> int:
+    """포지셔닝 기능마다 '이 기능은 ~하는 기능' 한 줄 설명을 AI로 생성·저장.
+
+    선택 업체(names)의 기능을 대상으로, 각 기능의 업체 원문 문구를 근거로 요약.
+    only_new=True 면 아직 설명이 없는 기능만 생성(비용 절약). 반환: 생성한 개수.
+    """
+    from . import extract
+
+    data = compare(names or [])
+    feats = data.get("feature_positioning") or []
+    try:
+        cur = json.loads(store.get_setting("feature.descriptions") or "{}") or {}
+    except (ValueError, TypeError):
+        cur = {}
+    items = []
+    for fp in feats:
+        key = fp.get("key")
+        if not key:
+            continue
+        if only_new and cur.get(key):
+            continue
+        samples = []
+        for pv in fp.get("providers_list", []):
+            samples.extend(pv.get("features") or [])
+        items.append({"key": key, "name": fp.get("feature") or "", "samples": samples})
+    if not items:
+        return 0
+    descs = extract.describe_features_ai(items)
+    if not descs:
+        return 0
+    cur.update(descs)
+    store.set_setting("feature.descriptions", json.dumps(cur, ensure_ascii=False))
+    return len(descs)
 
 
 def _company_category_picker(names: list[str]) -> tuple[list[dict], dict[str, int | None]]:

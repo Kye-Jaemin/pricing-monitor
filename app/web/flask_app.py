@@ -651,6 +651,39 @@ def _background_compare_run(names, do_dedupe, do_cat, do_price) -> None:
         _compare_progress.update({"running": False, "current": ""})
 
 
+@app.route("/compare/describe-features", methods=["POST"])
+def compare_describe_features():
+    """포지셔닝 기능마다 '이 기능은 ~하는 기능' AI 한 줄 설명 생성(백그라운드)."""
+    names = [n for n in request.form.getlist("company") if n]
+    if config.ACCESS_CODE and (request.form.get("access_code") or "").strip() != config.ACCESS_CODE:
+        return redirect(_compare_url(names, error="bad_code"))
+    only_new = request.form.get("all") != "1"   # 기본은 없는 것만, all=1이면 전체 재생성
+    if not _compare_progress["running"]:
+        with _compare_lock:
+            if not _compare_progress["running"]:
+                _compare_progress.update(
+                    {"running": True, "total": 1, "done": 0,
+                     "current": "AI 기능 설명 생성…", "error": ""}
+                )
+                threading.Thread(
+                    target=_background_describe_features,
+                    kwargs={"names": names, "only_new": only_new},
+                    daemon=True,
+                ).start()
+    return redirect(_compare_url(names, analyzing="1"))
+
+
+def _background_describe_features(names, only_new) -> None:
+    try:
+        n = presenters.generate_feature_descriptions(names, only_new=only_new)
+        log.info("[compare-desc] 기능 설명 %d개 생성", n)
+    except Exception:  # noqa: BLE001
+        log.exception("[compare-desc] 실패")
+        _compare_progress.update({"error": "ai_failed"})
+    finally:
+        _compare_progress.update({"running": False, "current": "", "done": 1})
+
+
 @app.route("/compare-progress")
 def compare_progress():
     return jsonify(_compare_progress)

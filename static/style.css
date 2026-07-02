@@ -824,6 +824,9 @@ a.btn-primary:hover { text-decoration: none; }
 .pos-feat { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; margin: 4px 0; background: #fff; }
 .pos-feat > summary { cursor: pointer; font-size: .9rem; }
 .pos-feat > summary:hover { color: var(--accent); }
+.pos-list-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.pos-desc-form { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
+.pos-desc { font-size: .86rem; margin: 5px 0 2px; color: #334155; font-style: italic; }
 .pos-why { font-size: .85rem; margin: 6px 0 2px; padding: 6px 9px; background: #f8fafc; border-left: 3px solid #cbd5e1; border-radius: 0; }
 .pos-why .why-label { font-weight: 600; color: #475569; margin-right: 4px; }
 .pos-what { font-size: .78rem; margin: 2px 0 4px; }
