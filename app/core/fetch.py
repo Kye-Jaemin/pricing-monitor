@@ -151,11 +151,11 @@ def kr_bundle_search_url(url: str, provider: str) -> str:
 
 
 def fetch_google_via_serpapi(url: str, gl: str = "us", hl: str = "en") -> str:
-    """구글 검색을 SerpAPI로 가져온다(헤드리스 봇 차단 회피).
+    """구글 검색 결과를 SerpAPI로 최대한 '있는 그대로' 가져온다(봇 차단 회피).
 
-    URL 의 q 파라미터로 검색하고, answer_box / AI Overview 본문 / 상위 오가닉
-    스니펫을 합쳐 텍스트로 돌려준다. config.SERPAPI_KEY 필요. gl/hl 로 지역·언어 지정.
-    AI Overview 가 page_token 형태면 2차 호출로 실제 본문을 받아온다.
+    answer_box + AI Overview(전체) + 지식그래프 + 상위 오가닉(제목·스니펫·리치스니펫)
+    + 연관질문을 모두 담는다. 특정 필드만 골라 담아 정보가 누락되던 문제 해소.
+    config.SERPAPI_KEY 필요. gl/hl 로 지역·언어 지정.
     """
     import json
 
@@ -165,18 +165,32 @@ def fetch_google_via_serpapi(url: str, gl: str = "us", hl: str = "en") -> str:
 
     data = _serpapi_get({"engine": "google", "q": q, "hl": hl, "gl": gl})
 
+    def _j(v):
+        return json.dumps(v, ensure_ascii=False)
+
     parts: list[str] = []
     if data.get("answer_box"):
-        parts.append("ANSWER BOX:\n" + json.dumps(data["answer_box"], ensure_ascii=False))
+        parts.append("ANSWER BOX:\n" + _j(data["answer_box"]))
     if data.get("ai_overview"):
         ov = _ai_overview_text(data["ai_overview"])
         if ov:
             parts.append("AI OVERVIEW:\n" + ov)
+    if data.get("knowledge_graph"):
+        parts.append("KNOWLEDGE GRAPH:\n" + _j(data["knowledge_graph"]))
     for o in (data.get("organic_results") or [])[:10]:
         title = o.get("title", "")
         snippet = o.get("snippet", "")
-        if title or snippet:
-            parts.append(f"{title}\n{snippet}")
+        extra = ""
+        for k in ("snippet_highlighted_words", "rich_snippet", "about_this_result"):
+            if o.get(k):
+                extra += "\n" + _j(o[k])
+        if title or snippet or extra:
+            parts.append(f"{title}\n{snippet}{extra}")
+    for rq in (data.get("related_questions") or [])[:10]:
+        qt = rq.get("question", "")
+        ans = rq.get("snippet") or rq.get("answer") or ""
+        if qt or ans:
+            parts.append(f"Q: {qt}\n{ans}")
 
     text = "\n\n".join(parts).strip()
     if not text:
