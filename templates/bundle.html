@@ -412,58 +412,7 @@
     });
   });
 
-  // 덤벨 각 요금제 영구 제외(✕)/복원 — 서버에 저장하고 새로고침해 분석에서 뺀다
-  var BSEL = {{ data.selected | tojson }};
-  function bundlePost(action, extra) {
-    var body = new URLSearchParams();
-    (BSEL || []).forEach(function (n) { body.append('sel', n); });
-    Object.keys(extra || {}).forEach(function (k) { body.set(k, extra[k]); });
-    fetch("{{ url_for('bundle_hideplan') }}", {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body.toString()
-    }).then(function () { location.reload(); }).catch(function () {});
-  }
-  document.querySelectorAll('.dumbbell').forEach(function (db) {
-    db.querySelectorAll('.db-del').forEach(function (btn) {
-      btn.addEventListener('click', function (e) {
-        e.stopPropagation(); e.preventDefault();
-        var r = btn.closest('.dumbbell-row');
-        if (!r) return;
-        var key = r.getAttribute('data-dbkey') || '';
-        var i = key.indexOf('|');
-        if (i < 0) return;
-        bundlePost('hide', { company: key.slice(0, i), plan: key.slice(i + 1) });
-      });
-    });
-    var rb = db.querySelector('.db-restore-btn');
-    if (rb) rb.addEventListener('click', function () { bundlePost('clear', { clear: '1' }); });
-  });
-  // 요금제 표에서 삭제(✕) — 덤벨과 동일한 영구 제외(bundle.hideplan)로 연결 → 차트도 함께 제거
-  document.querySelectorAll('.plan-del').forEach(function (btn) {
-    btn.addEventListener('click', function (e) {
-      e.stopPropagation(); e.preventDefault();
-      var company = btn.getAttribute('data-company');
-      var plan = btn.getAttribute('data-plan');
-      if (company && plan) bundlePost('hide', { company: company, plan: plan });
-    });
-  });
-  // 직접 추가한 서비스 삭제(✕)
-  document.querySelectorAll('.chip-x').forEach(function (btn) {
-    btn.addEventListener('click', function (e) {
-      e.stopPropagation(); e.preventDefault();
-      var body = new URLSearchParams();
-      (BSEL || []).forEach(function (n) { body.append('sel', n); });
-      body.set('company', btn.getAttribute('data-company'));
-      body.set('plan', btn.getAttribute('data-plan'));
-      body.set('name', btn.getAttribute('data-name'));
-      body.set('remove', '1');
-      fetch("{{ url_for('bundle_addsvc') }}", {
-        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: body.toString()
-      }).then(function () { location.reload(); }).catch(function () {});
-    });
-  });
+  // (삭제/복원/서비스제거는 아래 독립 스크립트에서 이벤트 위임으로 처리 — 다른 JS 에러와 격리)
   document.querySelectorAll('canvas.bundle-pie').forEach(function (cv) {
     var cats; try { cats = JSON.parse(cv.getAttribute('data-cats') || '[]'); } catch (e) { return; }
     if (!cats.length) return;
@@ -527,6 +476,37 @@
           } } } },
         scales: { x: { beginAtZero: true, ticks: { callback: function (v) { return money(v); } } } } }
     });
+  });
+})();
+</script>
+<script>
+// 삭제/복원/서비스제거 — 다른 스크립트(차트 등)의 에러와 무관하게 항상 동작하도록
+// 별도 블록 + 이벤트 위임. 선택 업체는 URL 쿼리에서 읽는다.
+(function () {
+  function sel() { return new URLSearchParams(location.search).getAll('company'); }
+  function post(url, extra) {
+    var body = new URLSearchParams();
+    sel().forEach(function (n) { body.append('sel', n); });
+    Object.keys(extra).forEach(function (k) { body.set(k, extra[k]); });
+    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() })
+      .then(function () { location.reload(); }).catch(function () { location.reload(); });
+  }
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest) return;
+    var b = e.target.closest('.plan-del, .db-del, .db-restore-btn, .chip-x');
+    if (!b) return;
+    e.preventDefault(); e.stopPropagation();
+    if (b.classList.contains('plan-del')) {
+      post("{{ url_for('bundle_hideplan') }}", { company: b.getAttribute('data-company'), plan: b.getAttribute('data-plan') });
+    } else if (b.classList.contains('db-del')) {
+      var r = b.closest('.dumbbell-row'); if (!r) return;
+      var k = r.getAttribute('data-dbkey') || ''; var i = k.indexOf('|'); if (i < 0) return;
+      post("{{ url_for('bundle_hideplan') }}", { company: k.slice(0, i), plan: k.slice(i + 1) });
+    } else if (b.classList.contains('db-restore-btn')) {
+      post("{{ url_for('bundle_hideplan') }}", { clear: '1' });
+    } else if (b.classList.contains('chip-x')) {
+      post("{{ url_for('bundle_addsvc') }}", { company: b.getAttribute('data-company'), plan: b.getAttribute('data-plan'), name: b.getAttribute('data-name'), remove: '1' });
+    }
   });
 })();
 </script>
