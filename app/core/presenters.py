@@ -919,6 +919,15 @@ def _match_standalone(service_name: str, smap: dict):
     return best_price
 
 
+def _brand_favicon(name: str) -> str | None:
+    """업체명 전체로 브랜드 도메인 파비콘 추정 — google_search 전용 등 아이콘 없는
+    제공업체용. 'T-mobile'→tmobile.com, 'Naver'→naver.com. 영숫자 2자 미만이면 None."""
+    slug = re.sub(r"[^a-z0-9]", "", (name or "").lower())
+    if len(slug) < 2:
+        return None
+    return f"https://www.google.com/s2/favicons?domain={slug}.com&sz=64"
+
+
 def _service_icon(service_name: str, comp_icons: dict) -> str | None:
     """서비스 아이콘: 매칭 업체의 실제 아이콘 우선, 없으면 서비스명 기반 파비콘 추정."""
     s = (service_name or "").lower()
@@ -1007,7 +1016,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 "dumbbell": [],
             }
         anchor = g["anchor"]
-        co_icon = _company_icon(icon_map.get(name), src_map.get(name, []))
+        co_icon = _company_icon(icon_map.get(name), src_map.get(name, [])) or _brand_favicon(name)
         # 사용자가 영구 제외한 요금제(이름)는 분석에서 통째로 뺀다.
         try:
             hidden_plans = set(json.loads(store.get_setting("bundle.hideplan:" + name) or "[]"))
