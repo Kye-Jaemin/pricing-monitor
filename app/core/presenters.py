@@ -1377,6 +1377,33 @@ def saved_bundle_cards() -> list[dict]:
     return out
 
 
+def _backfill_bundle_data(data: dict) -> None:
+    """예전에 저장된 카드에 없는 새 필드를 안전한 기본값으로 채운다(하위호환).
+
+    템플릿이 새 필드(pl.key, plan_disp, ai_est, alt_usd, pricepick 키 등)를 참조하므로,
+    구버전 스냅샷을 열 때 UndefinedError 로 500 이 나지 않도록 한다."""
+    for g in (data.get("groups") or []):
+        for d in (g.get("dumbbell") or []):
+            d.setdefault("plan_disp", d.get("plan"))
+            d.setdefault("ai", False)
+        for co in (g.get("companies") or []):
+            for pl in (co.get("plans") or []):
+                pl.setdefault("key", pl.get("name"))
+                pl.setdefault("monthly_ai", False)
+                pl.setdefault("monthly_ai_basis", "")
+                pl.setdefault("monthly_pkey", "")
+                pl.setdefault("monthly_alt_src", "")
+                pl.setdefault("monthly_alt_usd", None)
+                for sp in (pl.get("standalone_parts") or []):
+                    sp.setdefault("ai_est", False)
+                    sp.setdefault("ai_basis", "")
+                    sp.setdefault("pkey", "")
+                    sp.setdefault("alt_src", "")
+                    sp.setdefault("alt_usd", None)
+                for s in (pl.get("services") or []):
+                    s.setdefault("ai_est", False)
+
+
 def load_bundle_card(card_id: int) -> dict | None:
     row = store.get_bundle_card(card_id)
     if row is None:
@@ -1387,6 +1414,7 @@ def load_bundle_card(card_id: int) -> dict | None:
         return None
     if not isinstance(data, dict):
         return None
+    _backfill_bundle_data(data)
     return {"id": row["id"], "title": row["title"], "created_at": row["created_at"], "data": data}
 
 
