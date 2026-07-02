@@ -762,7 +762,7 @@
     var penTh = commodityPen;   // 보급률 경계(0~1)
     var priceTh = cheapUsd;     // 해금가 경계($)
     var QCOL = { base: '#1baf7a', cash: '#2a78d6', niche: '#9ca3af', diff: '#eb6834' };
-    var QLAB = { base: '기본기', cash: '수익 표준', niche: '틈새·신흥', diff: '차별화' };
+    var QLAB = { base: '기본기', cash: '수익 표준', niche: '구색 기능', diff: '차별화' };
     function quadOf(p) {
       var hi = p.x >= penTh, paid = p.price > priceTh;
       return hi ? (paid ? 'cash' : 'base') : (paid ? 'diff' : 'niche');
@@ -811,7 +811,7 @@
         ctx.save();
         ctx.fillStyle = 'rgba(235,104,52,0.10)'; ctx.fillRect(a.left, a.top, xT - a.left, yT - a.top);   // 좌상 차별화
         ctx.fillStyle = 'rgba(42,120,214,0.10)'; ctx.fillRect(xT, a.top, a.right - xT, yT - a.top);      // 우상 수익표준
-        ctx.fillStyle = 'rgba(148,163,184,0.10)'; ctx.fillRect(a.left, yT, xT - a.left, a.bottom - yT);  // 좌하 틈새
+        ctx.fillStyle = 'rgba(148,163,184,0.10)'; ctx.fillRect(a.left, yT, xT - a.left, a.bottom - yT);  // 좌하 구색
         ctx.fillStyle = 'rgba(27,175,122,0.12)'; ctx.fillRect(xT, yT, a.right - xT, a.bottom - yT);      // 우하 기본기
         ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(100,116,139,0.55)';
         ctx.beginPath();
@@ -824,7 +824,7 @@
         ctx.fillStyle = 'rgba(29,78,216,0.95)'; ctx.textAlign = 'right';
         ctx.fillText('💰 ' + QLAB.cash, a.right - 6, a.top + 4);
         ctx.fillStyle = 'rgba(90,99,110,0.95)'; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
-        ctx.fillText('🌱 ' + QLAB.niche, a.left + 6, a.bottom - 4);
+        ctx.fillText('🧩 ' + QLAB.niche, a.left + 6, a.bottom - 4);
         ctx.fillStyle = 'rgba(15,128,90,0.95)'; ctx.textAlign = 'right';
         ctx.fillText('✅ ' + QLAB.base, a.right - 6, a.bottom - 4);
         ctx.restore();
@@ -890,7 +890,7 @@
           var c = { base: 0, cash: 0, niche: 0, diff: 0 };
           pts.forEach(function (p) { c[quadOf(p)]++; });
           counts.textContent = '✅ ' + QLAB.base + ' ' + c.base + ' · 💰 ' + QLAB.cash + ' ' + c.cash
-            + ' · 🌱 ' + QLAB.niche + ' ' + c.niche + ' · 🎯 ' + QLAB.diff + ' ' + c.diff;
+            + ' · 🧩 ' + QLAB.niche + ' ' + c.niche + ' · 🎯 ' + QLAB.diff + ' ' + c.diff;
         }
         if (posChart) posChart.update('none');
       }
