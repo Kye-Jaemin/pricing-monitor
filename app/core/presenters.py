@@ -998,9 +998,17 @@ def bundle_view(names: list[str] | None = None) -> dict:
             }
         anchor = g["anchor"]
         co_icon = _company_icon(icon_map.get(name), src_map.get(name, []))
+        # 사용자가 영구 제외한 요금제(이름)는 분석에서 통째로 뺀다.
+        try:
+            hidden_plans = set(json.loads(store.get_setting("bundle.hideplan:" + name) or "[]"))
+        except (ValueError, TypeError):
+            hidden_plans = set()
+        g["hidden_n"] = g.get("hidden_n", 0) + len(hidden_plans)
         co_prices = []
         co_plans = []
         for p in plans:
+            if (p.get("name") or "") in hidden_plans:
+                continue  # 영구 제외된 요금제
             cur = (p.get("currency") or "USD").upper()
             m_usd = _to_usd(p.get("monthly"), cur)
             a_usd = _to_usd(p.get("annual"), cur)

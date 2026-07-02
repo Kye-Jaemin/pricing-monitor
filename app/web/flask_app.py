@@ -282,6 +282,27 @@ def bundle_svcprice():
     return redirect(_bundle_url(names))
 
 
+@app.route("/bundle/hideplan", methods=["POST"])
+def bundle_hideplan():
+    """번들 요금제를 분석에서 영구 제외/복원(업체별 이름 목록으로 저장)."""
+    names = [n for n in request.form.getlist("sel") if n]
+    if request.form.get("clear"):
+        for nm in names:
+            store.set_setting("bundle.hideplan:" + nm, "[]")
+    else:
+        company = (request.form.get("company") or "").strip()
+        plan = (request.form.get("plan") or "").strip()
+        if company and plan:
+            try:
+                cur = json.loads(store.get_setting("bundle.hideplan:" + company) or "[]")
+            except (ValueError, TypeError):
+                cur = []
+            if plan not in cur:
+                cur.append(plan)
+            store.set_setting("bundle.hideplan:" + company, json.dumps(cur, ensure_ascii=False))
+    return redirect(_bundle_url(names))
+
+
 @app.route("/bundle/krsearch", methods=["POST"])
 def bundle_krsearch():
     """번들 업체의 구글 검색을 한국 로케일(gl=kr&hl=ko)로 지정/해제.

@@ -165,7 +165,7 @@
           <label><input type="radio" name="dbsort-{{ g.id }}" value="provider" checked> {{ t('bundle.db_by_provider') }}</label>
           <label><input type="radio" name="dbsort-{{ g.id }}" value="save"> {{ t('bundle.db_by_save') }}</label>
         </div>
-        <span class="db-restore" hidden>{{ t('bundle.db_hidden') }} <span class="db-restore-n">0</span> · <button type="button" class="btn-secondary btn-sm db-restore-btn">{{ t('bundle.db_restore_all') }}</button></span>
+        {% if g.hidden_n %}<span class="db-restore">{{ t('bundle.db_excluded', n=g.hidden_n) }} · <button type="button" class="btn-secondary btn-sm db-restore-btn">{{ t('bundle.db_restore_all') }}</button></span>{% endif %}
         <button type="button" class="btn-secondary btn-sm db-full-btn" title="{{ t('bundle.fullscreen') }}">⛶ {{ t('bundle.fullscreen') }}</button>
       </div>
     </div>
@@ -400,28 +400,32 @@
     });
   });
 
-  // 덤벨 각 요금제 숨기기(✕)/복원 — 차트가 너무 많을 때 원하는 것만 보기
+  // 덤벨 각 요금제 영구 제외(✕)/복원 — 서버에 저장하고 새로고침해 분석에서 뺀다
+  var BSEL = {{ data.selected | tojson }};
+  function bundlePost(action, extra) {
+    var body = new URLSearchParams();
+    (BSEL || []).forEach(function (n) { body.append('sel', n); });
+    Object.keys(extra || {}).forEach(function (k) { body.set(k, extra[k]); });
+    fetch("{{ url_for('bundle_hideplan') }}", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString()
+    }).then(function () { location.reload(); }).catch(function () {});
+  }
   document.querySelectorAll('.dumbbell').forEach(function (db) {
-    var restore = db.querySelector('.db-restore');
-    var restoreN = db.querySelector('.db-restore-n');
-    var hidden = {};
-    function apply() {
-      db.querySelectorAll('.dumbbell-row').forEach(function (row) {
-        row.style.display = hidden[row.getAttribute('data-dbkey')] ? 'none' : '';
-      });
-      var n = Object.keys(hidden).length;
-      if (restore) restore.hidden = (n === 0);
-      if (restoreN) restoreN.textContent = n;
-    }
     db.querySelectorAll('.db-del').forEach(function (btn) {
       btn.addEventListener('click', function (e) {
         e.stopPropagation(); e.preventDefault();
         var r = btn.closest('.dumbbell-row');
-        if (r) { hidden[r.getAttribute('data-dbkey')] = true; apply(); }
+        if (!r) return;
+        var key = r.getAttribute('data-dbkey') || '';
+        var i = key.indexOf('|');
+        if (i < 0) return;
+        bundlePost('hide', { company: key.slice(0, i), plan: key.slice(i + 1) });
       });
     });
     var rb = db.querySelector('.db-restore-btn');
-    if (rb) rb.addEventListener('click', function () { hidden = {}; apply(); });
+    if (rb) rb.addEventListener('click', function () { bundlePost('clear', { clear: '1' }); });
   });
   document.querySelectorAll('canvas.bundle-pie').forEach(function (cv) {
     var cats; try { cats = JSON.parse(cv.getAttribute('data-cats') || '[]'); } catch (e) { return; }
