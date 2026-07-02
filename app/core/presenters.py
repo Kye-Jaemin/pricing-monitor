@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import statistics
 from urllib.parse import urlparse
 
 from .. import config
@@ -2653,6 +2654,7 @@ def load_comparison_card(card_id: int) -> dict | None:
         "price_bands": [],
         "feature_analysis": [],
         "feature_positioning": [],
+        "category_positioning": [],
         "positioning_cross": [],
         "matrix": [],
         "ranking": [],
@@ -2661,6 +2663,41 @@ def load_comparison_card(card_id: int) -> dict | None:
     for k, v in defaults.items():
         if data.get(k) is None:
             data[k] = v
+    # 예전 카드의 기능 항목에 새 필드가 없어 템플릿이 깨지는 것 방지(안전 기본값).
+    for _i, fp in enumerate(data.get("feature_positioning") or []):
+        fp.setdefault("idx", _i)
+        fp.setdefault("category", "기타")
+        fp.setdefault("desc", "")
+        fp.setdefault("desc_ai", False)
+        fp.setdefault("pen_pct", round((fp.get("penetration") or 0) * 100))
+        fp.setdefault("free_cnt", 0)
+        fp.setdefault("paid_cnt", 0)
+        fp.setdefault("key", fp.get("feature", ""))
+        fp.setdefault("providers_list", [])
+    # 카테고리 산점도 데이터가 없으면(구버전) feature_positioning 에서 즉석 집계.
+    if not data.get("category_positioning") and data.get("feature_positioning"):
+        _cp: dict = {}
+        _tot = 0
+        for fp in data["feature_positioning"]:
+            _tot = max(_tot, fp.get("total") or 0)
+            d = _cp.setdefault(fp.get("category") or "기타",
+                               {"companies": set(), "prices": [], "n": 0})
+            for pv in (fp.get("providers_list") or []):
+                if pv.get("company"):
+                    d["companies"].add(pv["company"])
+            if fp.get("unlock_price"):
+                d["prices"].append(fp["unlock_price"])
+            d["n"] += 1
+        cps = []
+        for cat, d in _cp.items():
+            prov = len(d["companies"]) or 0
+            pen = (prov / _tot) if _tot else 0.0
+            price = statistics.median(d["prices"]) if d["prices"] else 0.0
+            cps.append({"category": cat, "providers": prov, "total": _tot,
+                        "penetration": round(pen, 3), "pen_pct": round(pen * 100),
+                        "price": round(price, 2), "feat_count": d["n"],
+                        "commodity": 0, "standard": 0, "differentiated": 0})
+        data["category_positioning"] = sorted(cps, key=lambda x: (-x["penetration"], -x["feat_count"]))
     # 범례 표시용 — 저장 카드엔 없을 수 있으니 현재 전역 임계값으로 보강(표시용)
     if data.get("cheap_usd") is None:
         data["cheap_usd"] = get_cheap_threshold()
