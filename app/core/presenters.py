@@ -2198,15 +2198,17 @@ def compare(names: list[str]) -> dict:
         a = alias_map.get(f)
         return a if (a and not _skip_feature(a)) else None
 
-    def _canon_key(f: str) -> str:
-        forced = _force_canon(f)          # 코드 확정 통합 우선(모델 무관)
-        if forced:
-            return "ALIAS::" + forced
+    def _eff_canon(f: str):
+        # 확정 통합명: 원본명 OR 그 별칭에 규칙 적용(별칭만 credit 등인 경우도 잡음).
         a = _good_alias(f)
-        return ("ALIAS::" + a) if a else _normalize_feature(f)
+        return _force_canon(f) or (_force_canon(a) if a else None) or a
+
+    def _canon_key(f: str) -> str:
+        e = _eff_canon(f)
+        return ("ALIAS::" + e) if e else _normalize_feature(f)
 
     def _canon_disp(f: str) -> str:
-        return _force_canon(f) or _good_alias(f) or f
+        return _eff_canon(f) or f
 
     # 0) 기능(canonical) 보급률·해금가 집계 → 커머디티/차별화 분류 (무료 기능 포함)
     agg: dict[str, dict] = {}
@@ -2223,8 +2225,8 @@ def compare(names: list[str]) -> dict:
                 if a is None:
                     a = agg[key] = {"display": _canon_disp(f), "companies": set(),
                                     "detail": {}}
-                elif _good_alias(f):
-                    a["display"] = _good_alias(f)  # 유효 별칭이 있으면 대표명으로 승격
+                elif not _force_canon(f) and not _force_canon(_good_alias(f) or "") and _good_alias(f):
+                    a["display"] = _good_alias(f)  # 확정 통합이 아닐 때만 별칭으로 대표명 승격
                 a["companies"].add(pc["company"])
                 d = a["detail"].setdefault(
                     pc["company"], {"features": set(), "is_free": False, "price": None}
