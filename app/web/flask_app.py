@@ -578,9 +578,15 @@ def _apply_dedupe(names: list[str]) -> None:
         return
     from ..core import extract
 
-    # 입력을 정렬해 매 실행 동일한 프롬프트 → temperature=0 과 함께 결정적 결과(분류 안정).
-    #   전체를 다시 통합하므로 규칙 변경도 즉시 반영된다.
-    mapping = extract.dedupe_features_ai(sorted(feats))
+    # 분류 안정성: 이미 통합이 확정된 기능은 그대로 두고, '아직 통합 안 된 새 기능'만
+    #   처리한다(기존 통합명을 시드로 재사용). 같은 업체를 다시 분석해도 이미 정해진
+    #   클러스터가 재군집되지 않아 분류가 바뀌지 않는다(temperature=0 과 함께 결정적).
+    existing = store.get_feature_aliases()          # {기능: 통합명}
+    new_feats = [f for f in sorted(feats) if f not in existing]
+    if not new_feats:
+        return   # 새 기능 없음 → 재통합 안 함(분류 불변)
+    known = sorted(set(existing.values()))
+    mapping = extract.dedupe_features_ai(new_feats, known=known)
     store.set_feature_aliases(mapping)
 
 
