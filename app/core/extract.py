@@ -393,6 +393,15 @@ def extract_bundles_ai(company: str, raw_text: str, anchor: str | None = None) -
         f"one. List each separately. " if anchor else ""
     )
     prompt = (
+        "GROUND STRICTLY IN THE TEXT. Two rules, equally important:\n"
+        "(1) RECALL — capture EVERYTHING that is in the PAGE TEXT: every plan, every "
+        "service/benefit, and every price. If a service's standalone/regular price (e.g. "
+        "'₩7,000', '월 9,900원', '$9.99/mo') appears ANYWHERE in the text, you MUST put "
+        "that number in that service's list_price — NEVER leave list_price null when the "
+        "text shows a price for it. Scan the whole text, not just the top.\n"
+        "(2) NO INVENTION — use ONLY plans, services, and prices that literally appear in "
+        "the text. Do NOT add a plan, service, or price that is not written there. If you "
+        "are unsure whether something is in the text, leave it out.\n\n"
         "You extract BUNDLE or MEMBERSHIP plans from a provider's page. This includes "
         "carrier/aggregator bundles (mobile + streaming) AND membership programs that "
         "give multiple BENEFITS (e.g. Naver Membership, Coupang WOW, Amazon Prime: "
