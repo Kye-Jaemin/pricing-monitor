@@ -192,8 +192,8 @@
         <span class="feat-badge badge-{{ fp.label }}">{{ t('compare.class_' + fp.label) }}</span>
         <strong>{{ fp.feature }}</strong>
         <span class="muted">— {{ t('compare.pos_providers', n=fp.providers, total=fp.total) }}{% if fp.unlock_price %} · ${{ '%g'|format(fp.unlock_price) }}{% endif %}</span>
+        {% if fp.desc %}<span class="pos-desc">{{ fp.desc }}</span>{% endif %}
       </summary>
-      {% if fp.desc %}<p class="pos-desc">{{ fp.desc }}</p>{% endif %}
       <p class="pos-why"><span class="why-label">{{ t('compare.why_label') }}</span>
         {% if fp.label == 'differentiated' %}{{ t('compare.why_differentiated', total=fp.total, providers=fp.providers, pen=fp.pen_pct, paid=fp.paid_cnt) }}
         {% elif fp.label == 'commodity' %}{{ t('compare.why_commodity', total=fp.total, providers=fp.providers, pen=fp.pen_pct, free=fp.free_cnt) }}
