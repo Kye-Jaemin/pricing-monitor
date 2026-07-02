@@ -1057,8 +1057,9 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 sname = (s.get("name") or "")
                 is_anchor = bool(anchor and anchor.lower() in sname.lower())
                 skey = _normalize_feature(sname)
-                # 정가 우선순위: ①사용자 직접 입력(번들 통화) ②AI list_price ③수집 정가 매칭
-                ov = store.get_setting("bundle.svc:" + name + ":" + skey)
+                # 정가 우선순위: ①사용자 직접 입력(플랜별, 번들 통화) ②AI list_price ③수집 정가 매칭
+                ov = (store.get_setting("bundle.svc:" + name + ":" + (p.get("name") or "") + "\x1f" + skey)
+                      or store.get_setting("bundle.svc:" + name + ":" + skey))
                 ov_num = re.sub(r"[^\d.]", "", ov) if ov else ""
                 lp = None
                 if ov_num:

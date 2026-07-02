@@ -275,9 +275,11 @@ def bundle_svcprice():
     재분석 없이 즉시 반영."""
     company = (request.form.get("company") or "").strip()
     key = (request.form.get("key") or "").strip()
+    plan = (request.form.get("plan") or "").strip()
     value = (request.form.get("value") or "").strip()
     if company and key:
-        store.set_setting("bundle.svc:" + company + ":" + key, value)
+        full = (plan + "\x1f" + key) if plan else key   # 플랜별 저장
+        store.set_setting("bundle.svc:" + company + ":" + full, value)
     names = [n for n in request.form.getlist("sel") if n]
     return redirect(_bundle_url(names))
 

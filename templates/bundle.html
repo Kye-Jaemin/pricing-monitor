@@ -273,6 +273,7 @@
                         <summary title="{{ t('bundle.edit_price') }}">✎</summary>
                         <form method="post" action="{{ url_for('bundle_svcprice') }}" class="svcprice-form">
                           <input type="hidden" name="company" value="{{ co.name }}">
+                          <input type="hidden" name="plan" value="{{ pl.name }}">
                           <input type="hidden" name="key" value="{{ sp.key }}">
                           {% for n in data.selected %}<input type="hidden" name="sel" value="{{ n }}">{% endfor %}
                           <input type="number" step="any" name="value" class="svcprice-input" value="{{ sp.override_raw }}" placeholder="{{ t('bundle.enter_price', cur=pl.currency) }}">
@@ -286,6 +287,7 @@
                     <li class="unpriced-part">{{ up.name }} <span class="muted">{{ t('bundle.unpriced') }}</span>
                       <form method="post" action="{{ url_for('bundle_svcprice') }}" class="svcprice-form">
                         <input type="hidden" name="company" value="{{ co.name }}">
+                        <input type="hidden" name="plan" value="{{ pl.name }}">
                         <input type="hidden" name="key" value="{{ up.key }}">
                         {% for n in data.selected %}<input type="hidden" name="sel" value="{{ n }}">{% endfor %}
                         <input type="number" step="any" name="value" class="svcprice-input" placeholder="{{ t('bundle.enter_price', cur=pl.currency) }}">
