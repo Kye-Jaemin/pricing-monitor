@@ -1041,6 +1041,12 @@ def bundle_view(names: list[str] | None = None) -> dict:
             plan_rename = json.loads(store.get_setting("bundle.planname:" + name) or "{}") or {}
         except (ValueError, TypeError):
             plan_rename = {}
+        # 검색으로 못 구한 빈칸을 AI가 추정한 값(폴백) — {plan: {monthly:{...}, svc:{키:{...}}}}
+        try:
+            aiest_map = (json.loads(store.get_setting("bundle.aiest:" + name) or "{}")
+                         or {}).get("plans", {}) or {}
+        except (ValueError, TypeError):
+            aiest_map = {}
         co_prices = []
         co_plans = []
         for p in plans:
@@ -1049,8 +1055,17 @@ def bundle_view(names: list[str] | None = None) -> dict:
             if orig_name in hidden_plans:
                 continue  # 영구 제외된 요금제
             cur = (p.get("currency") or "USD").upper()
+            ae_plan = aiest_map.get(orig_name, {}) if isinstance(aiest_map, dict) else {}
+            ae_svc = ae_plan.get("svc", {}) or {}
             m_usd = _to_usd(p.get("monthly"), cur)
             a_usd = _to_usd(p.get("annual"), cur)
+            # 월정가 빈칸 → AI 추정 폴백(검색·수동 값은 위에서 이미 반영됨)
+            m_ai = None
+            if m_usd is None and a_usd is None and ae_plan.get("monthly"):
+                em = ae_plan["monthly"]
+                m_usd = _to_usd(em.get("v"), cur)
+                if m_usd is not None:
+                    m_ai = em
             eff = m_usd if m_usd is not None else a_usd   # 분포·집계는 USD 기준
             if eff is not None:
                 co_prices.append(eff)
@@ -1075,6 +1090,12 @@ def bundle_view(names: list[str] | None = None) -> dict:
                     lp = _to_usd(s.get("list_price"), cur)
                 if lp is None and not krsearch:
                     lp = _match_standalone(sname, smap)  # KR 번들은 US 컴포넌트 정가 폴백 금지
+                # 그래도 빈칸이면 AI 추정 폴백(있을 때만)
+                svc_ai = None
+                if lp is None and skey in ae_svc:
+                    lp = _to_usd(ae_svc[skey].get("v"), cur)
+                    if lp is not None:
+                        svc_ai = ae_svc[skey]
                 ckey = (p.get("name") or "") + "\x1f" + skey
                 ch = bool(s.get("choice"))
                 if ckey in choice_ov:      # 사용자 택1↔포함 보정
@@ -1085,6 +1106,8 @@ def bundle_view(names: list[str] | None = None) -> dict:
                     "list_usd": lp, "bucket": _cat_bucket(s.get("category") or "", sname),
                     "brand": _brand_key(sname), "tier_alt": False,
                     "key": skey, "manual": bool(ov), "override_raw": ov_num,
+                    "ai_est": bool(svc_ai),
+                    "ai_basis": (svc_ai.get("conf", "") + " · " + svc_ai.get("basis", "")) if svc_ai else "",
                     "icon": _service_icon(sname, comp_icons),
                 })
                 if is_anchor:
@@ -1109,6 +1132,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
                     "brand": _brand_key(sname), "tier_alt": False,
                     "key": skey, "manual": ms.get("price") is not None,
                     "added": True, "override_raw": "",
+                    "ai_est": False, "ai_basis": "",
                     "icon": _service_icon(sname, comp_icons),
                 })
                 if not is_anchor:
@@ -1165,10 +1189,12 @@ def bundle_view(names: list[str] | None = None) -> dict:
             parts = (
                 [{"name": s["name"], "usd": round(s["list_usd"], 2), "choice": False,
                   "key": s["key"], "manual": s["manual"], "override_raw": s["override_raw"],
+                  "ai_est": s.get("ai_est", False), "ai_basis": s.get("ai_basis", ""),
                   "icon": _service_icon(s["name"], comp_icons)}
                  for s in sorted(fixed, key=lambda x: (not x["is_anchor"], -x["list_usd"]))]
                 + [{"name": s["name"], "usd": round(s["list_usd"], 2), "choice": True,
                     "key": s["key"], "manual": s["manual"], "override_raw": s["override_raw"],
+                    "ai_est": s.get("ai_est", False), "ai_basis": s.get("ai_basis", ""),
                     "icon": _service_icon(s["name"], comp_icons)} for s in chosen_pool]
             )
             standalone = round(sum(pt["usd"] for pt in parts), 2) if parts else None
@@ -1192,8 +1218,11 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 "currency": cur,
                 "monthly": p.get("monthly"), "annual": p.get("annual"),
                 "monthly_usd": m_usd, "annual_usd": a_usd,
-                "monthly_orig": _fmt_money(p.get("monthly"), cur) if cur != "USD" else None,
+                "monthly_orig": (_fmt_money(p.get("monthly"), cur) if cur != "USD" else None)
+                    or (_fmt_money(m_ai.get("v"), cur) if m_ai else None),
                 "annual_orig": _fmt_money(p.get("annual"), cur) if cur != "USD" else None,
+                "monthly_ai": bool(m_ai),
+                "monthly_ai_basis": (m_ai.get("conf", "") + " · " + m_ai.get("basis", "")) if m_ai else "",
                 "choose": p.get("choose"),
                 "price_note": p.get("price_note"),
                 "conditions": p.get("conditions"),
@@ -1208,7 +1237,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
             if eff is not None:
                 g["dumbbell"].append({
                     "company": name, "plan": p.get("name"), "plan_disp": disp_name, "icon": co_icon,
-                    "bundle": eff, "list": standalone, "save": savings_pct,
+                    "bundle": eff, "list": standalone, "save": savings_pct, "ai": bool(m_ai),
                     "anchor": _bundle_anchor_id(name, p.get("name")),
                 })
         g["companies"].append({
@@ -1366,6 +1395,69 @@ def run_bundle_extraction(
             if s.get("list_price") in (None, "", 0) and not _is_junk_component(s.get("name") or "")
         ]
         _auto_register_components(needs, exclude_name=name, category_id=c["category_id"])
+    if progress_cb:
+        progress_cb(total, total, "")
+    return n
+
+
+def estimate_bundle_gaps(names: list[str] | None = None, progress_cb=None) -> int:
+    """검색으로 못 구한 빈칸 가격을 AI 지식으로 추정해 bundle.aiest:<업체>에 저장(폴백).
+
+    빈칸(None)인 번들 월정가·서비스 정가만 채운다. 검색/수동 값은 건드리지 않는다.
+    저장 형태: {"plans": {plan_name: {"monthly": {v,conf,basis},
+                "svc": {서비스키: {v,conf,basis}}}}}
+    반환: 추정을 저장한 업체 수.
+    """
+    from . import extract
+
+    _cl, _n2i, id_to_name = _category_context()
+    want = set(names) if names else None
+    targets = [
+        c for c in store.list_companies(active_only=True)
+        if c["is_bundle"] and (want is None or c["name"] in want)
+    ]
+    total = len(targets)
+    n = 0
+    for i, c in enumerate(targets):
+        name = c["name"]
+        if progress_cb:
+            progress_cb(i, total, name)
+        row = store.get_bundle_analysis(name)
+        if not row:
+            continue
+        try:
+            result = json.loads(row["payload_json"])
+        except (ValueError, TypeError, KeyError):
+            continue
+        plans = result.get("plans") or []
+        if not plans:
+            continue
+        anchor = _bundle_anchor(id_to_name.get(c["category_id"]))
+        market_kr = store.get_setting("search.kr:" + name) == "1"
+        try:
+            ests = extract.estimate_bundle_gaps_ai(name, anchor, plans, market_kr)
+        except Exception:  # noqa: BLE001 — 한 업체 실패가 전체를 막지 않도록
+            log.exception("[bundle-est] 추정 실패: %s", name)
+            continue
+        if not ests:
+            continue
+        # 서비스는 이름 정규화 키(bundle_view 의 skey)로 매핑해 저장.
+        out: dict = {}
+        for e in ests:
+            pname = e.get("name") or ""
+            entry: dict = {}
+            if e.get("monthly"):
+                entry["monthly"] = e["monthly"]
+            svc: dict = {}
+            for s in e.get("services") or []:
+                if s.get("list_price") and (s.get("name") or "").strip():
+                    svc[_normalize_feature(s["name"])] = s["list_price"]
+            if svc:
+                entry["svc"] = svc
+            if entry:
+                out[pname] = entry
+        store.set_setting("bundle.aiest:" + name, json.dumps({"plans": out}, ensure_ascii=False))
+        n += 1
     if progress_cb:
         progress_cb(total, total, "")
     return n

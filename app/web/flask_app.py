@@ -234,6 +234,40 @@ def bundle_run():
     return redirect(_bundle_url(names))
 
 
+@app.route("/bundle/aiestimate", methods=["POST"])
+def bundle_aiestimate():
+    """검색으로 못 구한 빈칸 가격을 AI 지식으로 추정해 채운다(폴백). 백그라운드 실행."""
+    names = [n for n in request.form.getlist("company") if n]
+    if config.ACCESS_CODE and (request.form.get("access_code") or "").strip() != config.ACCESS_CODE:
+        return redirect(_bundle_url(names, error="bad_code"))
+    if not _bundle_progress["running"]:
+        with _bundle_lock:
+            if not _bundle_progress["running"]:
+                _bundle_progress.update(
+                    {"running": True, "total": 0, "done": 0,
+                     "current": "AI 추정 시작 중…", "n": 0, "names": names, "error": ""}
+                )
+                threading.Thread(
+                    target=_background_bundle_estimate,
+                    kwargs={"names": names or None},
+                    daemon=True,
+                ).start()
+    return redirect(_bundle_url(names, analyzing="1"))
+
+
+def _background_bundle_estimate(names=None) -> None:
+    try:
+        log.info("[bundle-est] AI 추정 폴백 시작 (names=%s)", names)
+        n = presenters.estimate_bundle_gaps(names, progress_cb=_bundle_progress_cb)
+        _bundle_progress.update({"n": n})
+        log.info("[bundle-est] 완료: %d곳 추정", n)
+    except Exception:  # noqa: BLE001
+        log.exception("[bundle-est] 실패")
+        _bundle_progress.update({"error": "ai_failed"})
+    finally:
+        _bundle_progress.update({"running": False, "current": ""})
+
+
 def _bundle_progress_cb(done: int, total: int, current: str) -> None:
     _bundle_progress.update({"done": done, "total": total, "current": current})
 

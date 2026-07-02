@@ -527,6 +527,111 @@ def extract_bundles_ai(company: str, raw_text: str, anchor: str | None = None) -
     return {"anchor": anchor or "", "plans": plans}
 
 
+def estimate_bundle_gaps_ai(
+    company: str, anchor: str | None, plans: list[dict], market_kr: bool = False
+) -> list[dict]:
+    """검색으로 못 구한 '빈칸' 가격만 AI의 지식으로 추정(폴백).
+
+    입력 plans: 저장된 분석의 요금제들
+        [{name, currency, monthly(None이면 빈칸), services:[{name, choice, list_price}]}]
+    반환: plans 와 같은 순서의
+        [{"name", "monthly": {v,conf,basis}|None,
+          "services": [{"name", "list_price": {v,conf,basis}|None}]}]
+    - 이미 값이 있는 항목(검색/수동)은 절대 건드리지 않음 → 빈칸(None)만 추정.
+    - 모르면 지어내지 말고 v=null. 값마다 확신도(high/med/low)+한 줄 근거.
+    - 개별 서비스 정가는 비교적 안정적, 번들 할인가는 변동 커서 보수적으로.
+    """
+    if not config.ANTHROPIC_API_KEY:
+        raise ExtractError("ANTHROPIC_API_KEY 가 설정되지 않았습니다 (.env 확인).")
+    # 빈칸이 하나도 없으면 호출하지 않는다(비용 절약).
+    gaps = []
+    for p in plans:
+        miss_m = p.get("monthly") in (None, "", 0)
+        miss_s = [s.get("name") for s in (p.get("services") or [])
+                  if s.get("list_price") in (None, "", 0) and (s.get("name") or "").strip()]
+        if miss_m or miss_s:
+            gaps.append((p, miss_m, miss_s))
+    if not gaps:
+        return []
+
+    from anthropic import Anthropic
+
+    cur_hint = "KRW (Korean won, 원)" if market_kr else "the plan's own currency"
+    spec = []
+    for p, miss_m, miss_s in gaps:
+        spec.append({
+            "name": p.get("name"),
+            "currency": (p.get("currency") or ("KRW" if market_kr else "USD")),
+            "need_monthly": bool(miss_m),
+            "need_services": miss_s,
+        })
+    anchor_line = f"These bundles are built around '{anchor}'. " if anchor else ""
+    prompt = (
+        "You estimate MISSING subscription/bundle prices from your own knowledge, ONLY as a "
+        "fallback because a live search could not find them. Provider: " + company + ". "
+        + anchor_line +
+        "Estimate prices in " + cur_hint + ". Give the CURRENT typical retail price you know.\n"
+        "STRICT RULES:\n"
+        "1) Fill ONLY the fields listed as needed below. Return the SAME plan names.\n"
+        "2) If you do NOT confidently know a value, return v=null. NEVER invent a plausible "
+        "number — a null is far better than a wrong price.\n"
+        "3) For each value give conf = 'high' | 'med' | 'low' and basis = one short phrase "
+        "(e.g. 'well-known Netflix Korea standard price', 'carrier plan price varies by promo').\n"
+        "4) A service's standalone MONTHLY retail price is usually stable and safer to estimate. "
+        "A carrier BUNDLE's discounted monthly price varies a lot — be conservative (lower conf).\n"
+        "5) Numbers only, no currency symbols, no thousands separators.\n\n"
+        "NEEDED (JSON):\n" + json.dumps(spec, ensure_ascii=False) + "\n\n"
+        "Return ONLY JSON: {\"plans\":[{\"name\":...,\"monthly\":{\"v\":num|null,"
+        "\"conf\":\"med\",\"basis\":\"...\"},\"services\":[{\"name\":...,\"list_price\":"
+        "{\"v\":num|null,\"conf\":\"high\",\"basis\":\"...\"}}]}]}. Omit monthly if it was not "
+        "needed. No prose, no code fences."
+    )
+    client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
+    resp = client.messages.create(
+        model=config.ANTHROPIC_MODEL,
+        max_tokens=4096,
+        temperature=0,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    raw = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
+    try:
+        data = _loads_loose(raw)
+    except json.JSONDecodeError as exc:
+        raise ExtractError(f"AI 추정 JSON 파싱 실패: {exc}") from exc
+
+    def _num2(v):
+        if v is None:
+            return None
+        if isinstance(v, (int, float)):
+            return float(v) if v > 0 else None
+        m = re.search(r"\d+(?:\.\d+)?", str(v).replace(",", ""))
+        return float(m.group()) if m else None
+
+    def _cell(d):
+        if not isinstance(d, dict):
+            return None
+        v = _num2(d.get("v"))
+        if v is None:
+            return None
+        conf = str(d.get("conf") or "").lower()
+        conf = conf if conf in ("high", "med", "low") else "low"
+        return {"v": v, "conf": conf, "basis": str(d.get("basis") or "").strip()[:120]}
+
+    out = []
+    for p in (data.get("plans") or []):
+        svcs = []
+        for s in (p.get("services") or []):
+            nm = str(s.get("name") or "").strip()
+            if nm:
+                svcs.append({"name": nm, "list_price": _cell(s.get("list_price"))})
+        out.append({
+            "name": str(p.get("name") or "").strip(),
+            "monthly": _cell(p.get("monthly")),
+            "services": svcs,
+        })
+    return out
+
+
 def analyze_pricing_ai(company: str, groups: list[dict]) -> list[dict]:
     """가격대별 '처음 풀리는 기능'(결정적 증분)을 AI가 분석해 테마·요약을 붙인다.
 
