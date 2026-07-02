@@ -644,9 +644,11 @@ def describe_features_ai(items: list[dict], lang: str = "ko") -> dict:
 
     from anthropic import Anthropic
 
+    # 모델이 이상한 canon 키(예: 'translat', 'ALIAS::x')를 그대로 못 돌려줄 수 있어,
+    # 정수 id 로 주고받고 아래에서 실제 키로 되돌린다(매핑 안전).
     spec = [
-        {"key": it["key"], "name": it["name"], "samples": (it.get("samples") or [])[:5]}
-        for it in items
+        {"id": i, "name": it["name"], "samples": (it.get("samples") or [])[:5]}
+        for i, it in enumerate(items)
     ]
     lang_line = ("Write each description in Korean." if lang == "ko"
                  else "Write each description in English.")
@@ -656,9 +658,10 @@ def describe_features_ai(items: list[dict], lang: str = "ko") -> dict:
         + lang_line + " Ground it in the name and the sample descriptions from real "
         "provider pages; if samples are thin, describe generically from the name. Keep it "
         "concise (about 12 words), no marketing fluff, no price, no company names. "
-        "If the name is too vague to describe, return an empty string for that key.\n\n"
+        "If the name is too vague to describe, return an empty string for that id.\n\n"
         "FEATURES (JSON):\n" + json.dumps(spec, ensure_ascii=False) + "\n\n"
-        "Return ONLY JSON: {\"desc\":{\"<key>\":\"<one sentence>\", ...}}. No prose, no code fences."
+        "Return ONLY JSON keyed by the SAME numeric id: {\"desc\":{\"0\":\"<one sentence>\","
+        "\"1\":\"...\"}}. No prose, no code fences."
     )
     client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
     resp = client.messages.create(
@@ -672,11 +675,16 @@ def describe_features_ai(items: list[dict], lang: str = "ko") -> dict:
         data = _loads_loose(raw)
     except json.JSONDecodeError as exc:
         raise ExtractError(f"기능 설명 JSON 파싱 실패: {exc}") from exc
+    # id → 실제 key 로 되돌린다.
+    raw_desc = data.get("desc") or {}
     out = {}
-    for k, v in (data.get("desc") or {}).items():
+    for i, it in enumerate(items):
+        v = raw_desc.get(str(i))
+        if v is None:
+            v = raw_desc.get(i)   # 혹시 정수 키로 온 경우
         s = str(v or "").strip()
         if s:
-            out[str(k)] = s[:200]
+            out[it["key"]] = s[:200]
     return out
 
 
