@@ -186,38 +186,43 @@
         <button type="submit" class="btn-secondary btn-sm" title="{{ t('compare.desc_gen_help') }}">🤖 {{ t('compare.desc_gen') }}</button>
       </form>
     </div>
-    <div class="pos-tabs" role="tablist">
-      {% for cls in ['commodity', 'standard', 'differentiated'] %}
-      {% set n = data.feature_positioning | selectattr('label', 'equalto', cls) | list | length %}
-      {% if n %}
-      <button type="button" class="pos-tab badge-{{ cls }}" data-poscls="{{ cls }}">{{ t('compare.class_' ~ cls) }} <span class="cat-count">{{ n }}</span></button>
-      {% endif %}
-      {% endfor %}
-      <button type="button" class="pos-tab pos-tab-all" data-poscls="all">{{ t('filter.all') }} <span class="cat-count">{{ data.feature_positioning|length }}</span></button>
-    </div>
-    <p class="pos-hint muted" id="posHint">{{ t('compare.pos_pick_hint') }}</p>
-    {% for fp in data.feature_positioning %}
-    <details class="pos-feat" id="posfeat-{{ loop.index0 }}" data-poscls="{{ fp.label }}">
-      <summary>
-        <span class="feat-badge badge-{{ fp.label }}">{{ t('compare.class_' + fp.label) }}</span>
-        <strong>{{ fp.feature }}</strong>
-        <span class="muted">— {{ t('compare.pos_providers', n=fp.providers, total=fp.total) }}{% if fp.unlock_price %} · ${{ '%g'|format(fp.unlock_price) }}{% endif %}</span>
-        {% if fp.desc %}<span class="pos-desc">{{ fp.desc }}</span>{% endif %}
+    <p class="pos-hint muted" id="posHint">{{ t('compare.pos_cat_hint') }}</p>
+    {% set cats = data.feature_positioning | map(attribute='category') | list | unique | list %}
+    {% for cat in cats %}
+    {% set feats = data.feature_positioning | selectattr('category', 'equalto', cat) | list %}
+    {% set nc = feats | selectattr('label', 'equalto', 'commodity') | list | length %}
+    {% set ns = feats | selectattr('label', 'equalto', 'standard') | list | length %}
+    {% set nd = feats | selectattr('label', 'equalto', 'differentiated') | list | length %}
+    <details class="pos-cat">
+      <summary><strong>{{ cat }}</strong> <span class="muted">— {{ t('compare.pos_cat_features', n=feats|length) }}</span>
+        {% if nc %}<span class="feat-badge badge-commodity">{{ t('compare.class_commodity') }} {{ nc }}</span>{% endif %}
+        {% if ns %}<span class="feat-badge badge-standard">{{ t('compare.class_standard') }} {{ ns }}</span>{% endif %}
+        {% if nd %}<span class="feat-badge badge-differentiated">{{ t('compare.class_differentiated') }} {{ nd }}</span>{% endif %}
       </summary>
-      <p class="pos-why"><span class="why-label">{{ t('compare.why_label') }}</span>
-        {% if fp.label == 'differentiated' %}{{ t('compare.why_differentiated', total=fp.total, providers=fp.providers, pen=fp.pen_pct, paid=fp.paid_cnt) }}
-        {% elif fp.label == 'commodity' %}{{ t('compare.why_commodity', total=fp.total, providers=fp.providers, pen=fp.pen_pct, free=fp.free_cnt) }}
-        {% else %}{{ t('compare.why_standard', total=fp.total, providers=fp.providers, pen=fp.pen_pct, free=fp.free_cnt, paid=fp.paid_cnt) }}{% endif %}</p>
-      <p class="pos-what muted">{{ t('compare.pos_what_hint') }}</p>
-      <ul class="pos-providers">
-        {% for pv in fp.providers_list %}
-        <li>
-          <strong>{{ pv.company }}</strong>
-          <span class="muted">{% if pv.is_free %}{{ t('word.free') }}{% elif pv.price is not none %}${{ '%g'|format(pv.price) }}/{{ t('col.monthly') }}{% endif %}</span>
-          — {{ pv.features | join(', ') }}
-        </li>
-        {% endfor %}
-      </ul>
+      {% for fp in feats %}
+      <details class="pos-feat" id="posfeat-{{ fp.idx }}" data-poscls="{{ fp.label }}">
+        <summary>
+          <span class="feat-badge badge-{{ fp.label }}">{{ t('compare.class_' + fp.label) }}</span>
+          <strong>{{ fp.feature }}</strong>
+          <span class="muted">— {{ t('compare.pos_providers', n=fp.providers, total=fp.total) }}{% if fp.unlock_price %} · ${{ '%g'|format(fp.unlock_price) }}{% endif %}</span>
+          {% if fp.desc %}<span class="pos-desc">{{ fp.desc }}</span>{% endif %}
+        </summary>
+        <p class="pos-why"><span class="why-label">{{ t('compare.why_label') }}</span>
+          {% if fp.label == 'differentiated' %}{{ t('compare.why_differentiated', total=fp.total, providers=fp.providers, pen=fp.pen_pct, paid=fp.paid_cnt) }}
+          {% elif fp.label == 'commodity' %}{{ t('compare.why_commodity', total=fp.total, providers=fp.providers, pen=fp.pen_pct, free=fp.free_cnt) }}
+          {% else %}{{ t('compare.why_standard', total=fp.total, providers=fp.providers, pen=fp.pen_pct, free=fp.free_cnt, paid=fp.paid_cnt) }}{% endif %}</p>
+        <p class="pos-what muted">{{ t('compare.pos_what_hint') }}</p>
+        <ul class="pos-providers">
+          {% for pv in fp.providers_list %}
+          <li>
+            <strong>{{ pv.company }}</strong>
+            <span class="muted">{% if pv.is_free %}{{ t('word.free') }}{% elif pv.price is not none %}${{ '%g'|format(pv.price) }}/{{ t('col.monthly') }}{% endif %}</span>
+            — {{ pv.features | join(', ') }}
+          </li>
+          {% endfor %}
+        </ul>
+      </details>
+      {% endfor %}
     </details>
     {% endfor %}
   </div>
@@ -770,31 +775,12 @@
 
     var posChart;   // 아래에서 생성
 
-    // 커머디티/표준/차별화 탭 — 선택 시 리스트 + 산점도를 해당 분류만 표시('all'=전체)
-    var posTabs = document.querySelectorAll('.pos-tab');
-    var posFeats = document.querySelectorAll('.pos-feat');
-    var posHint = document.getElementById('posHint');
-    function showPosClass(cls) {
-      if (posHint) posHint.style.display = 'none';
-      posTabs.forEach(function (t) { t.classList.toggle('on', t.getAttribute('data-poscls') === cls); });
-      posFeats.forEach(function (f) {
-        f.style.display = (cls === 'all' || f.getAttribute('data-poscls') === cls) ? '' : 'none';
-      });
-    }
-    posTabs.forEach(function (t) {
-      t.addEventListener('click', function () { showPosClass(t.getAttribute('data-poscls')); });
-    });
-    // 기본은 아무 기능도 안 보임 — 탭을 눌러야 표시(안내 문구만 노출)
-    posFeats.forEach(function (f) { f.style.display = 'none'; });
-
+    // 산점도 점 클릭 → 해당 기능 상세로 이동(속한 카테고리 그룹도 펼침).
     function gotoFeature(i) {
       var el = document.getElementById('posfeat-' + i);
       if (!el) return;
-      var cls = el.getAttribute('data-poscls');
-      var active = document.querySelector('.pos-tab.on');
-      var cur = active ? active.getAttribute('data-poscls') : null;
-      // 아무 탭도 안 켜졌거나(기본 숨김) 다른 분류면 그 분류 탭을 활성화해 표시
-      if (!active || (cur !== 'all' && cur !== cls)) showPosClass(cls);
+      var cat = el.closest('.pos-cat');
+      if (cat) cat.open = true;
       el.open = true;
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       el.classList.add('flash');
@@ -875,7 +861,6 @@
         }
       }
     });
-    showPosClass('all');   // 기본은 전체 표시
     window.__posChart = posChart;   // 산점도 접기/펼치기 시 리사이즈용
 
     // 경계 슬라이더: 보급률·해금가 경계를 실시간 조정 → 사분면·점 색·개수 갱신.
