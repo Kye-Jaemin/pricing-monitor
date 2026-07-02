@@ -161,22 +161,9 @@ def _process_source(
     else:
         g_url = fetch.localize_google_url(source_url, gl, hl)
     if source_type == "google_search" and is_bundle and config.SERPAPI_KEY:
-        # 번들 검색: SerpAPI(AI Overview·정확하지만 좁음)와 Playwright(구글 SERP·
-        # 넓지만 지저분/차단 가능)를 둘 다 모아 합친다 — 한쪽만 고르면 어떤 번들은
-        # 좁아지고(예: SKT 5GX 누락) 어떤 번들은 junk 가 되던 문제를 동시에 해소.
-        # Playwright 가 차단/빈 결과면 그것만 버리고 SerpAPI 만 쓴다.
-        sp = pw = ""
-        try:
-            sp = fetch.fetch_google_via_serpapi(g_url, gl=gl, hl=hl)
-        except Exception:  # noqa: BLE001
-            sp = ""
-        try:
-            pw = fetch.fetch_page_text(g_url)
-        except Exception:  # noqa: BLE001
-            pw = ""
-        if _google_blocked_or_empty(pw):
-            pw = ""
-        page_text = _merge_sources(sp, pw)
+        # 번들 검색: SerpAPI 로 검색 결과 전체를 받는다. (구글에 대한 Playwright 는
+        # 봇 차단으로 실패·재시도(30~60s)만 허비하고 버려지므로 쓰지 않는다.)
+        page_text = fetch.fetch_google_via_serpapi(g_url, gl=gl, hl=hl)
     elif source_type == "google_search":
         # 일반 주간 수집: 무료 Playwright 먼저, 비었거나 봇 차단으로 보이면 그때만
         # SerpAPI 로 폴백(월 100회 무료 쿼터 절약).
