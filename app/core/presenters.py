@@ -2170,12 +2170,10 @@ def compare(names: list[str]) -> dict:
                 a = agg.get(key)
                 if a is None:
                     a = agg[key] = {"display": _canon_disp(f), "companies": set(),
-                                    "prices": [], "detail": {}}
+                                    "detail": {}}
                 elif _good_alias(f):
                     a["display"] = _good_alias(f)  # 유효 별칭이 있으면 대표명으로 승격
                 a["companies"].add(pc["company"])
-                if eff is not None:
-                    a["prices"].append(eff)
                 d = a["detail"].setdefault(
                     pc["company"], {"features": set(), "is_free": False, "price": None}
                 )
@@ -2227,7 +2225,16 @@ def compare(names: list[str]) -> dict:
     pos_by_key: dict[str, dict] = {}
     for key, a in agg.items():
         cls = _classify(key)
-        price = statistics.median(a["prices"]) if a["prices"] else 0.0
+        # 대표가(해금가) = '업체별 첫 해금가'의 median. 무료 제공이면 0으로 본다.
+        #   (기존엔 병합된 하위 기능이 등장하는 모든 요금제 가격을 median 내서, 무료
+        #    제공 업체만 있는데도 유료 요금제 가격이 섞여 대표가가 부풀던 문제 수정 —
+        #    업체별 '무료' 배지와 대표가가 어긋나지 않도록 첫 해금가 기준으로 통일.)
+        per_co_unlock = [
+            0.0 if dd["is_free"] else dd["price"]
+            for dd in a["detail"].values()
+            if dd["is_free"] or dd["price"] is not None
+        ]
+        price = statistics.median(per_co_unlock) if per_co_unlock else 0.0
         providers_list = sorted(
             (
                 {
