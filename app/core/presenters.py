@@ -172,13 +172,29 @@ def _is_limitation_feature(f: str) -> bool:
     return False
 
 
+_CTA_RE = re.compile(
+    r"(?i)^\s*(log\s?in|sign\s?in|sign\s?up|register|subscribe)\b"   # 'Login', 'Sign up …'
+    r"|\b(log\s?in|sign\s?up|sign\s?in)\s+to\b"                      # 'Login to experience …'
+    r"|\bcontact\s+(us|sales|our\s+team|for\s+(details|pricing))"    # 'Contact sales for details'
+    r"|\bbook\s+a\s+demo\b|\brequest\s+(a\s+)?(demo|access|quote|pricing)\b"
+    r"|\bget\s+started\b|\btalk\s+to\s+(sales|us)\b"
+    r"|로그인|회원\s*가입|가입\s*하면|문의\s*(하세요|바랍니다)|상담\s*신청"
+)
+
+
+def _is_cta_feature(f: str) -> bool:
+    """'로그인하세요'·'문의하세요'처럼 실제 기능이 아니라 행동 유도(CTA)인지."""
+    return bool(_CTA_RE.search(f or ""))
+
+
 def _skip_feature(f: str) -> bool:
     """기능 포지셔닝/분석 집계에서 제외할 노이즈
-    (포함 안내·광고·플랜 이름·체험 안내·부정/부재·제약 표현)."""
+    (포함 안내·광고·플랜 이름·체험 안내·부정/부재·제약·행동유도 표현)."""
     return (
         _is_inclusion_phrase(f) or _is_ad_feature(f)
         or _is_plan_name(f) or _is_trial_feature(f)
         or _is_negative_feature(f) or _is_limitation_feature(f)
+        or _is_cta_feature(f)
     )
 
 
@@ -194,8 +210,11 @@ _CANON_RULES = [
      r"배경\s*(제거|삭제|지우)"),
     ("AI 모델 접근",
      r"(?i)\b(gemini|gpt-?\d|chatgpt|claude|llama|mixtral|mistral|dall[\s-]?e|sora|veo|"
-     r"imagen|flux|grok|deepseek|qwen|o[13]\b)|(ai|language)\s+models?\b|"
-     r"모델\s*(접근|액세스|이용)|(premium|latest|advanced|frontier|top|flagship)\s+models?\b"),
+     r"imagen|flux|grok|deepseek|qwen|o[13]\b|gen[\s-]?\d|kling|runway|pika|luma|"
+     r"dream\s*machine|ideogram|recraft|hailuo|minimax|hunyuan|seedance|wan[\s-]?\d|"
+     r"mochi|ltx|hidream|stable\s*diffusion|firefly)|(ai|language|video|image)\s+models?\b|"
+     r"모델\s*(접근|액세스|이용)|(premium|latest|advanced|frontier|top|flagship|다양한)\s*(ai\s*)?models?\b|"
+     r"다양한\s*ai\s*모델"),
     ("업스케일·화질개선",
      r"(?i)\bupscal\w+|super[\s-]?resolution|image enhancement|enhance\w*\s+(quality|"
      r"resolution)|업스케일|화질\s*(개선|향상)|해상도\s*향상"),
@@ -218,6 +237,10 @@ _CANON_RULES = [
      r"(?i)\bAPI\b|\bAPIs\b|integration|webhook|\bplugin\b|\bSDK\b|통합|연동"),
     ("상업 이용",
      r"(?i)commercial\s+(use|licen\w+|right)|상업\s*(이용|사용|라이선스)"),
+    ("지원",
+     r"(?i)\bsupport\b|onboarding|customer success|account manager|success (manager|team)|"
+     r"dedicated\s+(support|manager|team|account)|help\s*(desk|center)|"
+     r"지원|온보딩|고객\s*성공|전담\s*(매니저|지원)"),
 ]
 _CANON_RULES = [(name, re.compile(pat)) for name, pat in _CANON_RULES]
 
