@@ -399,6 +399,11 @@ def extract_bundles_ai(company: str, raw_text: str, anchor: str | None = None) -
         "points/rewards, content credits, free shipping, a 'choose 1' streaming perk, "
         "cloud storage, webtoon cookies, etc.). Pages may be in Korean — read Korean. "
         + anchor_line +
+        "If a membership/bundle has paid UPGRADE options (e.g. base ₩4,900, then "
+        "'+₩6,500 for Netflix Standard', '+₩10,000 for Netflix Premium'), emit a SEPARATE "
+        "plan for EACH resulting price point: the base plan AND one plan per upgrade tier "
+        "(monthly = base price + upgrade cost; name it like '<base> + <upgrade>'). Do NOT "
+        "hide upgrade tiers in price_note only — each distinct total price must be its own plan. "
         "For EACH plan return: name, provider (who sells it), currency (ISO code of the "
         "listed price, e.g. USD, KRW, JPY — infer ₩/원→KRW, $→USD), monthly (number in "
         "that currency or null), annual (number per month or null), choose (if you PICK "
