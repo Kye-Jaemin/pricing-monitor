@@ -340,7 +340,7 @@ def bundle_pricepick():
     company = (request.form.get("company") or "").strip()
     key = (request.form.get("key") or "").strip()
     val = request.form.get("value")
-    if company and key and val in ("ai", "search"):
+    if company and key and val in ("ai", "search", "manual"):
         try:
             cur = json.loads(store.get_setting("bundle.pricepick:" + company) or "{}") or {}
         except (ValueError, TypeError):

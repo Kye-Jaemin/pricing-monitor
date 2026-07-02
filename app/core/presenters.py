@@ -821,6 +821,41 @@ def _to_usd(amount, currency: str):
     return round(float(amount) / rate, 2)
 
 
+def _price_sources(manual_lp, search_lp, ai_lp, ai_cell, pick):
+    """가격의 세 원천(수동/검색/AI) 중 활성값을 결정하고 비교용 목록을 만든다.
+
+    pick("manual"|"search"|"ai"|None)이 그 원천에 값이 있으면 우선.
+    없거나 None이면 기본 우선순위 수동 > 검색 > AI.
+    반환: (활성값 lp, 활성원천 src, 활성이 AI일 때의 셀 svc_ai, 비교목록 srcs)
+      srcs = [{src, usd, active, basis}] (값이 있는 원천만)
+    """
+    if pick == "manual" and manual_lp is not None:
+        src = "manual"
+    elif pick == "search" and search_lp is not None:
+        src = "search"
+    elif pick == "ai" and ai_lp is not None:
+        src = "ai"
+    elif manual_lp is not None:
+        src = "manual"
+    elif search_lp is not None:
+        src = "search"
+    elif ai_lp is not None:
+        src = "ai"
+    else:
+        src = "none"
+    lp = {"manual": manual_lp, "search": search_lp, "ai": ai_lp, "none": None}[src]
+    svc_ai = ai_cell if src == "ai" else None
+    srcs = []
+    if search_lp is not None:
+        srcs.append({"src": "search", "usd": round(search_lp, 2), "active": src == "search", "basis": ""})
+    if ai_lp is not None:
+        b = (ai_cell.get("conf", "") + " · " + ai_cell.get("basis", "")) if ai_cell else ""
+        srcs.append({"src": "ai", "usd": round(ai_lp, 2), "active": src == "ai", "basis": b})
+    if manual_lp is not None:
+        srcs.append({"src": "manual", "usd": round(manual_lp, 2), "active": src == "manual", "basis": ""})
+    return lp, src, svc_ai, srcs
+
+
 _CUR_SYMBOL = {"KRW": "₩", "JPY": "¥", "EUR": "€", "GBP": "£", "USD": "$"}
 
 
@@ -1068,24 +1103,8 @@ def bundle_view(names: list[str] | None = None) -> dict:
             em = ae_plan.get("monthly")
             ai_m = _to_usd(em.get("v"), cur) if em else None
             mkey = orig_name + "\x1fMONTHLY"
-            mpick = price_pick.get(mkey)     # "ai" | "search" | None
-            m_ai = None
-            if mpick == "ai" and ai_m is not None:
-                m_usd, m_ai = ai_m, em
-            elif mpick == "search" and search_m is not None:
-                m_usd = search_m
-            elif search_m is not None:
-                m_usd = search_m
-            elif ai_m is not None:
-                m_usd, m_ai = ai_m, em
-            else:
-                m_usd = None
-            # 토글용 대안(두 원천 모두 있을 때)
-            m_alt_src, m_alt_usd = "", None
-            if m_ai is None and ai_m is not None and m_usd is not None:
-                m_alt_src, m_alt_usd = "ai", round(ai_m, 2)
-            elif m_ai is not None and search_m is not None:
-                m_alt_src, m_alt_usd = "search", round(search_m, 2)
+            m_usd, m_src, m_ai, m_srcs = _price_sources(
+                None, search_m, ai_m, em, price_pick.get(mkey))
             eff = m_usd if m_usd is not None else a_usd   # 분포·집계는 USD 기준
             if eff is not None:
                 co_prices.append(eff)
@@ -1110,29 +1129,10 @@ def bundle_view(names: list[str] | None = None) -> dict:
                     search_lp = _match_standalone(sname, smap)  # KR 번들은 US 폴백 금지
                 ai_cell = ae_svc.get(skey)
                 ai_lp = _to_usd(ai_cell.get("v"), cur) if ai_cell else None
-                # 사용자 선택 반영(수동값이 있으면 무조건 수동 우선)
+                # 세 원천(수동/검색/AI) 비교 + 사용자가 고른 원천 반영
                 pkey = (p.get("name") or "") + "\x1f" + skey
-                pick = price_pick.get(pkey)     # "ai" | "search" | None
-                svc_ai = None
-                if manual_lp is not None:
-                    lp, src = manual_lp, "manual"
-                elif pick == "ai" and ai_lp is not None:
-                    lp, src, svc_ai = ai_lp, "ai", ai_cell
-                elif pick == "search" and search_lp is not None:
-                    lp, src = search_lp, "search"
-                elif search_lp is not None:
-                    lp, src = search_lp, "search"          # 기본: 검색값 우선
-                elif ai_lp is not None:
-                    lp, src, svc_ai = ai_lp, "ai", ai_cell  # 검색값 없으면 AI로 채움
-                else:
-                    lp, src = None, "none"
-                # 토글용 대안값(수동이 아니고, 두 원천이 모두 있을 때만)
-                alt_src, alt_usd = "", None
-                if manual_lp is None:
-                    if src == "search" and ai_lp is not None:
-                        alt_src, alt_usd = "ai", round(ai_lp, 2)
-                    elif src == "ai" and search_lp is not None:
-                        alt_src, alt_usd = "search", round(search_lp, 2)
+                lp, src, svc_ai, svc_srcs = _price_sources(
+                    manual_lp, search_lp, ai_lp, ai_cell, price_pick.get(pkey))
                 ckey = (p.get("name") or "") + "\x1f" + skey
                 ch = bool(s.get("choice"))
                 if ckey in choice_ov:      # 사용자 택1↔포함 보정
@@ -1145,7 +1145,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
                     "key": skey, "manual": bool(ov), "override_raw": ov_num,
                     "ai_est": bool(svc_ai),
                     "ai_basis": (svc_ai.get("conf", "") + " · " + svc_ai.get("basis", "")) if svc_ai else "",
-                    "pkey": pkey, "alt_src": alt_src, "alt_usd": alt_usd,
+                    "pkey": pkey, "srcs": svc_srcs,
                     "icon": _service_icon(sname, comp_icons),
                 })
                 if is_anchor:
@@ -1171,7 +1171,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
                     "key": skey, "manual": ms.get("price") is not None,
                     "added": True, "override_raw": "",
                     "ai_est": False, "ai_basis": "",
-                    "pkey": "", "alt_src": "", "alt_usd": None,
+                    "pkey": "", "srcs": [],
                     "icon": _service_icon(sname, comp_icons),
                 })
                 if not is_anchor:
@@ -1229,8 +1229,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 return {"name": s["name"], "usd": round(s["list_usd"], 2), "choice": choice,
                         "key": s["key"], "manual": s["manual"], "override_raw": s["override_raw"],
                         "ai_est": s.get("ai_est", False), "ai_basis": s.get("ai_basis", ""),
-                        "pkey": s.get("pkey", ""), "alt_src": s.get("alt_src", ""),
-                        "alt_usd": s.get("alt_usd"),
+                        "pkey": s.get("pkey", ""), "srcs": s.get("srcs", []),
                         "icon": _service_icon(s["name"], comp_icons)}
             parts = (
                 [_part(s, False) for s in sorted(fixed, key=lambda x: (not x["is_anchor"], -x["list_usd"]))]
@@ -1262,7 +1261,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 "annual_orig": _fmt_money(p.get("annual"), cur) if cur != "USD" else None,
                 "monthly_ai": bool(m_ai),
                 "monthly_ai_basis": (m_ai.get("conf", "") + " · " + m_ai.get("basis", "")) if m_ai else "",
-                "monthly_pkey": mkey, "monthly_alt_src": m_alt_src, "monthly_alt_usd": m_alt_usd,
+                "monthly_pkey": mkey, "monthly_srcs": m_srcs,
                 "choose": p.get("choose"),
                 "price_note": p.get("price_note"),
                 "conditions": p.get("conditions"),
@@ -1392,14 +1391,12 @@ def _backfill_bundle_data(data: dict) -> None:
                 pl.setdefault("monthly_ai", False)
                 pl.setdefault("monthly_ai_basis", "")
                 pl.setdefault("monthly_pkey", "")
-                pl.setdefault("monthly_alt_src", "")
-                pl.setdefault("monthly_alt_usd", None)
+                pl.setdefault("monthly_srcs", [])
                 for sp in (pl.get("standalone_parts") or []):
                     sp.setdefault("ai_est", False)
                     sp.setdefault("ai_basis", "")
                     sp.setdefault("pkey", "")
-                    sp.setdefault("alt_src", "")
-                    sp.setdefault("alt_usd", None)
+                    sp.setdefault("srcs", [])
                 for s in (pl.get("services") or []):
                     s.setdefault("ai_est", False)
 
