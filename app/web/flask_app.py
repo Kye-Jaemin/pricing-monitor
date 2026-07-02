@@ -348,6 +348,26 @@ def bundle_hideplan():
     return redirect(_bundle_url(names))
 
 
+@app.route("/bundle/planname", methods=["POST"])
+def bundle_planname():
+    """번들 요금제 이름을 사용자가 직접 수정(구글 검색과 다를 때). 원래이름→표시이름 맵으로 저장."""
+    names = [n for n in request.form.getlist("sel") if n]
+    company = (request.form.get("company") or "").strip()
+    plan = (request.form.get("plan") or "").strip()   # 원래(내부 키) 이름
+    new = (request.form.get("name") or "").strip()    # 새 표시 이름
+    if company and plan:
+        try:
+            m = json.loads(store.get_setting("bundle.planname:" + company) or "{}") or {}
+        except (ValueError, TypeError):
+            m = {}
+        if new and new != plan:
+            m[plan] = new
+        else:
+            m.pop(plan, None)   # 빈값이거나 원래대로면 수정 해제
+        store.set_setting("bundle.planname:" + company, json.dumps(m, ensure_ascii=False))
+    return redirect(_bundle_url(names))
+
+
 @app.route("/bundle/krsearch", methods=["POST"])
 def bundle_krsearch():
     """번들 업체의 구글 검색을 한국 로케일(gl=kr&hl=ko)로 지정/해제.

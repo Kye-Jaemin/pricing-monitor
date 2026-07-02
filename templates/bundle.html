@@ -141,7 +141,7 @@
     {% set bp = (d.bundle / dmax * 100)|round(1) %}
     <div class="dumbbell-row" data-dbkey="{{ d.company }}|{{ d.plan }}"{% if d.anchor %} data-jump="{{ d.anchor }}" role="link" tabindex="0" title="{{ t('bundle.jump_detail') }}"{% endif %}>
       <button type="button" class="db-del" title="{{ t('bundle.db_hide') }}" aria-label="{{ t('bundle.db_hide') }}">✕</button>
-      <span class="db-label" title="{{ d.company }} · {{ d.plan }}"><span class="db-ltext">{% if d.icon %}<img class="svc-icon" src="{{ d.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ d.company }} · {{ d.plan }}</span></span>
+      <span class="db-label" title="{{ d.company }} · {{ d.plan_disp or d.plan }}"><span class="db-ltext">{% if d.icon %}<img class="svc-icon" src="{{ d.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ d.company }} · {{ d.plan_disp or d.plan }}</span></span>
       <span class="db-track">
         {% if d.list is not none %}
         {% set lp = (d.list / dmax * 100)|round(1) %}
@@ -255,7 +255,7 @@
         <tbody>
           {% for pl in co.plans %}
           <tr id="{{ pl.anchor }}" class="bundle-plan-row">
-            <td class="tier-name"><button type="button" class="plan-del" title="{{ t('bundle.db_hide') }}" aria-label="{{ t('bundle.db_hide') }}" data-company="{{ co.name }}" data-plan="{{ pl.name }}">✕</button> {{ pl.name }}{% if pl.choose %} <span class="tag tag-choose">{{ t('bundle.choose', n=pl.choose) }}</span>{% endif %}
+            <td class="tier-name"><button type="button" class="plan-del" title="{{ t('bundle.db_hide') }}" aria-label="{{ t('bundle.db_hide') }}" data-company="{{ co.name }}" data-plan="{{ pl.key }}">✕</button> {{ pl.name }} <button type="button" class="plan-rename" data-company="{{ co.name }}" data-plan="{{ pl.key }}" data-name="{{ pl.name }}" title="{{ t('bundle.plan_rename') }}">✎</button>{% if pl.choose %} <span class="tag tag-choose">{{ t('bundle.choose', n=pl.choose) }}</span>{% endif %}
               {% if pl.conditions %}<div class="bundle-cond" title="{{ t('bundle.conditions') }}">⚠ {{ pl.conditions }}</div>{% endif %}</td>
             <td class="muted nowrap">{{ pl.provider }}</td>
             <td class="nowrap">{% if pl.monthly_usd is not none %}${{ '%g'|format(pl.monthly_usd) }}{% if pl.monthly_orig %} <span class="muted">({{ pl.monthly_orig }})</span>{% endif %}{% elif pl.monthly_orig %}<span class="muted">{{ pl.monthly_orig }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
@@ -273,7 +273,7 @@
                         <summary title="{{ t('bundle.edit_price') }}">✎</summary>
                         <form method="post" action="{{ url_for('bundle_svcprice') }}" class="svcprice-form">
                           <input type="hidden" name="company" value="{{ co.name }}">
-                          <input type="hidden" name="plan" value="{{ pl.name }}">
+                          <input type="hidden" name="plan" value="{{ pl.key }}">
                           <input type="hidden" name="key" value="{{ sp.key }}">
                           {% for n in data.selected %}<input type="hidden" name="sel" value="{{ n }}">{% endfor %}
                           <input type="number" step="any" name="value" class="svcprice-input" value="{{ sp.override_raw }}" placeholder="{{ t('bundle.enter_price', cur=pl.currency) }}">
@@ -287,7 +287,7 @@
                     <li class="unpriced-part">{{ up.name }} <span class="muted">{{ t('bundle.unpriced') }}</span>
                       <form method="post" action="{{ url_for('bundle_svcprice') }}" class="svcprice-form">
                         <input type="hidden" name="company" value="{{ co.name }}">
-                        <input type="hidden" name="plan" value="{{ pl.name }}">
+                        <input type="hidden" name="plan" value="{{ pl.key }}">
                         <input type="hidden" name="key" value="{{ up.key }}">
                         {% for n in data.selected %}<input type="hidden" name="sel" value="{{ n }}">{% endfor %}
                         <input type="number" step="any" name="value" class="svcprice-input" placeholder="{{ t('bundle.enter_price', cur=pl.currency) }}">
@@ -302,13 +302,13 @@
               {%- else %}<span class="muted">—</span>{% endif %}
             </td>
             <td>
-              {%- if pl.services %}{% for s in pl.services %}<span class="bundle-svc{% if s.is_anchor %} bundle-svc-anchor{% endif %}{% if s.choice %} bundle-svc-choice{% endif %}{% if s.tier_alt %} bundle-svc-tier{% endif %}{% if s.added %} bundle-svc-added{% endif %}"><span class="bundle-item-cat">{{ s.category }}</span>{% if s.icon %}<img class="svc-icon" src="{{ s.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ s.name }}{% if s.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}{% if s.tier_alt %} <span class="choose-mark" title="{{ t('bundle.tier_help') }}">{{ t('bundle.tier_mark') }}</span>{% endif %}{% if s.added %} <button type="button" class="chip-x" data-company="{{ co.name }}" data-plan="{{ pl.name }}" data-name="{{ s.name }}" title="{{ t('bundle.remove') }}">✕</button>{% else %} <button type="button" class="svc-choice-toggle" data-company="{{ co.name }}" data-key="{{ s.ckey }}" data-next="{{ '0' if s.choice else '1' }}" title="{{ t('bundle.choice_toggle') }}">⇄</button>{% endif %}</span> {% endfor %}
+              {%- if pl.services %}{% for s in pl.services %}<span class="bundle-svc{% if s.is_anchor %} bundle-svc-anchor{% endif %}{% if s.choice %} bundle-svc-choice{% endif %}{% if s.tier_alt %} bundle-svc-tier{% endif %}{% if s.added %} bundle-svc-added{% endif %}"><span class="bundle-item-cat">{{ s.category }}</span>{% if s.icon %}<img class="svc-icon" src="{{ s.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ s.name }}{% if s.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}{% if s.tier_alt %} <span class="choose-mark" title="{{ t('bundle.tier_help') }}">{{ t('bundle.tier_mark') }}</span>{% endif %}{% if s.added %} <button type="button" class="chip-x" data-company="{{ co.name }}" data-plan="{{ pl.key }}" data-name="{{ s.name }}" title="{{ t('bundle.remove') }}">✕</button>{% else %} <button type="button" class="svc-choice-toggle" data-company="{{ co.name }}" data-key="{{ s.ckey }}" data-next="{{ '0' if s.choice else '1' }}" title="{{ t('bundle.choice_toggle') }}">⇄</button>{% endif %}</span> {% endfor %}
               {%- else %}<span class="muted">{{ pl.price_note or '—' }}</span>{% endif %}
               <details class="addsvc">
                 <summary>＋ {{ t('bundle.add_svc') }}</summary>
                 <form method="post" action="{{ url_for('bundle_addsvc') }}" class="addsvc-form">
                   <input type="hidden" name="company" value="{{ co.name }}">
-                  <input type="hidden" name="plan" value="{{ pl.name }}">
+                  <input type="hidden" name="plan" value="{{ pl.key }}">
                   {% for n in data.selected %}<input type="hidden" name="sel" value="{{ n }}">{% endfor %}
                   <input type="text" name="name" class="addsvc-name" placeholder="{{ t('bundle.add_svc_ph') }}" required>
                   <input type="number" step="any" name="price" class="svcprice-input" placeholder="{{ t('bundle.enter_price', cur=pl.currency) }}">
@@ -495,10 +495,15 @@
   }
   document.addEventListener('click', function (e) {
     if (!e.target.closest) return;
-    var b = e.target.closest('.plan-del, .db-del, .db-restore-btn, .chip-x, .svc-choice-toggle');
+    var b = e.target.closest('.plan-del, .plan-rename, .db-del, .db-restore-btn, .chip-x, .svc-choice-toggle');
     if (!b) return;
     e.preventDefault(); e.stopPropagation();
-    if (b.classList.contains('svc-choice-toggle')) {
+    if (b.classList.contains('plan-rename')) {
+      var cur = b.getAttribute('data-name') || '';
+      var nn = window.prompt("{{ t('bundle.plan_rename_prompt') }}", cur);
+      if (nn === null) return;              // 취소
+      post("{{ url_for('bundle_planname') }}", { company: b.getAttribute('data-company'), plan: b.getAttribute('data-plan'), name: nn.trim() });
+    } else if (b.classList.contains('svc-choice-toggle')) {
       post("{{ url_for('bundle_svcchoice') }}", { company: b.getAttribute('data-company'), key: b.getAttribute('data-key'), value: b.getAttribute('data-next') });
     } else if (b.classList.contains('plan-del')) {
       post("{{ url_for('bundle_hideplan') }}", { company: b.getAttribute('data-company'), plan: b.getAttribute('data-plan') });

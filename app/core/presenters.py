@@ -1036,10 +1036,17 @@ def bundle_view(names: list[str] | None = None) -> dict:
             choice_ov = json.loads(store.get_setting("bundle.choice:" + name) or "{}") or {}
         except (ValueError, TypeError):
             choice_ov = {}
+        # 사용자가 직접 고친 요금제 이름(구글 검색과 다를 때): {원래이름: 표시이름}
+        try:
+            plan_rename = json.loads(store.get_setting("bundle.planname:" + name) or "{}") or {}
+        except (ValueError, TypeError):
+            plan_rename = {}
         co_prices = []
         co_plans = []
         for p in plans:
-            if (p.get("name") or "") in hidden_plans:
+            orig_name = p.get("name") or ""          # 내부 키(숨김·정가·택1 저장에 사용)
+            disp_name = plan_rename.get(orig_name, orig_name)  # 화면 표시용 이름
+            if orig_name in hidden_plans:
                 continue  # 영구 제외된 요금제
             cur = (p.get("currency") or "USD").upper()
             m_usd = _to_usd(p.get("monthly"), cur)
@@ -1049,7 +1056,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 co_prices.append(eff)
                 g["prices"].append({
                     "usd": eff, "company": name,
-                    "plan": p.get("name"), "icon": co_icon,
+                    "plan": disp_name, "icon": co_icon,
                 })
             # 연계 카테고리(앵커 제외) 빈도 집계.
             svcs = []
@@ -1181,7 +1188,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
             if standalone and eff is not None and standalone > 0:
                 savings_pct = round((standalone - eff) / standalone * 100)
             co_plans.append({
-                "name": p.get("name"), "provider": p.get("provider"),
+                "name": disp_name, "key": orig_name, "provider": p.get("provider"),
                 "currency": cur,
                 "monthly": p.get("monthly"), "annual": p.get("annual"),
                 "monthly_usd": m_usd, "annual_usd": a_usd,
@@ -1200,7 +1207,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
             # 덤벨 차트용: 행=번들 구성, 점=할인가(번들가) ↔ 정가 합계
             if eff is not None:
                 g["dumbbell"].append({
-                    "company": name, "plan": p.get("name"), "icon": co_icon,
+                    "company": name, "plan": p.get("name"), "plan_disp": disp_name, "icon": co_icon,
                     "bundle": eff, "list": standalone, "save": savings_pct,
                     "anchor": _bundle_anchor_id(name, p.get("name")),
                 })
