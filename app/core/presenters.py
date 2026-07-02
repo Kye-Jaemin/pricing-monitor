@@ -182,6 +182,55 @@ def _skip_feature(f: str) -> bool:
     )
 
 
+# 조회 시점에 코드로 확정 병합(모델 지시에 의존하지 않는 결정적 통합).
+#   자주 나오는 기능군을 이름 패턴으로 하나의 통합명으로 묶어 기능 수를 줄인다.
+#   순서 = 우선순위(구체적 → 일반), 첫 매치가 이김. 지원(support)은 수준별로 남긴다.
+_CANON_RULES = [
+    ("워터마크 제거",
+     r"(?i)(no|without|remove|remov\w+|free\s+of)\s+watermark|watermark[\s-]?free|"
+     r"워터마크\s*(제거|없|프리)"),
+    ("배경 제거",
+     r"(?i)\bbackground\b.{0,12}\b(remov\w+|erase|delete)\b|\bbackground remover\b|"
+     r"배경\s*(제거|삭제|지우)"),
+    ("AI 모델 접근",
+     r"(?i)\b(gemini|gpt-?\d|chatgpt|claude|llama|mixtral|mistral|dall[\s-]?e|sora|veo|"
+     r"imagen|flux|grok|deepseek|qwen|o[13]\b)|(ai|language)\s+models?\b|"
+     r"모델\s*(접근|액세스|이용)|(premium|latest|advanced|frontier|top|flagship)\s+models?\b"),
+    ("업스케일·화질개선",
+     r"(?i)\bupscal\w+|super[\s-]?resolution|image enhancement|enhance\w*\s+(quality|"
+     r"resolution)|업스케일|화질\s*(개선|향상)|해상도\s*향상"),
+    ("내보내기",
+     r"(?i)\b(export|exports|exporting|download|downloads|downloading)\b|내보내기|다운로드"),
+    ("광고 제거",
+     r"(?i)ad[\s-]?free|\bno ads\b|remove\s+ads|ad removal|광고\s*(제거|없|프리)"),
+    ("크레딧",
+     r"(?i)\b(credits?|tokens?)\b|크레딧|토큰"),
+    ("빠른 처리·우선순위",
+     r"(?i)(faster|fastest|fast[\s-]?track|priority|quicker)\s+"
+     r"(process\w*|generat\w*|render\w*|export\w*|queue|creation)|\bfast generations?\b|"
+     r"우선\s*(처리|생성|순위)|빠른\s*(처리|생성|렌더)"),
+    ("협업·팀",
+     r"(?i)\b(team members?|additional seats?|extra seats?|\d+\s*seats?|collaborat\w+|"
+     r"shared workspace|multi[\s-]?user)\b|팀\s*(협업|공유|멤버|시트)|협업\s*기능"),
+    ("클라우드 저장",
+     r"(?i)\bcloud storage\b|\bstorage\b|\basset library\b|클라우드\s*저장|저장\s*공간"),
+    ("API·통합",
+     r"(?i)\bAPI\b|\bAPIs\b|integration|webhook|\bplugin\b|\bSDK\b|통합|연동"),
+    ("상업 이용",
+     r"(?i)commercial\s+(use|licen\w+|right)|상업\s*(이용|사용|라이선스)"),
+]
+_CANON_RULES = [(name, re.compile(pat)) for name, pat in _CANON_RULES]
+
+
+def _force_canon(f: str) -> str | None:
+    """이름 패턴만으로 확정되는 통합명(있으면). 규칙 순서대로 첫 매치."""
+    s = f or ""
+    for name, rx in _CANON_RULES:
+        if rx.search(s):
+            return name
+    return None
+
+
 CLASSIFY_THRESHOLD_KEY = "classify.cheap_usd"
 
 
@@ -2150,11 +2199,14 @@ def compare(names: list[str]) -> dict:
         return a if (a and not _skip_feature(a)) else None
 
     def _canon_key(f: str) -> str:
+        forced = _force_canon(f)          # 코드 확정 통합 우선(모델 무관)
+        if forced:
+            return "ALIAS::" + forced
         a = _good_alias(f)
         return ("ALIAS::" + a) if a else _normalize_feature(f)
 
     def _canon_disp(f: str) -> str:
-        return _good_alias(f) or f
+        return _force_canon(f) or _good_alias(f) or f
 
     # 0) 기능(canonical) 보급률·해금가 집계 → 커머디티/차별화 분류 (무료 기능 포함)
     agg: dict[str, dict] = {}
