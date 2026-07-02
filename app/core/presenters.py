@@ -1031,6 +1031,11 @@ def bundle_view(names: list[str] | None = None) -> dict:
         manual_add: dict = {}
         for a in _added:
             manual_add.setdefault(a.get("plan") or "", []).append(a)
+        # 서비스별 택1↔포함 사용자 보정: {"플랜\x1f서비스키": "1"(택1)/"0"(포함)}
+        try:
+            choice_ov = json.loads(store.get_setting("bundle.choice:" + name) or "{}") or {}
+        except (ValueError, TypeError):
+            choice_ov = {}
         co_prices = []
         co_plans = []
         for p in plans:
@@ -1062,9 +1067,13 @@ def bundle_view(names: list[str] | None = None) -> dict:
                     lp = _to_usd(s.get("list_price"), cur)
                 if lp is None and not krsearch:
                     lp = _match_standalone(sname, smap)  # KR 번들은 US 컴포넌트 정가 폴백 금지
+                ckey = (p.get("name") or "") + "\x1f" + skey
+                ch = bool(s.get("choice"))
+                if ckey in choice_ov:      # 사용자 택1↔포함 보정
+                    ch = choice_ov[ckey] == "1"
                 svcs.append({
                     "name": sname, "category": s.get("category") or "기타",
-                    "is_anchor": is_anchor, "choice": bool(s.get("choice")),
+                    "is_anchor": is_anchor, "choice": ch, "ckey": ckey,
                     "list_usd": lp, "bucket": _cat_bucket(s.get("category") or "", sname),
                     "brand": _brand_key(sname), "tier_alt": False,
                     "key": skey, "manual": bool(ov), "override_raw": ov_num,

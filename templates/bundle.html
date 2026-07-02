@@ -300,7 +300,7 @@
               {%- else %}<span class="muted">—</span>{% endif %}
             </td>
             <td>
-              {%- if pl.services %}{% for s in pl.services %}<span class="bundle-svc{% if s.is_anchor %} bundle-svc-anchor{% endif %}{% if s.choice %} bundle-svc-choice{% endif %}{% if s.tier_alt %} bundle-svc-tier{% endif %}{% if s.added %} bundle-svc-added{% endif %}"><span class="bundle-item-cat">{{ s.category }}</span>{% if s.icon %}<img class="svc-icon" src="{{ s.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ s.name }}{% if s.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}{% if s.tier_alt %} <span class="choose-mark" title="{{ t('bundle.tier_help') }}">{{ t('bundle.tier_mark') }}</span>{% endif %}{% if s.added %} <button type="button" class="chip-x" data-company="{{ co.name }}" data-plan="{{ pl.name }}" data-name="{{ s.name }}" title="{{ t('bundle.remove') }}">✕</button>{% endif %}</span> {% endfor %}
+              {%- if pl.services %}{% for s in pl.services %}<span class="bundle-svc{% if s.is_anchor %} bundle-svc-anchor{% endif %}{% if s.choice %} bundle-svc-choice{% endif %}{% if s.tier_alt %} bundle-svc-tier{% endif %}{% if s.added %} bundle-svc-added{% endif %}"><span class="bundle-item-cat">{{ s.category }}</span>{% if s.icon %}<img class="svc-icon" src="{{ s.icon }}" alt="" onerror="this.style.display='none'">{% endif %}{{ s.name }}{% if s.choice %} <span class="choose-mark">{{ t('bundle.choice_mark') }}</span>{% endif %}{% if s.tier_alt %} <span class="choose-mark" title="{{ t('bundle.tier_help') }}">{{ t('bundle.tier_mark') }}</span>{% endif %}{% if s.added %} <button type="button" class="chip-x" data-company="{{ co.name }}" data-plan="{{ pl.name }}" data-name="{{ s.name }}" title="{{ t('bundle.remove') }}">✕</button>{% else %} <button type="button" class="svc-choice-toggle" data-company="{{ co.name }}" data-key="{{ s.ckey }}" data-next="{{ '0' if s.choice else '1' }}" title="{{ t('bundle.choice_toggle') }}">⇄</button>{% endif %}</span> {% endfor %}
               {%- else %}<span class="muted">{{ pl.price_note or '—' }}</span>{% endif %}
               <details class="addsvc">
                 <summary>＋ {{ t('bundle.add_svc') }}</summary>
@@ -493,10 +493,12 @@
   }
   document.addEventListener('click', function (e) {
     if (!e.target.closest) return;
-    var b = e.target.closest('.plan-del, .db-del, .db-restore-btn, .chip-x');
+    var b = e.target.closest('.plan-del, .db-del, .db-restore-btn, .chip-x, .svc-choice-toggle');
     if (!b) return;
     e.preventDefault(); e.stopPropagation();
-    if (b.classList.contains('plan-del')) {
+    if (b.classList.contains('svc-choice-toggle')) {
+      post("{{ url_for('bundle_svcchoice') }}", { company: b.getAttribute('data-company'), key: b.getAttribute('data-key'), value: b.getAttribute('data-next') });
+    } else if (b.classList.contains('plan-del')) {
       post("{{ url_for('bundle_hideplan') }}", { company: b.getAttribute('data-company'), plan: b.getAttribute('data-plan') });
     } else if (b.classList.contains('db-del')) {
       var r = b.closest('.dumbbell-row'); if (!r) return;

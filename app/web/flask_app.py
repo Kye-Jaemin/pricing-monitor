@@ -282,6 +282,22 @@ def bundle_svcprice():
     return redirect(_bundle_url(names))
 
 
+@app.route("/bundle/svcchoice", methods=["POST"])
+def bundle_svcchoice():
+    """서비스의 택1↔포함을 사용자가 뒤집는다(AI 오판 보정). key=플랜\\x1f서비스키."""
+    company = (request.form.get("company") or "").strip()
+    key = (request.form.get("key") or "").strip()
+    if company and key:
+        try:
+            cur = json.loads(store.get_setting("bundle.choice:" + company) or "{}") or {}
+        except (ValueError, TypeError):
+            cur = {}
+        cur[key] = "1" if request.form.get("value") == "1" else "0"
+        store.set_setting("bundle.choice:" + company, json.dumps(cur, ensure_ascii=False))
+    names = [n for n in request.form.getlist("sel") if n]
+    return redirect(_bundle_url(names))
+
+
 @app.route("/bundle/addsvc", methods=["POST"])
 def bundle_addsvc():
     """번들 요금제에 빠진 서비스를 직접 추가/삭제(업체별 목록에 저장).
