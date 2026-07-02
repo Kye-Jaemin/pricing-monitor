@@ -1392,6 +1392,9 @@ def diag_bundle_price(q: str = "mybox", grep: str | None = None) -> str:
         out.append("company   : %s" % c["name"])
         out.append("  flags   : component=%s bundle=%s active=%s"
                    % (c["is_component"], c["is_bundle"], c["active"]))
+        out.append("  search.kr: %r  (원본 표시=%s)" % (
+            store.get_setting("search.kr:" + c["name"]),
+            "ko/kr" if store.get_setting("search.kr:" + c["name"]) == "1" else "en/us"))
         srcs = store.list_sources(company=c["name"], active_only=False)
         out.append("  sources : %d" % len(srcs))
         for s in srcs:
