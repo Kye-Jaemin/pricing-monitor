@@ -218,11 +218,12 @@ def categorize_features_ai(features: list[str]) -> dict:
     return result
 
 
-def dedupe_features_ai(features: list[str]) -> dict:
+def dedupe_features_ai(features: list[str], known: list[str] | None = None) -> dict:
     """의미상 같은 기능들을 묶어 대표(통합) 이름을 부여한다.
 
     반환: {원본 기능: 통합 기능명}. 같은 클러스터의 기능들은 동일한 통합명을 받는다.
     정말 같은 기능만 묶고, 구별되는 기능은 자기 자신을 통합명으로 둔다.
+    known: 이미 확정된 통합명 목록(신규 기능이 이걸 재사용하도록 시드). 안정성용.
     """
     if not config.ANTHROPIC_API_KEY:
         raise ExtractError("ANTHROPIC_API_KEY 가 설정되지 않았습니다 (.env 확인).")
@@ -280,6 +281,7 @@ def dedupe_features_ai(features: list[str]) -> dict:
         resp = client.messages.create(
             model=config.ANTHROPIC_MODEL,
             max_tokens=8192,
+            temperature=0,   # 같은 입력 → 같은 군집화(분류가 매 실행마다 바뀌던 문제 방지)
             messages=[{"role": "user", "content": prompt}],
         )
         raw = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
@@ -295,7 +297,7 @@ def dedupe_features_ai(features: list[str]) -> dict:
     # (배치로 쪼개면 같은 기능이 서로 다른 배치에 흩어져 통합이 누락됨)
     BATCH = 120
     result: dict = {}
-    known: list[str] = []
+    known: list[str] = list(known or [])   # 기존 확정 통합명을 시드로 재사용
     for i in range(0, len(features), BATCH):
         data = _run(features[i:i + BATCH], known)
         for k, v in data.items():

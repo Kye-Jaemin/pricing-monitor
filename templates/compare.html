@@ -150,63 +150,8 @@
     <span class="muted">{{ t('compare.pen_help') }}</span>
   </form>
   {% endif %}
-
-  <div class="pos-bars">
-    <div class="pos-bars-legend">
-      <span><span class="pos-sw sw-commodity"></span>{{ t('compare.class_commodity') }}</span>
-      <span><span class="pos-sw sw-standard"></span>{{ t('compare.class_standard') }}</span>
-      <span><span class="pos-sw sw-differentiated"></span>{{ t('compare.class_differentiated') }}</span>
-    </div>
-    {% for cls in ['commodity', 'standard', 'differentiated'] %}
-    {% set items = data.feature_positioning | selectattr('label', 'equalto', cls) | list %}
-    {% if items %}
-    <div class="pos-bar-group">
-      <div class="pos-bar-head head-{{ cls }}">{{ t('compare.class_' ~ cls) }} <span class="muted">· {{ t('compare.class_' ~ cls ~ '_help') }}</span></div>
-      {% for fp in items %}
-      <div class="pos-bar-row" role="button" tabindex="0" data-jump="{{ fp.idx }}" title="{{ t('compare.pos_click_hint') }}">
-        <div class="pos-bar-name">
-          <strong>{{ fp.feature }}</strong>
-          {% if fp.desc %}<span class="pos-bar-desc">{{ fp.desc }}</span>{% endif %}
-        </div>
-        <div class="pos-bar-track"><div class="pos-bar-fill fill-{{ cls }}" style="width: {{ fp.pen_pct }}%"></div></div>
-        <div class="pos-bar-val">{{ fp.pen_pct }}% · {% if fp.unlock_price %}${{ '%g'|format(fp.unlock_price) }}{% else %}{{ t('word.free') }}{% endif %}</div>
-      </div>
-      {% endfor %}
-    </div>
-    {% endif %}
-    {% endfor %}
-  </div>
-
-  <details class="pos-scatter-wrap">
-    <summary>{{ t('compare.pos_scatter_toggle') }}</summary>
-    <div class="scatter-wrap" style="height:340px"><canvas id="posScatter"></canvas></div>
-    <p class="muted">{{ t('compare.pos_axes') }} · {{ t('compare.pos_click_hint') }}</p>
-  </details>
-  <script>
-  // 막대 행 클릭 → 해당 기능 상세(왜 이 분류 · 업체 원문)로 이동. 차트 유무와 무관하게 동작.
-  (function () {
-    function jump(row) {
-      var el = document.getElementById('posfeat-' + row.getAttribute('data-jump'));
-      if (!el) return;
-      el.style.display = ''; el.open = true;
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el.classList.add('flash'); setTimeout(function () { el.classList.remove('flash'); }, 1600);
-    }
-    document.addEventListener('click', function (e) {
-      var row = e.target.closest && e.target.closest('.pos-bar-row');
-      if (row) jump(row);
-    });
-    document.addEventListener('keydown', function (e) {
-      if (e.key !== 'Enter' && e.key !== ' ') return;
-      var row = e.target.closest && e.target.closest('.pos-bar-row');
-      if (row) { e.preventDefault(); jump(row); }
-    });
-    var sd = document.querySelector('.pos-scatter-wrap');
-    if (sd) sd.addEventListener('toggle', function () {
-      if (this.open && window.__posChart) setTimeout(function () { window.__posChart.resize(); }, 60);
-    });
-  })();
-  </script>
+  <div class="scatter-wrap" style="height:340px"><canvas id="posScatter"></canvas></div>
+  <p class="muted">{{ t('compare.pos_axes') }} · {{ t('compare.pos_click_hint') }}</p>
 
   <div class="pos-finder">
     <label class="pos-finder-label">🔎 {{ t('compare.pos_find_label') }}

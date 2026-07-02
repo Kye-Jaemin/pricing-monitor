@@ -567,13 +567,23 @@ def _apply_categorize(names: list[str]) -> None:
 
 
 def _apply_dedupe(names: list[str]) -> None:
-    """선택 업체 전체 기능(무료 포함)을 AI로 유사 통합해 별칭으로 저장."""
+    """선택 업체 기능(무료 포함)을 AI로 유사 통합해 별칭으로 저장.
+
+    안정성: 이미 통합이 확정된 기능은 그대로 두고, '아직 통합되지 않은 새 기능'만
+    처리한다(기존 확정 통합명을 재사용하도록 시드). 같은 업체를 다시 분석해도 분류가
+    바뀌지 않도록 — 새 기능이 없으면 아예 재통합하지 않는다.
+    """
     feats = presenters.distinct_features(names)
     if not feats:
         return
     from ..core import extract
 
-    mapping = extract.dedupe_features_ai(feats)
+    existing = store.get_feature_aliases()          # {기능: 통합명}
+    new_feats = [f for f in feats if f not in existing]
+    if not new_feats:
+        return   # 모두 통합 확정됨 → 재실행해도 그대로(분류 안정)
+    known = sorted(set(existing.values()))
+    mapping = extract.dedupe_features_ai(new_feats, known=known)
     store.set_feature_aliases(mapping)
 
 
