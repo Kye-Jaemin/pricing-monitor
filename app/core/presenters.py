@@ -2344,6 +2344,33 @@ def compare(names: list[str]) -> dict:
     for _i, _e in enumerate(feature_positioning):
         _e["idx"] = _i   # 목록 위치(막대→상세 점프용)
 
+    # 카테고리 단위 집계(카테고리 산점도용): 카테고리별 보급률·대표가·기능수·분류수.
+    _catp: dict[str, dict] = {}
+    for _e in feature_positioning:
+        c = _catp.setdefault(_e["category"], {
+            "companies": set(), "prices": [], "n": 0,
+            "commodity": 0, "standard": 0, "differentiated": 0,
+        })
+        for pv in _e["providers_list"]:
+            c["companies"].add(pv["company"])
+        if _e["unlock_price"]:
+            c["prices"].append(_e["unlock_price"])
+        c["n"] += 1
+        c[_e["label"]] = c.get(_e["label"], 0) + 1
+    category_positioning = []
+    for cat, d in _catp.items():
+        prov = len(d["companies"])
+        pen = (prov / n_co) if n_co else 0.0
+        price = statistics.median(d["prices"]) if d["prices"] else 0.0
+        category_positioning.append({
+            "category": cat, "providers": prov, "total": n_co,
+            "penetration": round(pen, 3), "pen_pct": round(pen * 100),
+            "price": round(price, 2), "feat_count": d["n"],
+            "commodity": d["commodity"], "standard": d["standard"],
+            "differentiated": d["differentiated"],
+        })
+    category_positioning.sort(key=lambda x: (-x["penetration"], -x["feat_count"]))
+
     # 카테고리 × 커머디티/차별화 교차표 — '어떤 종류의 기능에서 차별화가 나오나'
     from .extract import FEATURE_CATEGORIES
     _cat_order = {c: i for i, c in enumerate(FEATURE_CATEGORIES)}
@@ -2478,6 +2505,7 @@ def compare(names: list[str]) -> dict:
         "price_bands": price_bands,
         "feature_analysis": feature_analysis,
         "feature_positioning": feature_positioning,
+        "category_positioning": category_positioning,
         "positioning_cross": positioning_cross,
         "matrix": matrix_rows,
         "ranking": ranking,

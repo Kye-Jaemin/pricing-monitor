@@ -193,7 +193,7 @@
     {% set nc = feats | selectattr('label', 'equalto', 'commodity') | list | length %}
     {% set ns = feats | selectattr('label', 'equalto', 'standard') | list | length %}
     {% set nd = feats | selectattr('label', 'equalto', 'differentiated') | list | length %}
-    <details class="pos-cat">
+    <details class="pos-cat" data-cat="{{ cat }}">
       <summary><strong>{{ cat }}</strong> <span class="muted">— {{ t('compare.pos_cat_features', n=feats|length) }}</span>
         {% if nc %}<span class="feat-badge badge-commodity">{{ t('compare.class_commodity') }} {{ nc }}</span>{% endif %}
         {% if ns %}<span class="feat-badge badge-standard">{{ t('compare.class_standard') }} {{ ns }}</span>{% endif %}
@@ -706,8 +706,8 @@
     });
   })();
 
-  // 기능 포지셔닝 2×2 (보급률 × 해금가), 색=커머디티/표준/차별화
-  var pos = {{ data.feature_positioning | tojson }};
+  // 카테고리 포지셔닝 2×2 (보급률 × 해금가) — 점=카테고리, 색=사분면
+  var pos = {{ data.category_positioning | tojson }};
   var posCanvas = document.getElementById('posScatter');
   if (posCanvas && pos && pos.length) {
     var COLORS = { commodity: '#2563eb', standard: '#f59e0b', differentiated: '#16a34a' };
@@ -743,10 +743,10 @@
         ctx.stroke(); ctx.restore();
       }
     };
-    // 모든 점 평탄화(원본 좌표는 price/pen 으로 보존)
+    // 점 = 카테고리(원본 좌표는 price/pen 으로 보존)
     var pts = pos.map(function (p, idx) {
-      return { x: p.penetration, y: p.unlock_price, price: p.unlock_price,
-               f: p.feature, prov: p.providers, total: p.total, i: idx, label: p.label };
+      return { x: p.penetration, y: p.price, price: p.price,
+               f: p.category, prov: p.providers, total: p.total, feat: p.feat_count, i: idx };
     });
     // 지터(흩뿌리기) 없이 실제 좌표에 표시 — 겹치는 점은 반투명으로 겹쳐 보이게.
     //   (정확한 값은 아래 '막대 목록'에서 확인)
@@ -775,16 +775,21 @@
 
     var posChart;   // 아래에서 생성
 
-    // 산점도 점 클릭 → 해당 기능 상세로 이동(속한 카테고리 그룹도 펼침).
+    // 산점도 점(카테고리) 클릭 → 해당 카테고리 그룹을 펼치고 이동.
     function gotoFeature(i) {
-      var el = document.getElementById('posfeat-' + i);
-      if (!el) return;
-      var cat = el.closest('.pos-cat');
-      if (cat) cat.open = true;
-      el.open = true;
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el.classList.add('flash');
-      setTimeout(function () { el.classList.remove('flash'); }, 1600);
+      var name = (pos[i] || {}).category;
+      if (!name) return;
+      var groups = document.querySelectorAll('.pos-cat');
+      for (var j = 0; j < groups.length; j++) {
+        if (groups[j].getAttribute('data-cat') === name) {
+          var el = groups[j];
+          el.open = true;
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('flash');
+          setTimeout(function () { el.classList.remove('flash'); }, 1600);
+          return;
+        }
+      }
     }
     // 4사분면 배경·경계선 + 코너 라벨(경계는 penTh/priceTh 슬라이더 값).
     var posZones = {
@@ -823,8 +828,8 @@
         backgroundColor: function (ctx) { var p = ctx.raw; return p ? QCOL[quadOf(p)] + 'C0' : '#9ca3af'; },
         borderColor: '#fff', borderWidth: 1.5, hoverBorderColor: '#fff', hoverBorderWidth: 2,
         pointStyle: function (ctx) { var p = ctx.raw; return p && p.capped ? 'triangle' : 'circle'; },
-        pointRadius: function (ctx) { var p = ctx.raw; return p ? 5 + Math.min(9, (p.prov - 1) * 1.6) : 6; },
-        pointHoverRadius: function (ctx) { var p = ctx.raw; return (p ? 5 + Math.min(9, (p.prov - 1) * 1.6) : 6) + 4; }
+        pointRadius: function (ctx) { var p = ctx.raw; return p ? 6 + Math.min(12, (p.feat - 1) * 1.4) : 6; },
+        pointHoverRadius: function (ctx) { var p = ctx.raw; return (p ? 6 + Math.min(12, (p.feat - 1) * 1.4) : 6) + 4; }
       }] },
       plugins: [posCrosshair, posZones],
       options: {
@@ -849,7 +854,7 @@
               var p = ctx.raw;
               var arr = [QLAB[quadOf(p)],
                       '보급률: ' + p.prov + '/' + p.total,
-                      '해금가: $' + p.price + '/mo'];
+                      '기능 ' + p.feat + '개 · 해금가 중앙값 $' + p.price];
               if (p.capped) arr.push('(축 상한 초과 · 상단 ▲ 표시)');
               return arr;
             }
