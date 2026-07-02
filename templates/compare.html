@@ -151,15 +151,6 @@
     <span class="muted">{{ t('compare.pen_help') }}</span>
   </form>
   {% endif %}
-  <div class="q-controls">
-    <label class="q-slider">{{ t('compare.q_pen') }}
-      <input type="range" id="qPen" min="0" max="100" step="1" value="{{ data.commodity_pen if data.commodity_pen is not none else 50 }}">
-      <span id="qPenVal" class="q-val"></span></label>
-    <label class="q-slider">{{ t('compare.q_price') }}
-      <input type="range" id="qPrice" min="0" max="100" step="1" value="{{ data.cheap_usd if data.cheap_usd is not none else 20 }}">
-      <span id="qPriceVal" class="q-val"></span></label>
-    <div id="qCounts" class="q-counts muted"></div>
-  </div>
   <div class="scatter-wrap" style="height:340px"><canvas id="posScatter"></canvas></div>
   <p class="muted">{{ t('compare.pos_axes') }} · {{ t('compare.pos_click_hint') }}</p>
 
@@ -186,43 +177,38 @@
         <button type="submit" class="btn-secondary btn-sm" title="{{ t('compare.desc_gen_help') }}">🤖 {{ t('compare.desc_gen') }}</button>
       </form>
     </div>
-    <p class="pos-hint muted" id="posHint">{{ t('compare.pos_cat_hint') }}</p>
-    {% set cats = data.feature_positioning | map(attribute='category') | list | unique | list %}
-    {% for cat in cats %}
-    {% set feats = data.feature_positioning | selectattr('category', 'equalto', cat) | list %}
-    {% set nc = feats | selectattr('label', 'equalto', 'commodity') | list | length %}
-    {% set ns = feats | selectattr('label', 'equalto', 'standard') | list | length %}
-    {% set nd = feats | selectattr('label', 'equalto', 'differentiated') | list | length %}
-    <details class="pos-cat" data-cat="{{ cat }}">
-      <summary><strong>{{ cat }}</strong> <span class="muted">— {{ t('compare.pos_cat_features', n=feats|length) }}</span>
-        {% if nc %}<span class="feat-badge badge-commodity">{{ t('compare.class_commodity') }} {{ nc }}</span>{% endif %}
-        {% if ns %}<span class="feat-badge badge-standard">{{ t('compare.class_standard') }} {{ ns }}</span>{% endif %}
-        {% if nd %}<span class="feat-badge badge-differentiated">{{ t('compare.class_differentiated') }} {{ nd }}</span>{% endif %}
-      </summary>
-      {% for fp in feats %}
-      <details class="pos-feat" id="posfeat-{{ fp.idx }}" data-poscls="{{ fp.label }}">
-        <summary>
-          <span class="feat-badge badge-{{ fp.label }}">{{ t('compare.class_' + fp.label) }}</span>
-          <strong>{{ fp.feature }}</strong>
-          <span class="muted">— {{ t('compare.pos_providers', n=fp.providers, total=fp.total) }}{% if fp.unlock_price %} · ${{ '%g'|format(fp.unlock_price) }}{% endif %}</span>
-          {% if fp.desc %}<span class="pos-desc">{{ fp.desc }}</span>{% endif %}
-        </summary>
-        <p class="pos-why"><span class="why-label">{{ t('compare.why_label') }}</span>
-          {% if fp.label == 'differentiated' %}{{ t('compare.why_differentiated', total=fp.total, providers=fp.providers, pen=fp.pen_pct, paid=fp.paid_cnt) }}
-          {% elif fp.label == 'commodity' %}{{ t('compare.why_commodity', total=fp.total, providers=fp.providers, pen=fp.pen_pct, free=fp.free_cnt) }}
-          {% else %}{{ t('compare.why_standard', total=fp.total, providers=fp.providers, pen=fp.pen_pct, free=fp.free_cnt, paid=fp.paid_cnt) }}{% endif %}</p>
-        <p class="pos-what muted">{{ t('compare.pos_what_hint') }}</p>
-        <ul class="pos-providers">
-          {% for pv in fp.providers_list %}
-          <li>
-            <strong>{{ pv.company }}</strong>
-            <span class="muted">{% if pv.is_free %}{{ t('word.free') }}{% elif pv.price is not none %}${{ '%g'|format(pv.price) }}/{{ t('col.monthly') }}{% endif %}</span>
-            — {{ pv.features | join(', ') }}
-          </li>
-          {% endfor %}
-        </ul>
-      </details>
+    <div class="pos-tabs" role="tablist">
+      {% for cls in ['commodity', 'standard', 'differentiated'] %}
+      {% set n = data.feature_positioning | selectattr('label', 'equalto', cls) | list | length %}
+      {% if n %}
+      <button type="button" class="pos-tab badge-{{ cls }}" data-poscls="{{ cls }}">{{ t('compare.class_' ~ cls) }} <span class="cat-count">{{ n }}</span></button>
+      {% endif %}
       {% endfor %}
+      <button type="button" class="pos-tab pos-tab-all" data-poscls="all">{{ t('filter.all') }} <span class="cat-count">{{ data.feature_positioning|length }}</span></button>
+    </div>
+    <p class="pos-hint muted" id="posHint">{{ t('compare.pos_pick_hint') }}</p>
+    {% for fp in data.feature_positioning %}
+    <details class="pos-feat" id="posfeat-{{ loop.index0 }}" data-poscls="{{ fp.label }}">
+      <summary>
+        <span class="feat-badge badge-{{ fp.label }}">{{ t('compare.class_' + fp.label) }}</span>
+        <strong>{{ fp.feature }}</strong>
+        <span class="muted">— {{ t('compare.pos_providers', n=fp.providers, total=fp.total) }}{% if fp.unlock_price %} · ${{ '%g'|format(fp.unlock_price) }}{% endif %}</span>
+        {% if fp.desc %}<span class="pos-desc">{{ fp.desc }}</span>{% endif %}
+      </summary>
+      <p class="pos-why"><span class="why-label">{{ t('compare.why_label') }}</span>
+        {% if fp.label == 'differentiated' %}{{ t('compare.why_differentiated', total=fp.total, providers=fp.providers, pen=fp.pen_pct, paid=fp.paid_cnt) }}
+        {% elif fp.label == 'commodity' %}{{ t('compare.why_commodity', total=fp.total, providers=fp.providers, pen=fp.pen_pct, free=fp.free_cnt) }}
+        {% else %}{{ t('compare.why_standard', total=fp.total, providers=fp.providers, pen=fp.pen_pct, free=fp.free_cnt, paid=fp.paid_cnt) }}{% endif %}</p>
+      <p class="pos-what muted">{{ t('compare.pos_what_hint') }}</p>
+      <ul class="pos-providers">
+        {% for pv in fp.providers_list %}
+        <li>
+          <strong>{{ pv.company }}</strong>
+          <span class="muted">{% if pv.is_free %}{{ t('word.free') }}{% elif pv.price is not none %}${{ '%g'|format(pv.price) }}/{{ t('col.monthly') }}{% endif %}</span>
+          — {{ pv.features | join(', ') }}
+        </li>
+        {% endfor %}
+      </ul>
     </details>
     {% endfor %}
   </div>
@@ -706,8 +692,8 @@
     });
   })();
 
-  // 카테고리 포지셔닝 2×2 (보급률 × 해금가) — 점=카테고리, 색=사분면
-  var pos = {{ data.category_positioning | tojson }};
+  // 기능 포지셔닝 2×2 (보급률 × 해금가), 색=커머디티/표준/차별화
+  var pos = {{ data.feature_positioning | tojson }};
   var posCanvas = document.getElementById('posScatter');
   if (posCanvas && pos && pos.length) {
     var COLORS = { commodity: '#2563eb', standard: '#f59e0b', differentiated: '#16a34a' };
@@ -743,10 +729,10 @@
         ctx.stroke(); ctx.restore();
       }
     };
-    // 점 = 카테고리(원본 좌표는 price/pen 으로 보존)
+    // 모든 점 평탄화(원본 좌표는 price/pen 으로 보존)
     var pts = pos.map(function (p, idx) {
-      return { x: p.penetration, y: p.price, price: p.price,
-               f: p.category, prov: p.providers, total: p.total, feat: p.feat_count, i: idx };
+      return { x: p.penetration, y: p.unlock_price, price: p.unlock_price,
+               f: p.feature, prov: p.providers, total: p.total, i: idx, label: p.label };
     });
     // 지터(흩뿌리기) 없이 실제 좌표에 표시 — 겹치는 점은 반투명으로 겹쳐 보이게.
     //   (정확한 값은 아래 '막대 목록'에서 확인)
@@ -763,74 +749,85 @@
       if (p.capped) p.y = yCap * 0.97;
       else if (yCap > 0) p.y = Math.min(p.y, yCap * 0.97);
     });
-    // 2×2 사분면: 보급률 × 해금가. 경계는 슬라이더로 실시간 조정.
-    var penTh = commodityPen;   // 보급률 경계(0~1)
-    var priceTh = cheapUsd;     // 해금가 경계($)
-    var QCOL = { base: '#1baf7a', cash: '#2a78d6', niche: '#9ca3af', diff: '#eb6834' };
-    var QLAB = { base: '기본기', cash: '수익 표준', niche: '구색 기능', diff: '차별화' };
-    function quadOf(p) {
-      var hi = p.x >= penTh, paid = p.price > priceTh;
-      return hi ? (paid ? 'cash' : 'base') : (paid ? 'diff' : 'niche');
-    }
+    var groups = { commodity: [], standard: [], differentiated: [] };
+    pts.forEach(function (p) { (groups[p.label] || (groups[p.label] = [])).push(p); });
+    var clsOrder = Object.keys(groups);   // 데이터셋 인덱스 ↔ 분류 매핑
 
     var posChart;   // 아래에서 생성
 
-    // 산점도 점(카테고리) 클릭 → 해당 카테고리 그룹을 펼치고 이동.
-    function gotoFeature(i) {
-      var name = (pos[i] || {}).category;
-      if (!name) return;
-      var groups = document.querySelectorAll('.pos-cat');
-      for (var j = 0; j < groups.length; j++) {
-        if (groups[j].getAttribute('data-cat') === name) {
-          var el = groups[j];
-          el.open = true;
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          el.classList.add('flash');
-          setTimeout(function () { el.classList.remove('flash'); }, 1600);
-          return;
-        }
+    // 커머디티/표준/차별화 탭 — 선택 시 리스트 + 산점도를 해당 분류만 표시('all'=전체)
+    var posTabs = document.querySelectorAll('.pos-tab');
+    var posFeats = document.querySelectorAll('.pos-feat');
+    var posHint = document.getElementById('posHint');
+    function showPosClass(cls) {
+      if (posHint) posHint.style.display = 'none';
+      posTabs.forEach(function (t) { t.classList.toggle('on', t.getAttribute('data-poscls') === cls); });
+      posFeats.forEach(function (f) {
+        f.style.display = (cls === 'all' || f.getAttribute('data-poscls') === cls) ? '' : 'none';
+      });
+      if (posChart) {
+        clsOrder.forEach(function (k, i) {
+          posChart.setDatasetVisibility(i, cls === 'all' || k === cls);
+        });
+        posChart.update();
       }
     }
-    // 4사분면 배경·경계선 + 코너 라벨(경계는 penTh/priceTh 슬라이더 값).
+    posTabs.forEach(function (t) {
+      t.addEventListener('click', function () { showPosClass(t.getAttribute('data-poscls')); });
+    });
+    // 기본은 아무 기능도 안 보임 — 탭을 눌러야 표시(안내 문구만 노출)
+    posFeats.forEach(function (f) { f.style.display = 'none'; });
+
+    function gotoFeature(i) {
+      var el = document.getElementById('posfeat-' + i);
+      if (!el) return;
+      var cls = el.getAttribute('data-poscls');
+      var active = document.querySelector('.pos-tab.on');
+      var cur = active ? active.getAttribute('data-poscls') : null;
+      // 아무 탭도 안 켜졌거나(기본 숨김) 다른 분류면 그 분류 탭을 활성화해 표시
+      if (!active || (cur !== 'all' && cur !== cls)) showPosClass(cls);
+      el.open = true;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('flash');
+      setTimeout(function () { el.classList.remove('flash'); }, 1600);
+    }
+    // 배경 구역·기준선: 우하단=커머디티, 좌상단=차별화. 규칙(보급률·기준가)을 눈에 보이게.
     var posZones = {
       id: 'posZones',
       beforeDatasetsDraw: function (chart) {
         var a = chart.chartArea, sx = chart.scales.x, sy = chart.scales.y, ctx = chart.ctx;
         if (!a) return;
-        var xT = Math.max(a.left, Math.min(a.right, sx.getPixelForValue(penTh)));
-        var yT = Math.max(a.top, Math.min(a.bottom, sy.getPixelForValue(priceTh)));
+        var xC = sx.getPixelForValue(commodityPen), xD = sx.getPixelForValue(diffPen);
+        var yT = Math.max(a.top, Math.min(a.bottom, sy.getPixelForValue(cheapUsd)));
         ctx.save();
-        ctx.fillStyle = 'rgba(235,104,52,0.10)'; ctx.fillRect(a.left, a.top, xT - a.left, yT - a.top);   // 좌상 차별화
-        ctx.fillStyle = 'rgba(42,120,214,0.10)'; ctx.fillRect(xT, a.top, a.right - xT, yT - a.top);      // 우상 수익표준
-        ctx.fillStyle = 'rgba(148,163,184,0.10)'; ctx.fillRect(a.left, yT, xT - a.left, a.bottom - yT);  // 좌하 구색
-        ctx.fillStyle = 'rgba(27,175,122,0.12)'; ctx.fillRect(xT, yT, a.right - xT, a.bottom - yT);      // 우하 기본기
-        ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(100,116,139,0.55)';
+        ctx.fillStyle = 'rgba(37,99,235,0.09)';
+        ctx.fillRect(xC, yT, a.right - xC, a.bottom - yT);        // 커머디티(우하단)
+        ctx.fillStyle = 'rgba(22,163,74,0.09)';
+        ctx.fillRect(a.left, a.top, xD - a.left, yT - a.top);     // 차별화(좌상단)
+        ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(100,116,139,0.5)';
         ctx.beginPath();
-        ctx.moveTo(xT, a.top); ctx.lineTo(xT, a.bottom);
+        ctx.moveTo(xC, a.top); ctx.lineTo(xC, a.bottom);
+        ctx.moveTo(xD, a.top); ctx.lineTo(xD, a.bottom);
         ctx.moveTo(a.left, yT); ctx.lineTo(a.right, yT);
         ctx.stroke(); ctx.setLineDash([]);
-        ctx.font = '500 11px sans-serif';
-        ctx.fillStyle = 'rgba(194,72,29,0.95)'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-        ctx.fillText('🎯 ' + QLAB.diff, a.left + 6, a.top + 4);
-        ctx.fillStyle = 'rgba(29,78,216,0.95)'; ctx.textAlign = 'right';
-        ctx.fillText('💰 ' + QLAB.cash, a.right - 6, a.top + 4);
-        ctx.fillStyle = 'rgba(90,99,110,0.95)'; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
-        ctx.fillText('🧩 ' + QLAB.niche, a.left + 6, a.bottom - 4);
-        ctx.fillStyle = 'rgba(15,128,90,0.95)'; ctx.textAlign = 'right';
-        ctx.fillText('✅ ' + QLAB.base, a.right - 6, a.bottom - 4);
+        ctx.font = '500 11px sans-serif'; ctx.textBaseline = 'top';
+        ctx.fillStyle = 'rgba(21,128,61,0.95)'; ctx.textAlign = 'left';
+        ctx.fillText(KLABEL.differentiated + ' · 소수·고가', a.left + 6, a.top + 4);
+        ctx.fillStyle = 'rgba(29,78,216,0.95)'; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+        ctx.fillText(KLABEL.commodity + ' · 다수·저가', a.right - 6, a.bottom - 4);
         ctx.restore();
       }
     };
     posChart = new Chart(posCanvas, {
       type: 'scatter',
-      data: { datasets: [{
-        label: '기능', data: pts,
-        backgroundColor: function (ctx) { var p = ctx.raw; return p ? QCOL[quadOf(p)] + 'C0' : '#9ca3af'; },
-        borderColor: '#fff', borderWidth: 1.5, hoverBorderColor: '#fff', hoverBorderWidth: 2,
-        pointStyle: function (ctx) { var p = ctx.raw; return p && p.capped ? 'triangle' : 'circle'; },
-        pointRadius: function (ctx) { var p = ctx.raw; return p ? 6 + Math.min(12, (p.feat - 1) * 1.4) : 6; },
-        pointHoverRadius: function (ctx) { var p = ctx.raw; return (p ? 6 + Math.min(12, (p.feat - 1) * 1.4) : 6) + 4; }
-      }] },
+      data: { datasets: clsOrder.map(function (k) {
+        return { label: KLABEL[k] || k, data: groups[k], backgroundColor: (COLORS[k] || '#9ca3af') + 'B3',
+                 borderColor: '#fff', borderWidth: 1.5,
+                 hoverBorderColor: '#fff', hoverBorderWidth: 2,
+                 pointStyle: function (ctx) { var p = ctx.raw; return p && p.capped ? 'triangle' : 'circle'; },
+                 pointRadius: function (ctx) { var p = ctx.raw; return p ? 5 + Math.min(9, (p.prov - 1) * 1.6) : 6; },
+                 pointHoverRadius: function (ctx) { var p = ctx.raw; return (p ? 5 + Math.min(9, (p.prov - 1) * 1.6) : 6) + 4; } };
+      }) },
       plugins: [posCrosshair, posZones],
       options: {
         maintainAspectRatio: false,
@@ -852,9 +849,9 @@
             title: function (items) { return items.length ? items[0].raw.f : ''; },
             label: function (ctx) {
               var p = ctx.raw;
-              var arr = [QLAB[quadOf(p)],
+              var arr = [(KLABEL[p.label] || p.label),
                       '보급률: ' + p.prov + '/' + p.total,
-                      '기능 ' + p.feat + '개 · 해금가 중앙값 $' + p.price];
+                      '해금가: $' + p.price + '/mo'];
               if (p.capped) arr.push('(축 상한 초과 · 상단 ▲ 표시)');
               return arr;
             }
@@ -866,28 +863,8 @@
         }
       }
     });
+    showPosClass('all');   // 기본은 전체 표시
     window.__posChart = posChart;   // 산점도 접기/펼치기 시 리사이즈용
-
-    // 경계 슬라이더: 보급률·해금가 경계를 실시간 조정 → 사분면·점 색·개수 갱신.
-    (function () {
-      var ps = document.getElementById('qPen'), pr = document.getElementById('qPrice');
-      var psv = document.getElementById('qPenVal'), prv = document.getElementById('qPriceVal');
-      var counts = document.getElementById('qCounts');
-      function refresh() {
-        if (ps) { penTh = (+ps.value) / 100; if (psv) psv.textContent = ps.value + '%'; }
-        if (pr) { priceTh = +pr.value; if (prv) prv.textContent = '$' + pr.value; }
-        if (counts) {
-          var c = { base: 0, cash: 0, niche: 0, diff: 0 };
-          pts.forEach(function (p) { c[quadOf(p)]++; });
-          counts.textContent = '✅ ' + QLAB.base + ' ' + c.base + ' · 💰 ' + QLAB.cash + ' ' + c.cash
-            + ' · 🧩 ' + QLAB.niche + ' ' + c.niche + ' · 🎯 ' + QLAB.diff + ' ' + c.diff;
-        }
-        if (posChart) posChart.update('none');
-      }
-      if (ps) ps.addEventListener('input', refresh);
-      if (pr) pr.addEventListener('input', refresh);
-      refresh();
-    })();
 
     // ── 기능 검색: 입력하면 커머디티↔차별화 어느 쪽에 가까운지 게이지로 표시 ──
     // 커머디티 지수 = 0.6·보급률 + 0.4·가격저렴도(해금가가 기준가 이하=1, 비쌀수록 0).

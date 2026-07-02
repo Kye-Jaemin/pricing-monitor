@@ -150,28 +150,20 @@ def _loads_loose(raw: str):
 
 # 고정 대분류(12개 + 기타). AI가 자유 생성하지 않고 반드시 이 안에서 고른다 → 일관성.
 FEATURE_CATEGORIES = [
-    "이미지 생성", "영상 생성", "음성·오디오", "편집·후처리", "배경·객체 제거",
-    "업스케일·화질", "AI 모델", "크레딧·사용량", "속도·동시작업", "내보내기",
-    "워터마크·브랜딩", "템플릿·프리셋", "스톡·에셋", "저장·자산", "협업·팀",
-    "통합·API", "자동화·워크플로우", "보안·관리", "라이선스·상업이용", "지원",
-    "기타",
+    "생성", "편집·후처리", "품질·해상도", "내보내기", "크레딧·사용량",
+    "속도·성능", "협업·팀", "저장·자산", "통합·API", "보안·관리",
+    "라이선스·상업이용", "지원", "기타",
 ]
 _FEATURE_CATEGORY_SET = set(FEATURE_CATEGORIES)
 _CATEGORY_GUIDE = (
-    "이미지 생성=creating images/art; 영상 생성=creating video/animation; "
-    "음성·오디오=voice, TTS, music, audio, dubbing, lip-sync; 편집·후처리=editing/"
-    "retouching existing content; 배경·객체 제거=background/object removal or erase; "
-    "업스케일·화질=upscaling, enhance, resolution/quality of output; AI 모델=access to "
-    "specific AI models (Gemini/GPT/Claude etc.) or premium/latest models; "
-    "크레딧·사용량=credits, tokens, generation quotas & limits; 속도·동시작업=speed, "
-    "priority, faster/queue, concurrency/parallel; 내보내기=export, download, output "
-    "formats; 워터마크·브랜딩=watermark removal, no-watermark, custom branding; "
-    "템플릿·프리셋=templates, presets, styles; 스톡·에셋=stock photos/video/audio "
-    "libraries; 저장·자산=cloud storage, history, asset management; 협업·팀=team, "
-    "seats, sharing, permissions; 통합·API=API, integrations, plugins, webhooks; "
-    "자동화·워크플로우=automation, batch, workflows, scheduling; 보안·관리=SSO/SAML, "
-    "audit, admin, security, compliance; 라이선스·상업이용=commercial license, usage "
-    "rights, ownership; 지원=support, onboarding, SLA. If truly none fit, use 기타."
+    "생성=creating/generating new content; 편집·후처리=editing or enhancing existing "
+    "content; 품질·해상도=resolution, quality, fidelity of output; 내보내기=export, "
+    "download, output formats, watermark-free output; 크레딧·사용량=credits, tokens, "
+    "usage quotas & limits; 속도·성능=speed, priority, concurrency, GPU; 협업·팀=team, "
+    "sharing, seats, permissions; 저장·자산=storage, library, history, assets; "
+    "통합·API=API, integrations, plugins, webhooks; 보안·관리=SSO/SAML, audit, admin, "
+    "security, compliance; 라이선스·상업이용=commercial license, usage rights, "
+    "ownership; 지원=support, onboarding, SLA. If truly none fit, use 기타."
 )
 
 
@@ -271,18 +263,6 @@ def dedupe_features_ai(features: list[str], known: list[str] | None = None) -> d
         "spent on: 'Credits' / 'Generative credits' / 'AI credits' / 'Monthly credits' / "
         "'Image credits' / 'Render credits' all → 'Credits'; 'Tokens' / 'AI tokens' → "
         "'Tokens'. (Merge these even if the modifier looks meaningful.)\n"
-        "  • a specific AI MODEL name or version — the capability is 'access to an AI "
-        "model', the model name/version is just a spec: 'Gemini 3 Pro' / 'Gemini 2.5' / "
-        "'Access to Google's Gemini' / 'GPT-4' / 'Claude access' / 'latest model' → one "
-        "canonical 'AI 모델 접근'. (Different model names/versions do NOT make separate "
-        "capabilities.)\n"
-        "  • an export RESOLUTION, FORMAT, or media type of the same export/download "
-        "capability — 'High resolution exports' / 'Video export' / '4K export' / 'HD "
-        "download' / 'Export in multiple formats' all → one canonical '내보내기' "
-        "(resolution/format/media is just a spec of exporting).\n"
-        "  • a WATERMARK-free / no-watermark / remove-watermark phrasing — 'Download "
-        "videos with no watermark' / 'Watermark-free exports' / 'Remove watermark' / 'No "
-        "watermark' all → one canonical '워터마크 제거'.\n"
         "Do NOT merge features that deliver a genuinely different outcome, even if they "
         "share a word OR belong to the same theme/domain. Being about the same topic is "
         "NOT enough — merge ONLY when it is literally the SAME capability. Also KEEP "

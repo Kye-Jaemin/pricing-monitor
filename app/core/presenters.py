@@ -8,7 +8,6 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-import statistics
 from urllib.parse import urlparse
 
 from .. import config
@@ -181,56 +180,6 @@ def _skip_feature(f: str) -> bool:
         or _is_plan_name(f) or _is_trial_feature(f)
         or _is_negative_feature(f) or _is_limitation_feature(f)
     )
-
-
-# 조회 시점에 코드로 확정 병합(모델 지시에 의존하지 않는 결정적 통합).
-#   자주 나오는 기능군을 이름 패턴으로 하나의 통합명으로 묶는다(dedupe 가 놓쳐도
-#   화면에서 즉시 병합). 순서 = 우선순위(구체적 → 일반). 첫 매치가 이김.
-#   지원(support)은 '수준별 분리' 요청에 따라 여기서 묶지 않는다.
-_CANON_RULES = [
-    ("워터마크 제거",
-     r"(?i)(no|without|remove|remov\w+|free\s+of)\s+watermark|watermark[\s-]?free|"
-     r"워터마크\s*(제거|없|프리)"),
-    ("배경 제거",
-     r"(?i)\bbackground\b.{0,12}\b(remov\w+|erase|delete)\b|\bbackground remover\b|"
-     r"배경\s*(제거|삭제|지우)"),
-    ("AI 모델 접근",
-     r"(?i)\b(gemini|gpt-?\d|chatgpt|claude|llama|mixtral|mistral|dall[\s-]?e|sora|veo|"
-     r"imagen|flux|grok|deepseek|qwen|o[13]\b)|(ai|language)\s+models?\b|"
-     r"모델\s*(접근|액세스|이용)|(premium|latest|advanced|frontier|top|flagship)\s+models?\b"),
-    ("업스케일·화질개선",
-     r"(?i)\bupscal\w+|super[\s-]?resolution|image enhancement|enhance\w*\s+(quality|"
-     r"resolution)|업스케일|화질\s*(개선|향상)|해상도\s*향상"),
-    ("내보내기",
-     r"(?i)\b(export|exports|exporting|download|downloads|downloading)\b|내보내기|다운로드"),
-    ("광고 제거",
-     r"(?i)ad[\s-]?free|\bno ads\b|remove\s+ads|ad removal|광고\s*(제거|없|프리)"),
-    ("크레딧",
-     r"(?i)\b(credits?|tokens?)\b|크레딧|토큰"),
-    ("빠른 처리·우선순위",
-     r"(?i)(faster|fastest|fast[\s-]?track|priority|quicker)\s+"
-     r"(process\w*|generat\w*|render\w*|export\w*|queue|creation)|\bfast generations?\b|"
-     r"우선\s*(처리|생성|순위)|빠른\s*(처리|생성|렌더)"),
-    ("협업·팀",
-     r"(?i)\b(team members?|additional seats?|extra seats?|\d+\s*seats?|collaborat\w+|"
-     r"shared workspace|multi[\s-]?user)\b|팀\s*(협업|공유|멤버|시트)|협업\s*기능"),
-    ("클라우드 저장",
-     r"(?i)\bcloud storage\b|\bstorage\b|\basset library\b|클라우드\s*저장|저장\s*공간"),
-    ("API·통합",
-     r"(?i)\bAPI\b|\bAPIs\b|integration|webhook|\bplugin\b|\bSDK\b|통합|연동"),
-    ("상업 이용",
-     r"(?i)commercial\s+(use|licen\w+|right)|상업\s*(이용|사용|라이선스)"),
-]
-_CANON_RULES = [(name, re.compile(pat)) for name, pat in _CANON_RULES]
-
-
-def _force_canon(f: str) -> str | None:
-    """이름 패턴만으로 확정되는 통합명(있으면). 규칙 순서대로 첫 매치."""
-    s = f or ""
-    for name, rx in _CANON_RULES:
-        if rx.search(s):
-            return name
-    return None
 
 
 CLASSIFY_THRESHOLD_KEY = "classify.cheap_usd"
@@ -2201,14 +2150,11 @@ def compare(names: list[str]) -> dict:
         return a if (a and not _skip_feature(a)) else None
 
     def _canon_key(f: str) -> str:
-        forced = _force_canon(f)          # 코드 확정 통합 우선(모델 무관)
-        if forced:
-            return "ALIAS::" + forced
         a = _good_alias(f)
         return ("ALIAS::" + a) if a else _normalize_feature(f)
 
     def _canon_disp(f: str) -> str:
-        return _force_canon(f) or _good_alias(f) or f
+        return _good_alias(f) or f
 
     # 0) 기능(canonical) 보급률·해금가 집계 → 커머디티/차별화 분류 (무료 기능 포함)
     agg: dict[str, dict] = {}
@@ -2345,33 +2291,6 @@ def compare(names: list[str]) -> dict:
     for _i, _e in enumerate(feature_positioning):
         _e["idx"] = _i   # 목록 위치(막대→상세 점프용)
 
-    # 카테고리 단위 집계(카테고리 산점도용): 카테고리별 보급률·대표가·기능수·분류수.
-    _catp: dict[str, dict] = {}
-    for _e in feature_positioning:
-        c = _catp.setdefault(_e["category"], {
-            "companies": set(), "prices": [], "n": 0,
-            "commodity": 0, "standard": 0, "differentiated": 0,
-        })
-        for pv in _e["providers_list"]:
-            c["companies"].add(pv["company"])
-        if _e["unlock_price"]:
-            c["prices"].append(_e["unlock_price"])
-        c["n"] += 1
-        c[_e["label"]] = c.get(_e["label"], 0) + 1
-    category_positioning = []
-    for cat, d in _catp.items():
-        prov = len(d["companies"])
-        pen = (prov / n_co) if n_co else 0.0
-        price = statistics.median(d["prices"]) if d["prices"] else 0.0
-        category_positioning.append({
-            "category": cat, "providers": prov, "total": n_co,
-            "penetration": round(pen, 3), "pen_pct": round(pen * 100),
-            "price": round(price, 2), "feat_count": d["n"],
-            "commodity": d["commodity"], "standard": d["standard"],
-            "differentiated": d["differentiated"],
-        })
-    category_positioning.sort(key=lambda x: (-x["penetration"], -x["feat_count"]))
-
     # 카테고리 × 커머디티/차별화 교차표 — '어떤 종류의 기능에서 차별화가 나오나'
     from .extract import FEATURE_CATEGORIES
     _cat_order = {c: i for i, c in enumerate(FEATURE_CATEGORIES)}
@@ -2506,7 +2425,6 @@ def compare(names: list[str]) -> dict:
         "price_bands": price_bands,
         "feature_analysis": feature_analysis,
         "feature_positioning": feature_positioning,
-        "category_positioning": category_positioning,
         "positioning_cross": positioning_cross,
         "matrix": matrix_rows,
         "ranking": ranking,
@@ -2654,7 +2572,6 @@ def load_comparison_card(card_id: int) -> dict | None:
         "price_bands": [],
         "feature_analysis": [],
         "feature_positioning": [],
-        "category_positioning": [],
         "positioning_cross": [],
         "matrix": [],
         "ranking": [],
@@ -2663,41 +2580,6 @@ def load_comparison_card(card_id: int) -> dict | None:
     for k, v in defaults.items():
         if data.get(k) is None:
             data[k] = v
-    # 예전 카드의 기능 항목에 새 필드가 없어 템플릿이 깨지는 것 방지(안전 기본값).
-    for _i, fp in enumerate(data.get("feature_positioning") or []):
-        fp.setdefault("idx", _i)
-        fp.setdefault("category", "기타")
-        fp.setdefault("desc", "")
-        fp.setdefault("desc_ai", False)
-        fp.setdefault("pen_pct", round((fp.get("penetration") or 0) * 100))
-        fp.setdefault("free_cnt", 0)
-        fp.setdefault("paid_cnt", 0)
-        fp.setdefault("key", fp.get("feature", ""))
-        fp.setdefault("providers_list", [])
-    # 카테고리 산점도 데이터가 없으면(구버전) feature_positioning 에서 즉석 집계.
-    if not data.get("category_positioning") and data.get("feature_positioning"):
-        _cp: dict = {}
-        _tot = 0
-        for fp in data["feature_positioning"]:
-            _tot = max(_tot, fp.get("total") or 0)
-            d = _cp.setdefault(fp.get("category") or "기타",
-                               {"companies": set(), "prices": [], "n": 0})
-            for pv in (fp.get("providers_list") or []):
-                if pv.get("company"):
-                    d["companies"].add(pv["company"])
-            if fp.get("unlock_price"):
-                d["prices"].append(fp["unlock_price"])
-            d["n"] += 1
-        cps = []
-        for cat, d in _cp.items():
-            prov = len(d["companies"]) or 0
-            pen = (prov / _tot) if _tot else 0.0
-            price = statistics.median(d["prices"]) if d["prices"] else 0.0
-            cps.append({"category": cat, "providers": prov, "total": _tot,
-                        "penetration": round(pen, 3), "pen_pct": round(pen * 100),
-                        "price": round(price, 2), "feat_count": d["n"],
-                        "commodity": 0, "standard": 0, "differentiated": 0})
-        data["category_positioning"] = sorted(cps, key=lambda x: (-x["penetration"], -x["feat_count"]))
     # 범례 표시용 — 저장 카드엔 없을 수 있으니 현재 전역 임계값으로 보강(표시용)
     if data.get("cheap_usd") is None:
         data["cheap_usd"] = get_cheap_threshold()
