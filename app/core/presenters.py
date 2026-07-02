@@ -1060,8 +1060,8 @@ def bundle_view(names: list[str] | None = None) -> dict:
                     lp = _to_usd(float(ov_num), cur)
                 if lp is None:
                     lp = _to_usd(s.get("list_price"), cur)
-                if lp is None:
-                    lp = _match_standalone(sname, smap)
+                if lp is None and not krsearch:
+                    lp = _match_standalone(sname, smap)  # KR 번들은 US 컴포넌트 정가 폴백 금지
                 svcs.append({
                     "name": sname, "category": s.get("category") or "기타",
                     "is_anchor": is_anchor, "choice": bool(s.get("choice")),
@@ -1082,8 +1082,8 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 is_anchor = bool(anchor and anchor.lower() in sname.lower())
                 skey = _normalize_feature(sname)
                 lp = _to_usd(ms.get("price"), cur)
-                if lp is None:
-                    lp = _match_standalone(sname, smap)
+                if lp is None and not krsearch:
+                    lp = _match_standalone(sname, smap)  # KR 번들은 US 컴포넌트 폴백 금지
                 mcat = ms.get("category") or "기타"
                 svcs.append({
                     "name": sname, "category": mcat,

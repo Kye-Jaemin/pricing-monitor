@@ -105,20 +105,21 @@ def _flatten_ai_overview(ai: dict) -> str:
 
 
 def _ai_overview_text(ai: dict) -> str:
-    """ai_overview 블록에서 본문 추출. page_token 만 있으면 2차 호출로 본문을 받는다.
-
-    SerpAPI 는 AI Overview 를 인라인(text_blocks)으로 주거나, page_token 만 주고
-    별도 engine=google_ai_overview 호출을 요구한다(이때 호출 1건이 추가 과금).
-    """
-    if not ai.get("text_blocks") and ai.get("page_token"):
+    """ai_overview 본문 추출. page_token 이 있으면 2차 호출로 '전체본'을 받아,
+    인라인 요약본보다 길면 그걸 쓴다(단독 정가 등 세부가 요약에서 빠지는 것 방지).
+    2차 호출 1건이 추가 과금될 수 있으나, 완전한 수집을 위해 감수한다."""
+    inline = _flatten_ai_overview(ai)
+    if ai.get("page_token"):
         try:
             data = _serpapi_get(
                 {"engine": "google_ai_overview", "page_token": ai["page_token"]}
             )
-            ai = data.get("ai_overview", ai)
+            full = _flatten_ai_overview(data.get("ai_overview", {}) or {})
+            if len(full) > len(inline):
+                return full
         except FetchError:
-            return ""  # 2차 호출 실패는 치명적이지 않음(오가닉 스니펫으로 진행)
-    return _flatten_ai_overview(ai)
+            pass  # 2차 호출 실패는 무시(인라인/오가닉으로 진행)
+    return inline
 
 
 def localize_google_url(url: str, gl: str = "us", hl: str = "en") -> str:
