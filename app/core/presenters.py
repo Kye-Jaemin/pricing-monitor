@@ -291,6 +291,15 @@ def _favicon(url: str) -> str | None:
     return f"https://www.google.com/s2/favicons?domain={host}&sz=64"
 
 
+def _display_source_url(company: str, source_type: str, url: str) -> str:
+    """표시용 '원본' URL — 한국 검색(KR) 업체의 google_search 는 실제 수집 로케일
+    (hl=ko&gl=kr)로 보여준다. 저장 키는 그대로 두고 링크만 실제 수집과 일치시킴."""
+    if source_type == "google_search" and store.get_setting("search.kr:" + company) == "1":
+        from .fetch import localize_google_url
+        return localize_google_url(url, "kr", "ko")
+    return url
+
+
 def _company_icon(icon_url: str | None, source_urls: list[str]) -> str | None:
     """업체 아이콘: 저장된 icon_url(앱 아이콘) 우선, 없으면 브랜드 도메인 파비콘.
 
@@ -491,7 +500,8 @@ def overview() -> dict:
                 "source_options": source_options,
                 "primary_source_type": primary["source_type"],
                 "primary_source_label": _src_label(primary["source_type"]),
-                "primary_source_url": primary["source_url"],
+                "primary_source_url": _display_source_url(
+                    company_name, primary["source_type"], primary["source_url"]),
                 "collected_at": primary["collected_at"],
                 "currency": snap.currency,
                 "confidence": primary["confidence"],
@@ -578,7 +588,7 @@ def company_detail(name: str) -> dict | None:
             {
                 "source_type": row["source_type"],
                 "source_label": _src_label(row["source_type"]),
-                "source_url": row["source_url"],
+                "source_url": _display_source_url(name, row["source_type"], row["source_url"]),
                 "is_primary": row["source_url"] == primary_url,
                 "currency": snap.currency,
                 "confidence": row["confidence"],
