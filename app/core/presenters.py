@@ -1415,6 +1415,31 @@ def load_bundle_card(card_id: int) -> dict | None:
     return {"id": row["id"], "title": row["title"], "created_at": row["created_at"], "data": data}
 
 
+def refresh_bundle_card_ai(card_id: int, progress_cb=None) -> bool:
+    """저장된 카드의 업체들에 AI 추정을 돌리고, 카드를 현재 분석으로 재생성(덮어쓰기).
+
+    카드는 고정 스냅샷이지만, 이 동작은 카드의 업체 구성을 유지한 채 최신 분석
+    (AI 추정·수동·선택 반영)으로 다시 얼린다. 반환: 성공 여부."""
+    row = store.get_bundle_card(card_id)
+    if row is None:
+        return False
+    try:
+        data = json.loads(row["payload_json"]) or {}
+    except (ValueError, TypeError):
+        return False
+    names = [n for n in (data.get("selected") or []) if n]
+    if not names:
+        # 예전 카드는 selected 가 없을 수 있음 → 그룹 업체명으로 대체
+        names = [co["name"] for g in data.get("groups", []) for co in g.get("companies", [])]
+    names = list(dict.fromkeys(names))
+    if not names:
+        return False
+    estimate_bundle_gaps(names, progress_cb=progress_cb)
+    new_data = bundle_view(names)
+    store.update_bundle_card_payload(card_id, json.dumps(new_data, ensure_ascii=False))
+    return True
+
+
 def run_bundle_extraction(
     names: list[str] | None = None, only_stale: bool = False, progress_cb=None
 ) -> int:

@@ -391,7 +391,8 @@ a.btn-primary:hover { text-decoration: none; }
   flex: 1; min-width: 0; padding: 5px 8px; border: 1px solid var(--line);
   border-radius: 6px; font-size: .82rem;
 }
-.saved-badge { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.saved-badge { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.card-refresh-form { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 0 auto; }
 .save-title { padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: .9rem; min-width: 200px; }
 
 .matrix td.feat { font-weight: 600; }

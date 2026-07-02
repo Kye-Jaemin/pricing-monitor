@@ -15,6 +15,10 @@
 {% if saved_view %}
 <div class="notice saved-badge">
   <span>📌 {{ t('compare.saved_badge', at=card.created_at) }}</span>
+  <form method="post" action="{{ url_for('bundle_card_refresh_ai', card_id=card.id) }}" class="card-refresh-form" onsubmit="return confirm('{{ t('bundle.card_ai_confirm') }}')">
+    {% if access_required %}<input type="password" name="access_code" class="access-input" placeholder="{{ t('runs.access_label') }}" autocomplete="off">{% endif %}
+    <button type="submit" class="btn-secondary btn-sm" title="{{ t('bundle.card_ai_help') }}">🧩 {{ t('bundle.ai_estimate') }}</button>
+  </form>
   <a href="{{ url_for('bundle_page') }}">{{ t('bundle.new_analysis') }}</a>
 </div>
 {% endif %}

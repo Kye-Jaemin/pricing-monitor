@@ -696,6 +696,14 @@ def get_bundle_card(card_id: int) -> Optional[sqlite3.Row]:
         ).fetchone()
 
 
+def update_bundle_card_payload(card_id: int, payload_json: str) -> None:
+    """저장된 카드의 스냅샷 데이터를 새로 덮어쓴다(예: AI 추정 반영 후 재생성)."""
+    with connect() as conn:
+        conn.execute(
+            "UPDATE bundle_cards SET payload_json=? WHERE id=?", (payload_json, card_id)
+        )
+
+
 def delete_bundle_card(card_id: int) -> None:
     with connect() as conn:
         conn.execute("DELETE FROM bundle_cards WHERE id=?", (card_id,))

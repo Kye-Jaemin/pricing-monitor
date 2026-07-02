@@ -176,7 +176,39 @@ def bundle_card(card_id: int):
         contact=config.ACCESS_CONTACT,
         error=request.args.get("error"),
         notice=request.args.get("notice"),
+        bundle_running=_bundle_progress["running"] or request.args.get("analyzing") == "1",
     )
+
+
+@app.route("/bundle/card/<int:card_id>/refresh-ai", methods=["POST"])
+def bundle_card_refresh_ai(card_id: int):
+    """저장 카드의 업체에 AI 추정을 돌리고 카드를 재생성(덮어쓰기). 백그라운드."""
+    if config.ACCESS_CODE and (request.form.get("access_code") or "").strip() != config.ACCESS_CODE:
+        return redirect(url_for("bundle_card", card_id=card_id, error="bad_code"))
+    if not _bundle_progress["running"]:
+        with _bundle_lock:
+            if not _bundle_progress["running"]:
+                _bundle_progress.update(
+                    {"running": True, "total": 0, "done": 0,
+                     "current": "AI 추정 시작 중…", "n": 0, "names": [], "error": ""}
+                )
+                threading.Thread(
+                    target=_background_card_refresh,
+                    kwargs={"card_id": card_id},
+                    daemon=True,
+                ).start()
+    return redirect(url_for("bundle_card", card_id=card_id, analyzing="1"))
+
+
+def _background_card_refresh(card_id: int) -> None:
+    try:
+        log.info("[card-refresh] 카드 AI 재생성 시작 (id=%s)", card_id)
+        presenters.refresh_bundle_card_ai(card_id, progress_cb=_bundle_progress_cb)
+    except Exception:  # noqa: BLE001
+        log.exception("[card-refresh] 실패")
+        _bundle_progress.update({"error": "ai_failed"})
+    finally:
+        _bundle_progress.update({"running": False, "current": ""})
 
 
 @app.route("/bundle/card/<int:card_id>/delete", methods=["POST"])
