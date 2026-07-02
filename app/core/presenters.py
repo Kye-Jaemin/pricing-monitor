@@ -2222,6 +2222,18 @@ def compare(names: list[str]) -> dict:
                 "penetration": round(pen, 3),
                 "free_cnt": cheap, "paid_cnt": paid}
 
+    def _feature_desc_fallback(display: str, provs: list[dict]) -> str:
+        """AI 설명이 아직 없을 때, 업체 원문 기능 문구로 임시 설명을 만든다(항상 뭔가 보이게)."""
+        raws, seen = [], set()
+        for pv in provs:
+            for ff in (pv.get("features") or []):
+                ff = (ff or "").strip()
+                k = ff.lower()
+                if ff and k not in seen and k != (display or "").lower():
+                    seen.add(k)
+                    raws.append(ff)
+        return " · ".join(raws[:3])
+
     # AI가 생성한 '이 기능은 ~하는 기능' 한 줄 설명(있으면 붙임) — canon 키로 저장됨.
     try:
         feat_descs = json.loads(store.get_setting("feature.descriptions") or "{}") or {}
@@ -2265,7 +2277,8 @@ def compare(names: list[str]) -> dict:
             "free_cnt": cls.get("free_cnt", 0),
             "paid_cnt": cls.get("paid_cnt", 0),
             "key": key,
-            "desc": feat_descs.get(key, ""),
+            "desc": feat_descs.get(key, "") or _feature_desc_fallback(a["display"], providers_list),
+            "desc_ai": bool(feat_descs.get(key)),
             "providers_list": providers_list,
         }
         feature_positioning.append(entry)

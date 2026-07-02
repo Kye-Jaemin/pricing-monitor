@@ -75,6 +75,7 @@
       <label class="src-check"><input type="checkbox" name="ai_dedupe" value="1"> 🤖 {{ t('compare.ai_dedupe') }}</label>
       <label class="src-check"><input type="checkbox" name="ai_categorize" value="1"> 🤖 {{ t('compare.ai_categorize') }}</label>
       <label class="src-check"><input type="checkbox" name="ai_pricing" value="1"> 🤖 {{ t('compare.ai_pricing') }}</label>
+      <label class="src-check"><input type="checkbox" name="ai_describe" value="1"> 🤖 {{ t('compare.ai_describe') }}</label>
       {% if access_required %}<input type="password" name="access_code" class="access-input" placeholder="{{ t('runs.access_label') }}" autocomplete="off">{% endif %}
     </div>
     <button type="submit" class="btn-primary" id="compareBtn">{{ t('compare.run') }}</button>
@@ -197,7 +198,7 @@
       <p class="pos-why"><span class="why-label">{{ t('compare.why_label') }}</span>
         {% if fp.label == 'differentiated' %}{{ t('compare.why_differentiated', total=fp.total, providers=fp.providers, pen=fp.pen_pct, paid=fp.paid_cnt) }}
         {% elif fp.label == 'commodity' %}{{ t('compare.why_commodity', total=fp.total, providers=fp.providers, pen=fp.pen_pct, free=fp.free_cnt) }}
-        {% else %}{{ t('compare.why_standard', total=fp.total, providers=fp.providers, pen=fp.pen_pct) }}{% endif %}</p>
+        {% else %}{{ t('compare.why_standard', total=fp.total, providers=fp.providers, pen=fp.pen_pct, free=fp.free_cnt, paid=fp.paid_cnt) }}{% endif %}</p>
       <p class="pos-what muted">{{ t('compare.pos_what_hint') }}</p>
       <ul class="pos-providers">
         {% for pv in fp.providers_list %}
@@ -969,7 +970,8 @@
     if (form) form.addEventListener('submit', function () {
       var ai = form.querySelector('input[name="ai_categorize"]:checked')
             || form.querySelector('input[name="ai_pricing"]:checked')
-            || form.querySelector('input[name="ai_dedupe"]:checked');
+            || form.querySelector('input[name="ai_dedupe"]:checked')
+            || form.querySelector('input[name="ai_describe"]:checked');
       if (ai) showRunning();
     });
     // 분석이 진행 중인 채로 로드된 경우(analyzing=1): 진행상황 폴링 → 완료 시 결과로 새로고침

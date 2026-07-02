@@ -677,16 +677,28 @@ def describe_features_ai(items: list[dict], lang: str = "ko") -> dict:
         data = _loads_loose(raw)
     except json.JSONDecodeError as exc:
         raise ExtractError(f"기능 설명 JSON 파싱 실패: {exc}") from exc
-    # id → 실제 key 로 되돌린다.
-    raw_desc = data.get("desc") or {}
+    # id → 실제 key 로 되돌린다. 모델 응답 형태가 조금씩 달라도 최대한 흡수.
+    raw_desc = data.get("desc")
+    if not isinstance(raw_desc, dict):
+        raw_desc = data if isinstance(data, dict) else {}   # {"desc":..} 래핑이 없을 때
+    by_name = {(it.get("name") or ""): it for it in items}
     out = {}
     for i, it in enumerate(items):
         v = raw_desc.get(str(i))
         if v is None:
-            v = raw_desc.get(i)   # 혹시 정수 키로 온 경우
+            v = raw_desc.get(i)              # 정수 키
+        if v is None:
+            v = raw_desc.get(it.get("name"))  # 이름 키로 온 경우
         s = str(v or "").strip()
         if s:
             out[it["key"]] = s[:200]
+    # 그래도 못 매핑했으면(키가 완전히 다르면) 이름 매칭으로 한 번 더 시도
+    if not out and isinstance(raw_desc, dict):
+        for k, v in raw_desc.items():
+            it = by_name.get(str(k))
+            s = str(v or "").strip()
+            if it and s:
+                out[it["key"]] = s[:200]
     return out
 
 

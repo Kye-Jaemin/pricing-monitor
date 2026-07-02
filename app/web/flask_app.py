@@ -609,7 +609,8 @@ def compare_run():
     do_cat = bool(request.form.get("ai_categorize"))
     do_price = bool(request.form.get("ai_pricing"))
     do_dedupe = bool(request.form.get("ai_dedupe"))
-    if do_cat or do_price or do_dedupe:
+    do_desc = bool(request.form.get("ai_describe"))
+    if do_cat or do_price or do_dedupe or do_desc:
         if config.ACCESS_CODE and (request.form.get("access_code") or "").strip() != config.ACCESS_CODE:
             return redirect(_compare_url(names, error="bad_code"))
         # 백그라운드로 실행 → 즉시 복귀(진행바가 폴링). 동기 실행은 다수 AI 호출이
@@ -624,17 +625,18 @@ def compare_run():
                     threading.Thread(
                         target=_background_compare_run,
                         kwargs={"names": names, "do_dedupe": do_dedupe,
-                                "do_cat": do_cat, "do_price": do_price},
+                                "do_cat": do_cat, "do_price": do_price,
+                                "do_desc": do_desc},
                         daemon=True,
                     ).start()
         return redirect(_compare_url(names, analyzing="1"))
     return redirect(_compare_url(names))
 
 
-def _background_compare_run(names, do_dedupe, do_cat, do_price) -> None:
+def _background_compare_run(names, do_dedupe, do_cat, do_price, do_desc=False) -> None:
     try:
         total = ((1 if do_dedupe else 0) + (1 if do_cat else 0)
-                 + (len(names) if do_price else 0))
+                 + (len(names) if do_price else 0) + (1 if do_desc else 0))
         _compare_progress.update({"total": total, "done": 0})
         done = 0
         if do_dedupe:
@@ -653,6 +655,12 @@ def _background_compare_run(names, do_dedupe, do_cat, do_price) -> None:
                 _apply_pricing([nm])
                 done += 1
                 _compare_progress.update({"done": done})
+        if do_desc:
+            # 기능 설명은 통합(dedupe) 이후의 canon 키에 맞춰 생성해야 하므로 맨 마지막.
+            _compare_progress.update({"current": "AI 기능 설명 생성…"})
+            presenters.generate_feature_descriptions(names, only_new=True)
+            done += 1
+            _compare_progress.update({"done": done})
         log.info("[compare-run] AI 분석 완료 (%d단계)", total)
     except Exception:  # noqa: BLE001
         log.exception("[compare-run] AI 분석 실패")
