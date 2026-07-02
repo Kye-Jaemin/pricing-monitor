@@ -255,7 +255,7 @@
         <tbody>
           {% for pl in co.plans %}
           <tr id="{{ pl.anchor }}" class="bundle-plan-row">
-            <td class="tier-name">{{ pl.name }}{% if pl.choose %} <span class="tag tag-choose">{{ t('bundle.choose', n=pl.choose) }}</span>{% endif %}
+            <td class="tier-name"><button type="button" class="plan-del" title="{{ t('bundle.db_hide') }}" aria-label="{{ t('bundle.db_hide') }}" data-company="{{ co.name }}" data-plan="{{ pl.name }}">✕</button> {{ pl.name }}{% if pl.choose %} <span class="tag tag-choose">{{ t('bundle.choose', n=pl.choose) }}</span>{% endif %}
               {% if pl.conditions %}<div class="bundle-cond" title="{{ t('bundle.conditions') }}">⚠ {{ pl.conditions }}</div>{% endif %}</td>
             <td class="muted nowrap">{{ pl.provider }}</td>
             <td class="nowrap">{% if pl.monthly_usd is not none %}${{ '%g'|format(pl.monthly_usd) }}{% if pl.monthly_orig %} <span class="muted">({{ pl.monthly_orig }})</span>{% endif %}{% elif pl.monthly_orig %}<span class="muted">{{ pl.monthly_orig }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
@@ -426,6 +426,15 @@
     });
     var rb = db.querySelector('.db-restore-btn');
     if (rb) rb.addEventListener('click', function () { bundlePost('clear', { clear: '1' }); });
+  });
+  // 요금제 표에서 삭제(✕) — 덤벨과 동일한 영구 제외(bundle.hideplan)로 연결 → 차트도 함께 제거
+  document.querySelectorAll('.plan-del').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation(); e.preventDefault();
+      var company = btn.getAttribute('data-company');
+      var plan = btn.getAttribute('data-plan');
+      if (company && plan) bundlePost('hide', { company: company, plan: plan });
+    });
   });
   document.querySelectorAll('canvas.bundle-pie').forEach(function (cv) {
     var cats; try { cats = JSON.parse(cv.getAttribute('data-cats') || '[]'); } catch (e) { return; }

@@ -571,6 +571,8 @@ a.btn-primary:hover { text-decoration: none; }
 .cross-bar { display: inline-block; width: 110px; height: 8px; background: #eef0f2; border-radius: 4px; overflow: hidden; vertical-align: middle; margin-right: 6px; }
 .cross-bar-fill { display: block; height: 100%; background: #16a34a; }
 .pos-hint { padding: 14px 4px 6px; }
+.plan-del { width: 18px; height: 18px; line-height: 1; padding: 0; margin-right: 4px; border: 1px solid var(--line); border-radius: 50%; background: #fff; color: #9ca3af; font-size: .68rem; cursor: pointer; vertical-align: middle; opacity: .5; }
+.plan-del:hover { color: #b91c1c; border-color: #fecaca; background: #fef2f2; opacity: 1; }
 .krsearch-inline { display: inline-flex; align-items: center; margin-left: 4px; }
 .krsearch-inline .src-check { font-size: .8rem; opacity: .85; }
 .scatter-hidden { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0 10px; }
