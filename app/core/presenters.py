@@ -182,6 +182,34 @@ def _skip_feature(f: str) -> bool:
     )
 
 
+# 조회 시점에 코드로 확정 병합(모델 지시에 의존하지 않는 결정적 통합).
+#   특정 AI 모델명/버전 → 'AI 모델 접근', 워터마크 제거 표현 → '워터마크 제거',
+#   내보내기/다운로드 → '내보내기'. (dedupe 가 놓쳐도 화면에서 즉시 하나로 묶임.)
+_MODEL_RE = re.compile(
+    r"(?i)\b(gemini|gpt-?\d|chatgpt|claude|llama|mixtral|mistral|dall[\s-]?e|sora|veo|"
+    r"imagen|flux|grok|deepseek|qwen|o[13]\b)|"
+    r"(ai|language)\s+models?\b|모델\s*(접근|액세스)|"
+    r"(premium|latest|advanced|frontier|top|flagship)\s+models?\b"
+)
+_WMFREE_RE = re.compile(
+    r"(?i)(no|without|remove|remov\w+|free\s+of)\s+watermark|watermark[\s-]?free|"
+    r"워터마크\s*(제거|없|프리)"
+)
+_EXPORT_RE = re.compile(r"(?i)\b(export|exports|exporting|download|downloads)\b|내보내기|다운로드")
+
+
+def _force_canon(f: str) -> str | None:
+    """이름 패턴만으로 확정되는 통합명(있으면). 순서: 워터마크 > AI모델 > 내보내기."""
+    s = f or ""
+    if _WMFREE_RE.search(s):
+        return "워터마크 제거"
+    if _MODEL_RE.search(s):
+        return "AI 모델 접근"
+    if _EXPORT_RE.search(s):
+        return "내보내기"
+    return None
+
+
 CLASSIFY_THRESHOLD_KEY = "classify.cheap_usd"
 
 
@@ -2150,11 +2178,14 @@ def compare(names: list[str]) -> dict:
         return a if (a and not _skip_feature(a)) else None
 
     def _canon_key(f: str) -> str:
+        forced = _force_canon(f)          # 코드 확정 통합 우선(모델 무관)
+        if forced:
+            return "ALIAS::" + forced
         a = _good_alias(f)
         return ("ALIAS::" + a) if a else _normalize_feature(f)
 
     def _canon_disp(f: str) -> str:
-        return _good_alias(f) or f
+        return _force_canon(f) or _good_alias(f) or f
 
     # 0) 기능(canonical) 보급률·해금가 집계 → 커머디티/차별화 분류 (무료 기능 포함)
     agg: dict[str, dict] = {}
