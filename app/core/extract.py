@@ -53,6 +53,9 @@ Rules:
   annual price). If only the annual per-month price P is shown together with
   "Save $X compared to monthly", infer monthly_price = P + X/12. If a plan says
   "no difference compared to monthly", set monthly_price = annual_price_per_month.
+- Write every tier "name" and each "features" item in the SAME language as the
+  page text: a Korean page -> Korean features, an English page -> English. Keep
+  brand/product names (Netflix, Naver, etc.), numbers, and currencies as-is.
 {source_hint}- "company" must be exactly: {company}
 - "source_url" must be exactly: {source_url}
 - "collected_at" must be exactly: {collected_at}
