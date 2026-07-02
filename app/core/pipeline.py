@@ -154,7 +154,12 @@ def _process_source(
     #    '한국 검색' 설정 시 gl=kr&hl=ko 로 검색한다.
     kr = source_type == "google_search" and store.get_setting("search.kr:" + company) == "1"
     gl, hl = ("kr", "ko") if kr else ("us", "en")
-    g_url = fetch.localize_google_url(source_url, gl, hl) if source_type == "google_search" else source_url
+    if source_type != "google_search":
+        g_url = source_url
+    elif kr and is_bundle:
+        g_url = fetch.kr_bundle_search_url(source_url, company)   # 한국어 번들 검색어로 재구성
+    else:
+        g_url = fetch.localize_google_url(source_url, gl, hl)
     if source_type == "google_search" and is_bundle and config.SERPAPI_KEY:
         # 번들 검색: SerpAPI(AI Overview·정확하지만 좁음)와 Playwright(구글 SERP·
         # 넓지만 지저분/차단 가능)를 둘 다 모아 합친다 — 한쪽만 고르면 어떤 번들은

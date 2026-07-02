@@ -134,6 +134,22 @@ def localize_google_url(url: str, gl: str = "us", hl: str = "en") -> str:
         return url
 
 
+def kr_bundle_search_url(url: str, provider: str) -> str:
+    """영어 번들 검색 URL을 한국어 검색어로 재구성(KR 로케일 수집용).
+    기존 q의 'includes <앵커>'에서 앵커를 뽑아 provider와 함께 한국어 번들 질의로.
+    → 한국 통신사/멤버십 결합상품·요금·정가·포함 서비스가 검색에 제대로 잡히게."""
+    import re as _re
+    from urllib.parse import quote_plus
+    try:
+        q = parse_qs(urlparse(url).query).get("q", [""])[0]
+        m = _re.search(r"includes\s+([A-Za-z0-9가-힣+ ]+?)[:\-]", q)
+        anchor = (m.group(1).strip() if m else "")
+        terms = _re.sub(r"\s+", " ", f"{provider} {anchor} 결합상품 요금제 월 요금 정가 포함 혜택").strip()
+        return f"https://www.google.com/search?q={quote_plus(terms)}&hl=ko&gl=kr"
+    except Exception:  # noqa: BLE001
+        return localize_google_url(url, "kr", "ko")
+
+
 def fetch_google_via_serpapi(url: str, gl: str = "us", hl: str = "en") -> str:
     """구글 검색을 SerpAPI로 가져온다(헤드리스 봇 차단 회피).
 
