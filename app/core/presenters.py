@@ -228,9 +228,11 @@ _CANON_RULES = [
      r"(?i)\b(gemini|gpt-?\d|chatgpt|claude|llama|mixtral|mistral|dall[\s-]?e|sora|veo|"
      r"imagen|flux|grok|deepseek|qwen|o[13]\b|gen[\s-]?\d|kling|runway|pika|luma|"
      r"dream\s*machine|ideogram|recraft|hailuo|minimax|hunyuan|seedance|wan[\s-]?\d|"
-     r"mochi|ltx|hidream|stable\s*diffusion|firefly)|(ai|language|video|image)\s+models?\b|"
-     r"모델\s*(접근|액세스|이용)|(premium|latest|advanced|frontier|top|flagship|다양한)\s*(ai\s*)?models?\b|"
-     r"다양한\s*ai\s*모델"),
+     r"mochi|ltx|hidream|stable\s*diffusion|firefly|nano\s*banana|midjourney|"
+     r"phoenix|photon|marey|ray[\s-]?\d|vidu|pixverse|framepack)|"
+     r"(ai|language|video|image|foundation)\s+models?\b|"
+     r"모델\s*(접근|액세스|이용|선택)|(premium|latest|advanced|frontier|top|flagship|다양한)\s*(ai\s*)?models?\b|"
+     r"다양한\s*ai\s*모델|access to .{0,25}\bmodel"),
     ("업스케일·화질개선",
      r"(?i)\bupscal\w+|super[\s-]?resolution|image enhancement|enhance\w*\s+(quality|"
      r"resolution)|업스케일|화질\s*(개선|향상)|해상도\s*향상"),
