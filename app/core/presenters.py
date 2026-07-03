@@ -187,6 +187,22 @@ def _is_cta_feature(f: str) -> bool:
     return bool(_CTA_RE.search(f or ""))
 
 
+# 무슨 기능인지가 아니라 '접근/등급'만 말하는 모호한 표현(예: 'Full editor access',
+#   'Access to the platform', '전체 기능 이용') — 어떤 능력인지 없어서 기능으로 안 침.
+_VAGUE_RE = re.compile(
+    r"(?i)\b(full|complete|unlimited|entire)\s+(editor|platform|dashboard|workspace|"
+    r"studio|app|application|suite|toolkit|feature\s*set|version|experience|access)\b"
+    r"|\baccess\s+to\s+(the\s+)?(entire\s+|full\s+)?(editor|platform|dashboard|workspace|"
+    r"studio|app|suite|toolkit|everything|all\s+(features|tools|models))\b"
+    r"|전체\s*(기능|에디터|플랫폼)\s*(이용|접근|제공)|모든\s*기능\s*(이용|접근)"
+)
+
+
+def _is_vague_feature(f: str) -> bool:
+    """'무슨 기능'인지 없이 접근/등급만 말하는 모호 표현인지."""
+    return bool(_VAGUE_RE.search(f or ""))
+
+
 def _skip_feature(f: str) -> bool:
     """기능 포지셔닝/분석 집계에서 제외할 노이즈
     (포함 안내·광고·플랜 이름·체험 안내·부정/부재·제약·행동유도 표현)."""
@@ -194,7 +210,7 @@ def _skip_feature(f: str) -> bool:
         _is_inclusion_phrase(f) or _is_ad_feature(f)
         or _is_plan_name(f) or _is_trial_feature(f)
         or _is_negative_feature(f) or _is_limitation_feature(f)
-        or _is_cta_feature(f)
+        or _is_cta_feature(f) or _is_vague_feature(f)
     )
 
 
