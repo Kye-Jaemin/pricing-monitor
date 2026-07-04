@@ -350,6 +350,19 @@ def bundle_svcprice():
     return redirect(_bundle_url(names))
 
 
+@app.route("/bundle/monthlyprice", methods=["POST"])
+def bundle_monthlyprice():
+    """번들 요금제의 제공 가격(월정가)을 사용자가 직접 입력/수정(번들 통화 기준).
+    검색·AI 추정값이 틀렸을 때 직접 고치는 용도. 빈 값=해제. 재분석 없이 즉시 반영."""
+    company = (request.form.get("company") or "").strip()
+    plan = (request.form.get("plan") or "").strip()
+    value = (request.form.get("value") or "").strip()
+    if company and plan:
+        store.set_setting("bundle.monthly:" + company + ":" + plan, value)
+    names = [n for n in request.form.getlist("sel") if n]
+    return redirect(_bundle_url(names))
+
+
 @app.route("/bundle/svcchoice", methods=["POST"])
 def bundle_svcchoice():
     """서비스의 택1↔포함을 사용자가 뒤집는다(AI 오판 보정). key=플랜\\x1f서비스키."""

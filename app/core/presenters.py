@@ -1188,13 +1188,16 @@ def bundle_view(names: list[str] | None = None) -> dict:
             ae_plan = aiest_map.get(orig_name, {}) if isinstance(aiest_map, dict) else {}
             ae_svc = ae_plan.get("svc", {}) or {}
             a_usd = _to_usd(p.get("annual"), cur)
-            # 월 요금: 검색값 ↔ AI 추정값 중 사용자가 고른 것(기본=검색값 우선).
+            # 월 요금: 사용자 직접 입력 ↔ 검색값 ↔ AI 추정값 중 사용자가 고른 것(기본=수동>검색 우선).
+            ov_m = store.get_setting("bundle.monthly:" + name + ":" + orig_name)
+            ov_m_num = re.sub(r"[^\d.]", "", ov_m) if ov_m else ""
+            manual_m = _to_usd(float(ov_m_num), cur) if ov_m_num else None
             search_m = _to_usd(p.get("monthly"), cur)
             em = ae_plan.get("monthly")
             ai_m = _to_usd(em.get("v"), cur) if em else None
             mkey = orig_name + "\x1fMONTHLY"
             m_usd, m_src, m_ai, m_srcs = _price_sources(
-                None, search_m, ai_m, em, price_pick.get(mkey))
+                manual_m, search_m, ai_m, em, price_pick.get(mkey))
             eff = m_usd if m_usd is not None else a_usd   # 분포·집계는 USD 기준
             if eff is not None:
                 co_prices.append(eff)
@@ -1351,6 +1354,7 @@ def bundle_view(names: list[str] | None = None) -> dict:
                 "annual_orig": _fmt_money(p.get("annual"), cur) if cur != "USD" else None,
                 "monthly_ai": bool(m_ai),
                 "monthly_ai_basis": (m_ai.get("conf", "") + " · " + m_ai.get("basis", "")) if m_ai else "",
+                "monthly_manual": bool(ov_m), "monthly_override_raw": ov_m_num,
                 "monthly_pkey": mkey, "monthly_srcs": m_srcs,
                 "choose": p.get("choose"),
                 "price_note": p.get("price_note"),
